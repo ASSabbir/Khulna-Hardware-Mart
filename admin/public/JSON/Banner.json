@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "bg": "#1E3A8A",
+    "dark": "#172554",
+    "badge": "Bathroom Essentials",
+    "title": "Modern Basin &\nWashroom Fittings",
+    "sub": "Premium quality basin mixers, taps and accessories.\nDurable, rust-proof and stylish design.",
+    "ctaLabel": "Shop Basin Items",
+    "ctaBg": "#2563EB",
+    "image": "/Image/img5.png"
+  },
+  {
+    "id": 2,
+    "bg": "#065F46",
+    "dark": "#044E3B",
+    "badge": "Kitchen Upgrade",
+    "title": "Kitchen Sink &\nFaucet Collection",
+    "sub": "High-quality stainless steel sinks and faucets.\nPerfect for modern kitchens.",
+    "ctaLabel": "Explore Kitchen",
+    "ctaBg": "#10B981",
+    "image": "/Image/img6.jpg"
+  },
+  {
+    "id": 3,
+    "bg": "#7C2D12",
+    "dark": "#5B1C0E",
+    "badge": "Hot Deal",
+    "title": "PVC & CPVC\nPipes and Fittings",
+    "sub": "Strong, leak-proof pipes for home and industry use.\nBest price guaranteed.",
+    "ctaLabel": "View Pipes",
+    "ctaBg": "#EA580C",
+    "image": "/Image/img7.png"
+  },
+  {
+    "id": 4,
+    "bg": "#312E81",
+    "dark": "#1E1B4B",
+    "badge": "Shower Solutions",
+    "title": "Shower Sets &\nBathroom Accessories",
+    "sub": "Rain showers, hand showers & complete sets.\nComfort meets elegance.",
+    "ctaLabel": "Browse Showers",
+    "ctaBg": "#6366F1",
+    "image": "/Image/img8.jpg"
+  },
+  {
+    "id": 5,
+    "bg": "#78350F",
+    "dark": "#5C2900",
+    "badge": "New Arrival",
+    "title": "Angle Valve &\nTap Accessories",
+    "sub": "Complete fitting solutions for every corner.\nReliable and long-lasting.",
+    "ctaLabel": "See Accessories",
+    "ctaBg": "#F59E0B",
+    "image": "/Image/img9.jfif"
+  }
+]

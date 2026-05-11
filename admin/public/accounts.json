@@ -1,0 +1,142 @@
+{
+  "balance": 285000,
+  "totalIncome": 520000,
+  "totalExpense": 235000,
+  "transactions": [
+    {
+      "id": 1,
+      "type": "income",
+      "category": "Sales",
+      "amount": 87430,
+      "description": "Sales revenue - Rahim Construction order #1042",
+      "date": "2025-05-03",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 2,
+      "type": "expense",
+      "category": "Purchase",
+      "amount": 45000,
+      "description": "Purchased PVC pipes from Supreme Pipe Industries",
+      "date": "2025-05-03",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 3,
+      "type": "income",
+      "category": "Due Collection",
+      "amount": 12000,
+      "description": "Due collected from Nizam Store",
+      "date": "2025-05-02",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 4,
+      "type": "expense",
+      "category": "Salary",
+      "amount": 35000,
+      "description": "Staff salary for April 2025",
+      "date": "2025-05-01",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 5,
+      "type": "expense",
+      "category": "Rent",
+      "amount": 25000,
+      "description": "Showroom rent for May 2025",
+      "date": "2025-05-01",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 6,
+      "type": "income",
+      "category": "Sales",
+      "amount": 124000,
+      "description": "Sales revenue - Faruk & Sons bulk order",
+      "date": "2025-04-30",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 7,
+      "type": "expense",
+      "category": "Utilities",
+      "amount": 8500,
+      "description": "Electricity and water bill April",
+      "date": "2025-04-29",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 8,
+      "type": "expense",
+      "category": "Transport",
+      "amount": 12000,
+      "description": "Delivery vehicle fuel and maintenance",
+      "date": "2025-04-28",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 9,
+      "type": "income",
+      "category": "Sales",
+      "amount": 56000,
+      "description": "Sales revenue - Mamun Electricals order",
+      "date": "2025-04-27",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 10,
+      "type": "expense",
+      "category": "Purchase",
+      "amount": 78000,
+      "description": "Berger Paints stock purchase",
+      "date": "2025-04-26",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 11,
+      "type": "income",
+      "category": "Other",
+      "amount": 15000,
+      "description": "Bank interest received",
+      "date": "2025-04-25",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 12,
+      "type": "expense",
+      "category": "Marketing",
+      "amount": 18000,
+      "description": "Social media ads and printing banners",
+      "date": "2025-04-24",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 13,
+      "type": "income",
+      "category": "Sales",
+      "amount": 93000,
+      "description": "Sales revenue - Jalal Enterprise order",
+      "date": "2025-04-23",
+      "addedBy": "Main Boss"
+    },
+    {
+      "id": 14,
+      "type": "expense",
+      "category": "Maintenance",
+      "amount": 6500,
+      "description": "Showroom AC repair and maintenance",
+      "date": "2025-04-22",
+      "addedBy": "Rahim Manager"
+    },
+    {
+      "id": 15,
+      "type": "income",
+      "category": "Due Collection",
+      "amount": 23000,
+      "description": "Due collected from Selim Hardware",
+      "date": "2025-04-20",
+      "addedBy": "Main Boss"
+    }
+  ]
+}
