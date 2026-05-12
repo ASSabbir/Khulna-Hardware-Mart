@@ -46,7 +46,7 @@ const Route = createBrowserRouter([
         path: "/dashboard",
         element: <DeshboardLayout></DeshboardLayout>,
         children: [
-          { index: true, element: <Navigate to="admin" replace /> },
+          { index: true, element: <Navigate to="overview" replace /> },
           { path: "overview", element: <DeshboardOverview></DeshboardOverview> },
           { path: "admin", element: <AdminDeshboard></AdminDeshboard> },
           { path: "revenue", element: <Revenue></Revenue> },

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import axios from "axios";
 import {
   FiPackage, FiTag, FiLayers, FiDollarSign,
   FiArchive, FiImage, FiAlertTriangle, FiCheckCircle,
@@ -98,6 +99,8 @@ const AddProduct = () => {
   const [images, setImages]   = useState([]);
   const [toast, setToast]     = useState(null); // { type, msg }
 
+  const [loading, setLoading] = useState(false);
+
   /* derived prices */
   const buying  = parseFloat(form.buyingPrice) || 0;
   const holcell = buying + buying * (parseFloat(form.holcellMargin) / 100 || 0);
@@ -118,17 +121,45 @@ const AddProduct = () => {
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
 
   /* submit */
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.company || !form.buyingPrice || !form.quantity) {
       setToast({ type: "error", msg: "Please fill all required fields." });
       setTimeout(() => setToast(null), 4000);
       return;
     }
-    // → connect to your API / db here later
-    console.log("Product payload:", { ...form, holcell, retail, images });
-    setToast({ type: "success", msg: "Product saved successfully! Database integration pending." });
-    setTimeout(() => setToast(null), 4000);
+
+    setLoading(true);
+    try {
+      const payload = {
+        name: form.name,
+        sku: form.sku,
+        category: form.category,
+        brand: form.company,
+        origin: form.origin,
+        unit: form.unit,
+        description: form.description,
+        buyingPrice: parseFloat(form.buyingPrice),
+        holcellPrice: holcell,
+        retailPrice: retail,
+        holcellMargin: parseFloat(form.holcellMargin),
+        retailMargin: parseFloat(form.retailMargin),
+        stock: parseInt(form.quantity),
+        reorderLevel: form.reorderLevel ? parseInt(form.reorderLevel) : 0,
+        location: form.location,
+        status: form.status,
+        images: images.map((img) => img.url),
+      };
+
+      await axios.post("http://localhost:5000/api/products", payload);
+      setToast({ type: "success", msg: "Product saved successfully!" });
+      handleReset();
+    } catch (error) {
+      setToast({ type: "error", msg: error.response?.data?.message || "Failed to save product." });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setToast(null), 4000);
+    }
   };
 
   const handleReset = () => {
@@ -186,9 +217,10 @@ const AddProduct = () => {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2 rounded-lg border-2 border-[#F97316] bg-[#F97316] text-white text-sm font-bold hover:bg-[#EA6C0A] hover:border-[#EA6C0A] transition-colors"
+              disabled={loading}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg border-2 border-[#F97316] bg-[#F97316] text-white text-sm font-bold hover:bg-[#EA6C0A] hover:border-[#EA6C0A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <FiSave size={15} /> Save Product
+              {loading ? "Saving..." : <><FiSave size={15} /> Save Product</>}
             </button>
           </div>
         </div>
@@ -494,9 +526,10 @@ const AddProduct = () => {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#F97316] border-2 border-[#F97316] text-white text-sm font-bold hover:bg-[#EA6C0A] hover:border-[#EA6C0A] transition-colors"
+              disabled={loading}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#F97316] border-2 border-[#F97316] text-white text-sm font-bold hover:bg-[#EA6C0A] hover:border-[#EA6C0A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <FiSave size={15} /> Save Product
+              {loading ? "Saving..." : <><FiSave size={15} /> Save Product</>}
             </button>
           </div>
         </div>

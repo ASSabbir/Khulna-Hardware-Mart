@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   FiUsers, FiSearch, FiX, FiPlus, FiEye, FiTrash2,
@@ -7,16 +7,13 @@ import {
   FiAlertCircle, FiUser, FiTag, FiFileText,
 } from "react-icons/fi";
 
-// 👉 swap to real API when backend is ready
-const API_URL = "/partners.json";
-
-const fmt      = (n) => "৳" + Number(n).toLocaleString();
-const fmtDate  = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const CATEGORIES = ["Distribution", "Logistics", "Technology", "Courier", "Finance", "Marketing", "Other"];
 
 const STATUS_STYLE = {
-  active:   "bg-green-100 text-green-700",
+  active: "bg-green-100 text-green-700",
   inactive: "bg-gray-100 text-gray-500",
 };
 
@@ -30,7 +27,7 @@ function Stars({ rating }) {
   );
 }
 
-// ── Add / Edit Modal ──────────────────────────────────────────────────
+// Add/Edit Modal
 function PartnerModal({ existing, onClose, onSave }) {
   const [form, setForm] = useState(
     existing || {
@@ -44,10 +41,10 @@ function PartnerModal({ existing, onClose, onSave }) {
 
   const validate = () => {
     const e = {};
-    if (!form.companyName.trim())   e.companyName   = "Company name is required";
+    if (!form.companyName.trim()) e.companyName = "Company name is required";
     if (!form.contactPerson.trim()) e.contactPerson = "Contact person is required";
-    if (!form.phone.trim())         e.phone         = "Phone is required";
-    if (!form.category)             e.category      = "Select a category";
+    if (!form.phone.trim()) e.phone = "Phone is required";
+    if (!form.category) e.category = "Select a category";
     return e;
   };
 
@@ -56,11 +53,8 @@ function PartnerModal({ existing, onClose, onSave }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     onSave({
       ...form,
-      id: existing?.id || Date.now(),
-      logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(form.companyName)}&background=16a34a&color=fff&size=128&bold=true`,
-      joinedAt: existing?.joinedAt || new Date().toISOString().split("T")[0],
-      productsSupplied: existing?.productsSupplied || 0,
       totalBusinessAmount: existing?.totalBusinessAmount || 0,
+      productsSupplied: existing?.productsSupplied || 0,
       rating: Number(form.rating),
     });
   };
@@ -86,10 +80,10 @@ function PartnerModal({ existing, onClose, onSave }) {
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition"><FiX size={20} className="text-gray-500"/></button>
         </div>
         <div className="px-7 py-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <Field label="Company Name"    fkey="companyName"   placeholder="e.g. Delta Trading Co." required />
-          <Field label="Contact Person"  fkey="contactPerson" placeholder="e.g. Arif Hossain"      required />
-          <Field label="Phone Number"    fkey="phone"         placeholder="e.g. 01711-000000"       required />
-          <Field label="Email Address"   fkey="email"         type="email" placeholder="e.g. info@company.bd" />
+          <Field label="Company Name" fkey="companyName" placeholder="e.g. Delta Trading Co." required />
+          <Field label="Contact Person" fkey="contactPerson" placeholder="e.g. Arif Hossain" required />
+          <Field label="Phone Number" fkey="phone" placeholder="e.g. 01711-000000" required />
+          <Field label="Email Address" fkey="email" type="email" placeholder="e.g. info@company.bd" />
           <div className="sm:col-span-2">
             <label className="block text-base font-semibold text-gray-700 mb-1.5">Address</label>
             <input value={form.address || ""} onChange={set("address")} placeholder="Full address"
@@ -136,8 +130,8 @@ function PartnerModal({ existing, onClose, onSave }) {
   );
 }
 
-// ── Detail Drawer ─────────────────────────────────────────────────────
-function DetailDrawer({ p, onClose, onEdit }) {
+// Detail Drawer
+function DetailDrawer({ p, onClose, onEdit, onDelete }) {
   if (!p) return null;
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -148,7 +142,9 @@ function DetailDrawer({ p, onClose, onEdit }) {
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition"><FiX size={20} className="text-gray-500"/></button>
         </div>
         <div className="px-6 py-6 flex items-center gap-4 border-b border-gray-100">
-          <img src={p.logo} alt={p.companyName} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"/>
+          <div className="w-16 h-16 rounded-2xl bg-green-600 flex items-center justify-center text-white text-2xl font-bold">
+            {p.companyName?.charAt(0) || "P"}
+          </div>
           <div>
             <div className="text-lg font-bold text-gray-900 leading-tight">{p.companyName}</div>
             <Stars rating={p.rating}/>
@@ -157,15 +153,15 @@ function DetailDrawer({ p, onClose, onEdit }) {
         </div>
         <div className="px-6 py-5 space-y-4">
           {[
-            { icon: <FiUser size={15}/>,     label: "Contact",  val: p.contactPerson },
-            { icon: <FiPhone size={15}/>,    label: "Phone",    val: p.phone },
-            { icon: <FiMail size={15}/>,     label: "Email",    val: p.email || "Not provided" },
-            { icon: <FiMapPin size={15}/>,   label: "Address",  val: p.address || "—" },
-            { icon: <FiTag size={15}/>,      label: "Category", val: p.category },
-            { icon: <FiCalendar size={15}/>, label: "Since",    val: fmtDate(p.joinedAt) },
+            { icon: <FiUser size={15}/>, label: "Contact", val: p.contactPerson },
+            { icon: <FiPhone size={15}/>, label: "Phone", val: p.phone },
+            { icon: <FiMail size={15}/>, label: "Email", val: p.email || "Not provided" },
+            { icon: <FiMapPin size={15}/>, label: "Address", val: p.address || "—" },
+            { icon: <FiTag size={15}/>, label: "Category", val: p.category },
+            { icon: <FiCalendar size={15}/>, label: "Since", val: fmtDate(p.createdAt) },
           ].map(({ icon, label, val }) => (
             <div key={label} className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 flex-shrink-0">{icon}</div>
+              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">{icon}</div>
               <div>
                 <div className="text-xs text-gray-400">{label}</div>
                 <div className={`text-base font-medium ${val === "Not provided" ? "text-gray-400 italic" : "text-gray-800"}`}>{val}</div>
@@ -180,7 +176,7 @@ function DetailDrawer({ p, onClose, onEdit }) {
             <div className="text-green-600 text-sm mt-0.5">Total business</div>
           </div>
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <div className="text-blue-700 text-xl font-bold">{p.productsSupplied}</div>
+            <div className="text-blue-700 text-xl font-bold">{p.productsSupplied || 0}</div>
             <div className="text-blue-600 text-sm mt-0.5">Products linked</div>
           </div>
           {p.notes && (
@@ -194,68 +190,78 @@ function DetailDrawer({ p, onClose, onEdit }) {
           <button onClick={() => { onClose(); onEdit(p); }} className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl text-base transition">
             <FiEdit2 size={15}/> Edit
           </button>
-          <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl text-base transition">Close</button>
+          <button onClick={() => { onClose(); onDelete(p._id); }} className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl text-base transition">
+            <FiTrash2 size={15}/> Delete
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── MAIN PAGE ─────────────────────────────────────────────────────────
+// MAIN PAGE
 export default function Partners() {
-  const [data,    setData]    = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState("");
-  const [filter,  setFilter]  = useState("all");
-  const [drawer,  setDrawer]  = useState(null);
-  const [modal,   setModal]   = useState(null);   // null | "add" | partner obj
-  const [delId,   setDelId]   = useState(null);
-  const [toast,   setToast]   = useState({ msg: "", type: "" });
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [drawer, setDrawer] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [delId, setDelId] = useState(null);
+  const [toast, setToast] = useState({ msg: "", type: "" });
+
+  const fetchPartners = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ search, status: filter });
+      const res = await axios.get(`http://localhost:5000/api/partners?${params}`);
+      setData(res.data.partners);
+    } catch (err) {
+      console.error(err);
+      setToast({ msg: "Failed to load partners", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [search, filter]);
 
   useEffect(() => {
-    axios.get(API_URL)
-      .then((res) => {
-        let result = res.data;
-        // handle { data: [...] } shape from real API
-        if (!Array.isArray(result) && result?.data) result = result.data;
-        // final safety — always set an array
-        setData(Array.isArray(result) ? result : []);
-      })
-      .catch(() => setData([]))
-      .finally(() => setLoading(false));
-  }, []);
+    fetchPartners();
+  }, [fetchPartners]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast({ msg: "", type: "" }), 2800);
   };
 
-  const handleSave = (partner) => {
-    if (partner.id && data.find((d) => d.id === partner.id)) {
-      setData((p) => p.map((d) => d.id === partner.id ? partner : d));
-      showToast("Partner updated successfully.");
-    } else {
-      setData((p) => [partner, ...p]);
-      showToast("New partner added successfully.");
+  const handleSave = async (partner) => {
+    try {
+      if (partner._id) {
+        await axios.put(`http://localhost:5000/api/partners/${partner._id}`, partner);
+        showToast("Partner updated successfully.");
+      } else {
+        await axios.post("http://localhost:5000/api/partners", partner);
+        showToast("New partner added successfully.");
+      }
+      fetchPartners();
+      setModal(null);
+    } catch (err) {
+      showToast("Failed to save partner", "error");
     }
-    setModal(null);
   };
 
-  const handleDelete = () => {
-    setData((p) => p.filter((d) => d.id !== delId));
-    setDelId(null);
-    setDrawer(null);
-    showToast("Partner removed.");
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/partners/${delId}`);
+      showToast("Partner removed.");
+      fetchPartners();
+      setDelId(null);
+      setDrawer(null);
+    } catch (err) {
+      showToast("Failed to delete partner", "error");
+    }
   };
 
-  const rows = (data || [])
-    .filter((p) => filter === "all" ? true : p.status === filter)
-    .filter((p) =>
-      !search ||
-      p.companyName.toLowerCase().includes(search.toLowerCase()) ||
-      p.contactPerson.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase())
-    );
+  const rows = data || [];
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -268,21 +274,18 @@ export default function Partners() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Toast */}
       {toast.msg && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl shadow-xl text-base font-medium flex items-center gap-2 text-white ${toast.type === "success" ? "bg-green-600" : "bg-red-500"}`}>
           <FiCheckCircle size={18}/> {toast.msg}
         </div>
       )}
 
-      {/* Delete Modal */}
       {delId && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
             <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4"><FiTrash2 size={24} className="text-red-500"/></div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Remove Partner</h3>
-            <p className="text-gray-500 text-base mb-6"><strong>{data.find((d) => d.id === delId)?.companyName}</strong> will be removed permanently.</p>
+            <p className="text-gray-500 text-base mb-6">This partner will be removed permanently.</p>
             <div className="flex gap-3">
               <button onClick={() => setDelId(null)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition">Cancel</button>
               <button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition">Remove</button>
@@ -299,12 +302,12 @@ export default function Partners() {
         />
       )}
 
-      <DetailDrawer p={drawer} onClose={() => setDrawer(null)} onEdit={(p) => setModal(p)} />
+      <DetailDrawer p={drawer} onClose={() => setDrawer(null)} onEdit={(p) => setModal(p)} onDelete={(id) => setDelId(id)} />
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-7">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-4">
-          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0"><FiUsers size={24}/></div>
+          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shrink-0"><FiUsers size={24}/></div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Business Partners</h1>
             <p className="text-gray-500 text-base mt-0.5">Manage all your business partnerships in one place</p>
@@ -316,17 +319,16 @@ export default function Partners() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { icon: <FiUsers size={20}/>,     label: "Total Partners",  val: (data||[]).length,                             color: "bg-green-600" },
-            { icon: <FiCheckCircle size={20}/>,label: "Active",         val: (data||[]).filter(d=>d.status==="active").length, color: "bg-blue-600"  },
-            { icon: <FiDollarSign size={20}/>, label: "Total Business", val: fmt((data||[]).reduce((s,d)=>s+d.totalBusinessAmount,0)), color: "bg-purple-600" },
-            { icon: <FiPackage size={20}/>,    label: "Products Linked",val: (data||[]).reduce((s,d)=>s+d.productsSupplied,0), color: "bg-orange-500" },
+            { icon: <FiUsers size={20}/>, label: "Total Partners", val: (data||[]).length, color: "bg-green-600" },
+            { icon: <FiCheckCircle size={20}/>, label: "Active", val: (data||[]).filter(d=>d.status==="active").length, color: "bg-blue-600" },
+            { icon: <FiDollarSign size={20}/>, label: "Total Business", val: fmt((data||[]).reduce((s,d)=>s+(d.totalBusinessAmount||0),0)), color: "bg-purple-600" },
+            { icon: <FiPackage size={20}/>, label: "Products Linked", val: (data||[]).reduce((s,d)=>s+(d.productsSupplied||0),0), color: "bg-orange-500" },
           ].map(({ icon, label, val, color }) => (
             <div key={label} className="bg-white border border-gray-200 rounded-2xl p-5 flex items-start gap-4">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0 ${color}`}>{icon}</div>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 ${color}`}>{icon}</div>
               <div>
                 <div className="text-2xl font-bold text-gray-900 leading-none">{val}</div>
                 <div className="text-base text-gray-500 mt-1">{label}</div>
@@ -361,14 +363,15 @@ export default function Partners() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {rows.map((p) => (
-              <div key={p.id} className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
-                {/* Top row */}
+              <div key={p._id} className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
                 <div className="flex items-start gap-4 mb-4">
-                  <img src={p.logo} alt={p.companyName} className="w-14 h-14 rounded-2xl object-cover flex-shrink-0"/>
+                  <div className="w-14 h-14 rounded-2xl bg-green-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
+                    {p.companyName?.charAt(0) || "P"}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-base font-bold text-gray-900 leading-tight truncate">{p.companyName}</h3>
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 capitalize ${STATUS_STYLE[p.status]}`}>{p.status}</span>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full shrink-0 capitalize ${STATUS_STYLE[p.status]}`}>{p.status}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <Stars rating={p.rating}/>
@@ -377,27 +380,23 @@ export default function Partners() {
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-base text-gray-600"><FiUser size={13} className="text-gray-400 flex-shrink-0"/><span className="truncate">{p.contactPerson}</span></div>
-                  <div className="flex items-center gap-2 text-base text-gray-600"><FiPhone size={13} className="text-gray-400 flex-shrink-0"/>{p.phone}</div>
-                  <div className="flex items-center gap-2 text-base text-gray-500"><FiMapPin size={13} className="text-gray-400 flex-shrink-0"/><span className="truncate">{p.address}</span></div>
-                  <div className="flex items-center gap-2 text-sm text-gray-400"><FiCalendar size={13} className="text-gray-400 flex-shrink-0"/>Since {fmtDate(p.joinedAt)}</div>
+                  <div className="flex items-center gap-2 text-base text-gray-600"><FiUser size={13} className="text-gray-400 shrink-0"/><span className="truncate">{p.contactPerson}</span></div>
+                  <div className="flex items-center gap-2 text-base text-gray-600"><FiPhone size={13} className="text-gray-400 shrink-0"/>{p.phone}</div>
+                  <div className="flex items-center gap-2 text-base text-gray-500"><FiMapPin size={13} className="text-gray-400 shrink-0"/><span className="truncate">{p.address || "—"}</span></div>
                 </div>
 
-                {/* Stats */}
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <div className="bg-green-50 rounded-xl p-3">
                     <div className="text-sm font-bold text-green-700">{fmt(p.totalBusinessAmount)}</div>
                     <div className="text-xs text-gray-400 mt-0.5">Business value</div>
                   </div>
                   <div className="bg-blue-50 rounded-xl p-3">
-                    <div className="text-sm font-bold text-blue-700">{p.productsSupplied}</div>
+                    <div className="text-sm font-bold text-blue-700">{p.productsSupplied || 0}</div>
                     <div className="text-xs text-gray-400 mt-0.5">Products linked</div>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-2 mt-auto">
                   <button onClick={() => setDrawer(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEye size={15}/> View
@@ -405,7 +404,7 @@ export default function Partners() {
                   <button onClick={() => setModal(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEdit2 size={15}/> Edit
                   </button>
-                  <button onClick={() => setDelId(p.id)} className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition">
+                  <button onClick={() => setDelId(p._id)} className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition">
                     <FiTrash2 size={16}/>
                   </button>
                 </div>

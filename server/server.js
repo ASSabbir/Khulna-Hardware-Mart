@@ -13,7 +13,11 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use("/api/products", require("./routes/productRoutes"));
+app.use("/api/products", require("./routes/product"));
+app.use("/api/suppliers", require("./routes/supplier"));
+app.use("/api/partners", require("./routes/partner"));
+app.use("/api/customers", require("./routes/customer"));
+app.use("/api/invoices", require("./routes/invoice"));
 
 // Test Route
 app.get("/", (req, res) => {
