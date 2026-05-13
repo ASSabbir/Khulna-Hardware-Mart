@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Root from "./Root";
 import ScrollToTop from "./ScrollToTop";
+import ProtectedRoute from "./Components/ProtectedRoute";
 import Home from "./Pages/Home/Home";
 import Stock from "./Pages/Stock/Stock";
 import Dashboard from "./Pages/Dashboard/Dashboard";
@@ -28,7 +29,9 @@ import AdminDeshboard from "./Pages/Dashboard/AdminDeshboard";
 import Revenue from "./Pages/Dashboard/Revenue";
 import BookDeveloper from "./Pages/Dashboard/BookDeveloper";
 import DeshboardOverview from "./Pages/Dashboard/DeshboardOverview";
-
+import Login from "./Pages/Login/Login";
+import Settings from "./Pages/Settings/Settings";
+import PublicProducts from "./Pages/PublicProducts/PublicProducts";
 
 const Route = createBrowserRouter([
   {
@@ -40,23 +43,42 @@ const Route = createBrowserRouter([
       </>
     ),
     children: [
-      { path: "/", element: <Home></Home> },
-      { path: "/stock-warning", element: <Stock></Stock> },
+      { path: "/", element: <Home /> },
+      { path: "/login", element: <Login /> },
+      { path: "/products-catalog", element: <PublicProducts /> },
+
+      // Protected routes - require admin login
+      {
+        path: "/stock-warning",
+        element: (
+          <ProtectedRoute>
+            <Stock />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: "/dashboard",
-        element: <DeshboardLayout></DeshboardLayout>,
+        element: (
+          <ProtectedRoute>
+            <DeshboardLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="overview" replace /> },
-          { path: "overview", element: <DeshboardOverview></DeshboardOverview> },
-          { path: "admin", element: <AdminDeshboard></AdminDeshboard> },
-          { path: "revenue", element: <Revenue></Revenue> },
-          { path: "book", element: <BookDeveloper></BookDeveloper> },
+          { path: "overview", element: <DeshboardOverview /> },
+          { path: "admin", element: <AdminDeshboard /> },
+          { path: "revenue", element: <Revenue /> },
+          { path: "book", element: <BookDeveloper /> },
         ],
       },
 
       {
         path: "/customer",
-        element: <CustomerLayout></CustomerLayout>,
+        element: (
+          <ProtectedRoute>
+            <CustomerLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="all" replace /> },
 
@@ -69,7 +91,11 @@ const Route = createBrowserRouter([
       },
       {
         path: "/accounts",
-        element: <AccountLayout></AccountLayout>,
+        element: (
+          <ProtectedRoute>
+            <AccountLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="add-money" replace /> },
 
@@ -80,7 +106,11 @@ const Route = createBrowserRouter([
       },
       {
         path: "/invoice",
-        element: <InvoiceLayout></InvoiceLayout>,
+        element: (
+          <ProtectedRoute>
+            <InvoiceLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="invoice" replace /> },
 
@@ -93,7 +123,11 @@ const Route = createBrowserRouter([
 
       {
         path: "/products",
-        element: <ProductLayout />,
+        element: (
+          <ProtectedRoute>
+            <ProductLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <Navigate to="all" replace /> },
 
@@ -101,7 +135,23 @@ const Route = createBrowserRouter([
           { path: "add", element: <AddProduct /> },
         ],
       },
-      { path: "products/:id", element: <ProductDetails></ProductDetails> },
+      {
+        path: "products/:id",
+        element: (
+          <ProtectedRoute>
+            <ProductDetails />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: "/settings",
+        element: (
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        ),
+      },
 
     ],
   },

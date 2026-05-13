@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: khm-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        # Add your MongoDB Atlas connection string here
+        # Format: mongodb+srv://username:password@cluster.mongodb.net/database
+        sync: false
+      - key: JWT_SECRET
+        # Add a secure random string for JWT
+        sync: false

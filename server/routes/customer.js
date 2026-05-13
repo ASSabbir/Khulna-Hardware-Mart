@@ -37,6 +37,14 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+router.get("/test", async (req, res) => {
+  try {
+    const product = await Customer.find()
+    res.json(product)
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Create Customer
 router.post("/", async (req, res) => {
