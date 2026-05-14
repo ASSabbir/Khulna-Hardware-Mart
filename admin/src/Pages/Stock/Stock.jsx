@@ -146,7 +146,7 @@ const Stock = () => {
   const fetchLowStockProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/products?limit=1000&search=");
+      const res = await axios.get("https://khulna-hardware-mart.vercel.app/api/products?limit=1000&search=");
       const lowStock = res.data.products.filter(p => (p.stock || 0) < 20);
       setProducts(lowStock);
     } catch (err) {
@@ -169,7 +169,7 @@ const Stock = () => {
 
       // Update stock in database
       const newStock = (product.stock || 0) + quantity;
-      await axios.put(`http://localhost:5000/api/products/${productId}`, {
+      await axios.put(`https://khulna-hardware-mart.vercel.app/api/products/${productId}`, {
         stock: newStock,
       });
 

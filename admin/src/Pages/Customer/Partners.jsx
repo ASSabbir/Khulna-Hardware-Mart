@@ -214,7 +214,7 @@ export default function Partners() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ search, status: filter });
-      const res = await axios.get(`http://localhost:5000/api/partners?${params}`);
+      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/partners?${params}`);
       setData(res.data.partners);
     } catch (err) {
       console.error(err);
@@ -236,10 +236,10 @@ export default function Partners() {
   const handleSave = async (partner) => {
     try {
       if (partner._id) {
-        await axios.put(`http://localhost:5000/api/partners/${partner._id}`, partner);
+        await axios.put(`https://khulna-hardware-mart.vercel.app/api/partners/${partner._id}`, partner);
         showToast("Partner updated successfully.");
       } else {
-        await axios.post("http://localhost:5000/api/partners", partner);
+        await axios.post("https://khulna-hardware-mart.vercel.app/api/partners", partner);
         showToast("New partner added successfully.");
       }
       fetchPartners();
@@ -251,7 +251,7 @@ export default function Partners() {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/partners/${delId}`);
+      await axios.delete(`https://khulna-hardware-mart.vercel.app/api/partners/${delId}`);
       showToast("Partner removed.");
       fetchPartners();
       setDelId(null);

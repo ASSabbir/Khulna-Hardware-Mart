@@ -222,7 +222,7 @@ export default function PublicProducts() {
       if (category !== "all") params.append("category", category);
       if (sortBy) params.append("sort", sortBy);
 
-      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/products?${params}`);
       setProducts(res.data.products);
       setTotalProducts(res.data.pagination.total);
     } catch (err) {

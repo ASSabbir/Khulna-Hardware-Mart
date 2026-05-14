@@ -151,7 +151,7 @@ const AddProduct = () => {
         images: images.map((img) => img.url),
       };
 
-      await axios.post("http://localhost:5000/api/products", payload);
+      await axios.post("https://khulna-hardware-mart.vercel.app/api/products", payload);
       setToast({ type: "success", msg: "Product saved successfully!" });
       handleReset();
     } catch (error) {

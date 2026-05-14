@@ -39,7 +39,7 @@ export default function Settings() {
     setProfileMsg({ type: "", msg: "" });
 
     try {
-      await axios.put("http://localhost:5000/api/auth/profile", profileForm, {
+      await axios.put("https://khulna-hardware-mart.vercel.app/api/auth/profile", profileForm, {
         headers: getAuthHeader()
       });
       setProfileMsg({ type: "success", msg: "Profile updated successfully!" });
@@ -67,7 +67,7 @@ export default function Settings() {
     setPasswordLoading(true);
 
     try {
-      await axios.put("http://localhost:5000/api/auth/password", {
+      await axios.put("https://khulna-hardware-mart.vercel.app/api/auth/password", {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
       }, {

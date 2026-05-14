@@ -1,7 +1,7 @@
 // API Configuration
 // Change VITE_API_URL when deploying to production
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://khulna-hardware-mart.vercel.app/api";
 
 export default API_BASE_URL;
 

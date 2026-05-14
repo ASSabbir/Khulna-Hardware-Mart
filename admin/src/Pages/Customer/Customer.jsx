@@ -157,8 +157,8 @@ export default function Customer() {
     setLoading(true);
     try {
       const [custRes, statsRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/customers?search=${search}`),
-        axios.get("http://localhost:5000/api/customers/stats"),
+        axios.get(`https://khulna-hardware-mart.vercel.app/api/customers?search=${search}`),
+        axios.get("https://khulna-hardware-mart.vercel.app/api/customers/stats"),
       ]);
       setData(custRes.data.customers);
       setStats(statsRes.data);
@@ -182,10 +182,10 @@ export default function Customer() {
   const handleSave = async (customer) => {
     try {
       if (customer._id) {
-        await axios.put(`http://localhost:5000/api/customers/${customer._id}`, customer);
+        await axios.put(`https://khulna-hardware-mart.vercel.app/api/customers/${customer._id}`, customer);
         showToast("Customer updated.");
       } else {
-        await axios.post("http://localhost:5000/api/customers", customer);
+        await axios.post("https://khulna-hardware-mart.vercel.app/api/customers", customer);
         showToast("Customer added.");
       }
       fetchData();
@@ -197,7 +197,7 @@ export default function Customer() {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/customers/${delId}`);
+      await axios.delete(`https://khulna-hardware-mart.vercel.app/api/customers/${delId}`);
       showToast("Customer deleted.");
       fetchData();
       setDelId(null);

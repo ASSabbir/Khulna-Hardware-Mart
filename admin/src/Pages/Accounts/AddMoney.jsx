@@ -55,7 +55,7 @@ export default function AddMoney() {
     setSaving(true);
 
     // 👉 real API: POST /api/accounts/income
-    // await axios.post("http://localhost:5000/api/accounts/income", { ...form, type: "income" });
+    // await axios.post("https://khulna-hardware-mart.vercel.app/api/accounts/income", { ...form, type: "income" });
 
     // mock — update local state
     await new Promise((r) => setTimeout(r, 600));

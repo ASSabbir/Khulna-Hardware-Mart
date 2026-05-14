@@ -70,7 +70,7 @@ const ProductDetails = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`http://localhost:5000/api/products/${id}`);
+        const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/products/${id}`);
         setProduct(res.data);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load product");
@@ -84,7 +84,7 @@ const ProductDetails = () => {
   /* ── Delete handler ─────────────────────────────────────────── */
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/products/${id}`);
+      await axios.delete(`https://khulna-hardware-mart.vercel.app/api/products/${id}`);
       navigate("/products");
     } catch (err) {
       alert("Failed to delete product");

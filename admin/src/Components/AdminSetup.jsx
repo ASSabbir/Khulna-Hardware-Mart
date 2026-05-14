@@ -37,7 +37,7 @@ export default function AdminSetup({ onComplete }) {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/init", {
+      const res = await axios.post("https://khulna-hardware-mart.vercel.app/api/auth/init", {
         name: form.name,
         username: form.username,
         email: form.email,

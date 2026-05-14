@@ -6,7 +6,7 @@ import {
   FiCheckCircle, FiAlertCircle, FiDollarSign, FiEdit2,
 } from "react-icons/fi";
 
-const API_URL = "http://localhost:5000/api/customers";
+const API_URL = "https://khulna-hardware-mart.vercel.app/api/customers";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";

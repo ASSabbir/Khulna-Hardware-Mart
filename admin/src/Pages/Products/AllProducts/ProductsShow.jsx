@@ -76,7 +76,7 @@ const ProductsShow = () => {
         category: debouncedCategory,
       });
 
-      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/products?${params}`);
       setProducts(res.data.products);
       setTotalPages(res.data.pagination.totalPages);
       setTotalProducts(res.data.pagination.total);

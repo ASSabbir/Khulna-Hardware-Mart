@@ -54,7 +54,7 @@ export default function AddExpense() {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
 
-    // 👉 real API: await axios.post("http://localhost:5000/api/accounts/expense", { ...form, type: "expense" });
+    // 👉 real API: await axios.post("https://khulna-hardware-mart.vercel.app/api/accounts/expense", { ...form, type: "expense" });
 
     await new Promise((r) => setTimeout(r, 600));
     const newTx = {

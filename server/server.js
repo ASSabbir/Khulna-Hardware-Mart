@@ -9,7 +9,18 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+
+// JSON parser with increased limit for large requests
+app.use(express.json({ limit: "10mb" }));
+
+// Connect to MongoDB before each request
+app.use(async (req, res, next) => {
+  if (process.env.MONGO_URI) {
+    const { ensureConnection } = require("./config/db");
+    await ensureConnection();
+  }
+  next();
+});
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
@@ -24,12 +35,18 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err.message);
+  res.status(500).json({ message: err.message || "Internal Server Error" });
+});
+
 // For local development
 if (process.env.NODE_ENV !== "production") {
-  const connectDB = require("./config/db");
+  const { connectDB } = require("./config/db");
   connectDB();
 
-  const PORT = process.env.PORT || 5000;
+  const PORT =5000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 

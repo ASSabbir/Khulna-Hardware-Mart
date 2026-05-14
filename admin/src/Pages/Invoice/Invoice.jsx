@@ -60,7 +60,7 @@ const Invoice = () => {
         limit: 30,
         search: debouncedSearch,
       });
-      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/products?${params}`);
       setProducts(res.data.products);
       setTotalProducts(res.data.pagination.total);
     } catch (err) {
@@ -166,7 +166,7 @@ const Invoice = () => {
       }));
 
       // Create invoice
-      await axios.post("http://localhost:5000/api/invoices", {
+      await axios.post("https://khulna-hardware-mart.vercel.app/api/invoices", {
         invoiceNumber: invoiceNum,
         invoiceDate,
         customer,
@@ -190,16 +190,16 @@ const Invoice = () => {
           lastOrderDate: new Date(),
           status: "active",
         };
-        await axios.post("http://localhost:5000/api/customers", customerData);
+        await axios.post("https://khulna-hardware-mart.vercel.app/api/customers", customerData);
       } catch (custErr) {
         // Customer might already exist, try to update instead
         if (custErr.response?.status === 500 && custErr.response?.data?.message?.includes("duplicate")) {
           // Find existing customer by name and update their stats
           try {
-            const searchRes = await axios.get(`http://localhost:5000/api/customers?search=${encodeURIComponent(customer.name)}`);
+            const searchRes = await axios.get(`https://khulna-hardware-mart.vercel.app/api/customers?search=${encodeURIComponent(customer.name)}`);
             const existingCustomer = searchRes.data.customers.find(c => c.name.toLowerCase() === customer.name.toLowerCase());
             if (existingCustomer) {
-              await axios.put(`http://localhost:5000/api/customers/${existingCustomer._id}`, {
+              await axios.put(`https://khulna-hardware-mart.vercel.app/api/customers/${existingCustomer._id}`, {
                 totalSpent: (existingCustomer.totalSpent || 0) + grandTotal,
                 totalOrders: (existingCustomer.totalOrders || 0) + 1,
                 lastOrderDate: new Date(),

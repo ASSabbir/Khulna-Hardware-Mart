@@ -215,7 +215,7 @@ export default function Suppliers() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ search, status: filter, category: catFilter });
-      const res = await axios.get(`http://localhost:5000/api/suppliers?${params}`);
+      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/suppliers?${params}`);
       setData(res.data.suppliers);
     } catch (err) {
       console.error(err);
@@ -237,10 +237,10 @@ export default function Suppliers() {
   const handleSave = async (supplier) => {
     try {
       if (supplier._id) {
-        await axios.put(`http://localhost:5000/api/suppliers/${supplier._id}`, supplier);
+        await axios.put(`https://khulna-hardware-mart.vercel.app/api/suppliers/${supplier._id}`, supplier);
         showToast("Supplier updated successfully.");
       } else {
-        await axios.post("http://localhost:5000/api/suppliers", supplier);
+        await axios.post("https://khulna-hardware-mart.vercel.app/api/suppliers", supplier);
         showToast("New supplier added successfully.");
       }
       fetchSuppliers();
@@ -252,7 +252,7 @@ export default function Suppliers() {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/suppliers/${delId}`);
+      await axios.delete(`https://khulna-hardware-mart.vercel.app/api/suppliers/${delId}`);
       showToast("Supplier removed.");
       fetchSuppliers();
       setDelId(null);

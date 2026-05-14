@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
       try {
         setAdmin(JSON.parse(savedAdmin));
         // Verify token is still valid
-        axios.get("http://localhost:5000/api/auth/me", {
+        axios.get("https://khulna-hardware-mart.vercel.app/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` }
         }).then(() => {
           // Token is valid
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
+    const res = await axios.post("https://khulna-hardware-mart.vercel.app/api/auth/login", {
       email,
       password
     });

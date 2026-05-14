@@ -6,7 +6,7 @@ import {
 } from "react-icons/fi";
 
 // 👉 When backend is ready, replace this one line:
-// const API_URL = "http://localhost:5000/api/customers";
+// const API_URL = "https://khulna-hardware-mart.vercel.app/api/customers";
 const API_URL = "/customers.json";
 
 const fmt      = (n) => "৳" + Number(n).toLocaleString();

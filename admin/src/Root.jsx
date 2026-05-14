@@ -14,7 +14,7 @@ function RootContent() {
   useEffect(() => {
     const checkSetup = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/auth/check");
+        const res = await axios.get("https://khulna-hardware-mart.vercel.app/api/auth/check");
         setNeedsSetup(res.data.needsSetup);
       } catch (err) {
         console.error("Setup check failed:", err);
