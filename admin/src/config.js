@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "https://khulna-hardware-ma
 
 export default API_BASE_URL;
 
+
 // Export auth endpoints
 export const AUTH_ENDPOINTS = {
   login: `${API_BASE_URL}/auth/login`,
