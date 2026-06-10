@@ -70,6 +70,7 @@ export function AuthProvider({ children }) {
     Authorization: `Bearer ${localStorage.getItem("adminToken")}`
   });
 
+  
   return (
     <AuthContext.Provider value={{ admin, loading, login, logout, getAuthHeader }}>
       {children}
