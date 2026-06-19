@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
       try {
         setAdmin(JSON.parse(savedAdmin));
         // Verify token is still valid
-        axios.get("https://khulna-hardware-mart.vercel.app/api/auth/me", {
+        axios.get("http://localhost:5000/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` }
         }).then(() => {
           // Token is valid
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const res = await axios.post("https://khulna-hardware-mart.vercel.app/api/auth/login", {
+    const res = await axios.post("http://localhost:5000/api/auth/login", {
       email,
       password
     });
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
     Authorization: `Bearer ${localStorage.getItem("adminToken")}`
   });
 
-  
+
   return (
     <AuthContext.Provider value={{ admin, loading, login, logout, getAuthHeader }}>
       {children}
@@ -78,17 +78,7 @@ export function AuthProvider({ children }) {
   );
 }
 
-/* ─── Nav routes ─── */
-const NAV_LINKS = [
-  { to: "/", label: "Home", icon: <FiHome /> },
-  { to: "/products-catalog", label: "Products", icon: <FiPackage />  },
-  { to: "/stock-warning", label: "Stock Warning", icon: <FiAlertTriangle />, badge: 3 },
-  { to: "/dashboard", label: "Dashboard", icon: <FiGrid /> },
-  { to: "/customer", label: "Customer", icon: <FiUsers /> },
-  { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
-  { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
-  { to: "/products", label: "Inventory", icon: <FiPackage /> },
-];
+
 
 /* ─── Badge ─── */
 const Badge = ({ count }) => (
@@ -244,6 +234,24 @@ const Nav = () => {
   const [open, setOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const { admin, logout, loading } = useAuth();
+  /* ─── Nav routes ─── */
+  const adminLinks = [
+    { to: "/", label: "Home", icon: <FiHome /> },
+    { to: "/products-catalog", label: "Products", icon: <FiPackage /> },
+    { to: "/stock-warning", label: "Stock Warning", icon: <FiAlertTriangle />, badge: 3 },
+    { to: "/dashboard", label: "Dashboard", icon: <FiGrid /> },
+    { to: "/customer", label: "Customer", icon: <FiUsers /> },
+    { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
+    { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
+    { to: "/products", label: "Inventory", icon: <FiPackage /> },
+  ];
+
+  const userLinks = [
+    { to: "/", label: "Home", icon: <FiHome /> },
+    { to: "/products-catalog", label: "Products", icon: <FiPackage /> },
+  ];
+
+  const NAV_LINKS =admin?adminLinks:userLinks ;
 
   const baseLink =
     "flex items-center gap-2 px-3 py-1.5 rounded-md text-[13.5px] font-semibold transition-all duration-150 whitespace-nowrap";

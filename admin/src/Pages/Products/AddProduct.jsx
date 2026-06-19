@@ -110,57 +110,76 @@ const AddProduct = () => {
 
   /* image upload */
   const handleImages = (e) => {
-    const files = Array.from(e.target.files).slice(0, 4 - images.length);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) =>
-        setImages((prev) => [...prev, { url: ev.target.result, name: file.name }].slice(0, 4));
-      reader.readAsDataURL(file);
-    });
-  };
+  const files = Array.from(e.target.files).slice(0, 4 - images.length);
+  files.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = (ev) =>
+      setImages((prev) =>
+        [...prev, { url: ev.target.result, name: file.name, file }].slice(0, 4)
+      );
+    reader.readAsDataURL(file);
+  });
+};
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
 
   /* submit */
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name || !form.company || !form.buyingPrice || !form.quantity) {
-      setToast({ type: "error", msg: "Please fill all required fields." });
-      setTimeout(() => setToast(null), 4000);
-      return;
-    }
+  e.preventDefault();
+  if (!form.name || !form.company || !form.buyingPrice || !form.quantity) {
+    setToast({ type: "error", msg: "Please fill all required fields." });
+    setTimeout(() => setToast(null), 4000);
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const payload = {
-        name: form.name,
-        sku: form.sku,
-        category: form.category,
-        brand: form.company,
-        origin: form.origin,
-        unit: form.unit,
-        description: form.description,
-        buyingPrice: parseFloat(form.buyingPrice),
-        holcellPrice: holcell,
-        retailPrice: retail,
-        holcellMargin: parseFloat(form.holcellMargin),
-        retailMargin: parseFloat(form.retailMargin),
-        stock: parseInt(form.quantity),
-        reorderLevel: form.reorderLevel ? parseInt(form.reorderLevel) : 0,
-        location: form.location,
-        status: form.status,
-        images: images.map((img) => img.url),
-      };
+  setLoading(true);
+  try {
+    // 1️⃣ Upload all images to imgbb first
+    const uploadedUrls = await Promise.all(
+      images.map(async (img) => {
+        const formData = new FormData();
+        formData.append("image", img.file);
+        const res = await axios.post(
+          "https://api.imgbb.com/1/upload?key=9bb7645922ca992881ce70f0bac1f069",
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        return res.data.data.display_url;
+      })
+    );
+    console.log(uploadedUrls[0]);
 
-      await axios.post("https://khulna-hardware-mart.vercel.app/api/products", payload);
-      setToast({ type: "success", msg: "Product saved successfully!" });
-      handleReset();
-    } catch (error) {
-      setToast({ type: "error", msg: error.response?.data?.message || "Failed to save product." });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setToast(null), 4000);
-    }
-  };
+    // 2️⃣ Send product with imgbb URLs to your server
+    const payload = {
+      name: form.name,
+      sku: form.sku,
+      category: form.category,
+      brand: form.company,
+      origin: form.origin,
+      unit: form.unit,
+      description: form.description,
+      buyingPrice: parseFloat(form.buyingPrice),
+      holcellPrice: holcell,
+      retailPrice: retail,
+      holcellMargin: parseFloat(form.holcellMargin),
+      retailMargin: parseFloat(form.retailMargin),
+      stock: parseInt(form.quantity),
+      reorderLevel: form.reorderLevel ? parseInt(form.reorderLevel) : 0,
+      location: form.location,
+      status: form.status,
+      images: uploadedUrls, // ✅ real imgbb URLs
+    };
+    
+
+    await axios.post("http://localhost:5000/api/products", payload);
+    setToast({ type: "success", msg: "Product saved successfully!" });
+    handleReset();
+  } catch (error) {
+    setToast({ type: "error", msg: error.response?.data?.message || "Failed to save product." });
+  } finally {
+    setLoading(false);
+    setTimeout(() => setToast(null), 4000);
+  }
+};
 
   const handleReset = () => {
     setForm({

@@ -11,6 +11,8 @@ const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 
 function ProductCard({ product, onViewDetails }) {
   const [imageError, setImageError] = useState(false);
+  console.log(product.images[0]);
+
 
   const price = product.retailPrice || product.buyingPrice * 1.05 || 0;
 
@@ -18,9 +20,9 @@ function ProductCard({ product, onViewDetails }) {
     <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       {/* Image */}
       <div className="relative h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
-        {!imageError && product.image ? (
+        {!imageError && product.images ? (
           <img
-            src={product.image}
+            src={product.images[0]}
             alt={product.name}
             onError={() => setImageError(true)}
             className="w-full h-full object-cover"
@@ -61,12 +63,12 @@ function ProductCard({ product, onViewDetails }) {
 
         {/* Price */}
         <div className="flex items-center justify-between mb-3">
-          <div>
+          {/* <div>
             <span className="text-xl font-bold text-orange-600">{fmt(price)}</span>
             {product.buyingPrice && (
               <span className="text-xs text-gray-400 line-through ml-2">{fmt(product.buyingPrice)}</span>
             )}
-          </div>
+          </div> */}
           <div className="text-xs text-gray-500">{product.stock || 0} in stock</div>
         </div>
 
@@ -84,6 +86,73 @@ function ProductCard({ product, onViewDetails }) {
     </div>
   );
 }
+const ImageSlider = ({ images, name }) => {
+  const [cur, setCur] = useState(0);
+  const total = images.length;
+
+  if (total === 0)
+    return (
+      <div className="h-64 bg-gray-100 flex items-center justify-center">
+        <FiPackage size={64} className="text-gray-300" />
+      </div>
+    );
+
+  if (total === 1)
+    return (
+      <div className="h-64 bg-gray-100">
+        <img src={images[0]} alt={name} className="w-full h-full object-cover" />
+      </div>
+    );
+
+  const go = (n) => setCur((n + total) % total);
+
+  return (
+    <div className="relative h-64 bg-gray-100 overflow-hidden">
+      {images.map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`${name} ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            i === cur ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        />
+      ))}
+
+      {/* Arrows */}
+      <button
+        onClick={() => go(cur - 1)}
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center hover:bg-white transition-colors"
+      >
+        <FiChevronLeft size={16} className="text-gray-700" />
+      </button>
+      <button
+        onClick={() => go(cur + 1)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center hover:bg-white transition-colors"
+      >
+        <FiChevronRight size={16} className="text-gray-700" />
+      </button>
+
+      {/* Dots */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {images.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCur(i)}
+            className={`w-1.5 h-1.5 rounded-full transition-colors ${
+              i === cur ? "bg-white" : "bg-white/50"
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Counter */}
+      <span className="absolute top-2 right-2 z-10 bg-black/40 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">
+        {cur + 1} / {total}
+      </span>
+    </div>
+  );
+};
 
 // Product Detail Modal
 function ProductModal({ product, onClose }) {
@@ -97,19 +166,13 @@ function ProductModal({ product, onClose }) {
         <div className="relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition"
+            className="fixed top-4 right-4 z-10 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition"
           >
             <FiX size={20} />
           </button>
 
           {/* Image */}
-          <div className="h-64 bg-gray-100 flex items-center justify-center">
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <FiPackage size={64} className="text-gray-300" />
-            )}
-          </div>
+          <ImageSlider images={product.images} name={product.name} />
         </div>
 
         <div className="p-6">
@@ -208,7 +271,7 @@ export default function PublicProducts() {
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState("grid");
   const [selectedProduct, setSelectedProduct] = useState(null);
-
+  
   const debouncedSearch = useDebounce(search, 300);
 
   const fetchProducts = useCallback(async () => {
@@ -222,7 +285,7 @@ export default function PublicProducts() {
       if (category !== "all") params.append("category", category);
       if (sortBy) params.append("sort", sortBy);
 
-      const res = await axios.get(`https://khulna-hardware-mart.vercel.app/api/products?${params}`);
+      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
       setProducts(res.data.products);
       setTotalProducts(res.data.pagination.total);
     } catch (err) {
@@ -382,9 +445,9 @@ export default function PublicProducts() {
                     <div className="text-xs text-gray-500">{product.brand || product.company}</div>
                     <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg font-bold text-orange-600">
+                      {/* <span className="text-lg font-bold text-orange-600">
                         {fmt(product.retailPrice || product.buyingPrice * 1.05)}
-                      </span>
+                      </span> */}
                       <span className="text-sm text-gray-400">{product.stock || 0} in stock</span>
                     </div>
                   </div>
