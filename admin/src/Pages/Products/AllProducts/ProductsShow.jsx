@@ -105,6 +105,7 @@ const ProductsShow = () => {
   };
 
   const goTo = (n) => setPage(Math.min(Math.max(n, 1), totalPages));
+  
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (

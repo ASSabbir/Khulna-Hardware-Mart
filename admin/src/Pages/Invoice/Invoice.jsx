@@ -514,6 +514,7 @@ const Invoice = () => {
                   </thead>
                   <tbody>
                     {memoItems.map((item, idx) => (
+                      
                       <tr key={item.id} className={`border-b border-slate-100 ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"}`}>
                         <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">{idx + 1}</td>
                         <td className="px-4 py-2.5">
@@ -521,7 +522,9 @@ const Invoice = () => {
                           <p className="text-[10px] text-slate-400 font-medium">{item.company}</p>
                           {!item.custom && item.stock && (
                             <p className="text-[10px] text-slate-400 mt-0.5">Stock: {item.stock}</p>
-                          )}
+                          )}{
+                            console.log(item)
+                          }
                         </td>
                         <td className="px-4 py-2.5 text-center">
                           <input

@@ -11,21 +11,21 @@ const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 
 function ProductCard({ product, onViewDetails }) {
   const [imageError, setImageError] = useState(false);
-  console.log(product.images[0]);
+  // console.log(product.images[0]);
 
 
   const price = product.retailPrice || product.buyingPrice * 1.05 || 0;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden ">
       {/* Image */}
       <div className="relative h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
-        {!imageError && product.images ? (
+        {!imageError && product.images.length > 0 ? (
           <img
             src={product.images[0]}
             alt={product.name}
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover  transition-transform duration-300 hover:scale-105"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -92,14 +92,14 @@ const ImageSlider = ({ images, name }) => {
 
   if (total === 0)
     return (
-      <div className="h-64 bg-gray-100 flex items-center justify-center">
+      <div className="h-90 bg-gray-100 flex items-center justify-center">
         <FiPackage size={64} className="text-gray-300" />
       </div>
     );
 
   if (total === 1)
     return (
-      <div className="h-64 bg-gray-100">
+      <div className="h-90 bg-gray-100">
         <img src={images[0]} alt={name} className="w-full h-full object-cover" />
       </div>
     );
@@ -107,7 +107,7 @@ const ImageSlider = ({ images, name }) => {
   const go = (n) => setCur((n + total) % total);
 
   return (
-    <div className="relative h-64 bg-gray-100 overflow-hidden">
+    <div className="relative h-90 bg-gray-100 overflow-hidden">
       {images.map((src, i) => (
         <img
           key={i}
@@ -163,7 +163,7 @@ function ProductModal({ product, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="relative">
+        <div className="relative ">
           <button
             onClick={onClose}
             className="fixed top-4 right-4 z-10 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition"
