@@ -5,6 +5,9 @@ import {
   FiTrendingUp, FiTool, FiArrowRight, FiCheckCircle,
   FiStar, FiShield, FiClock
 } from 'react-icons/fi';
+import Marketing from './Marketing';
+import Marque from './Marque';
+import Slider from './Slider';
 
 const Home = () => {
   const features = [
@@ -62,23 +65,22 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div>
+      <section className="relative   overflow-hidden b-1 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white">
+        {/* <div className="absolute  inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div> */}
 
-        <div className="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
+        <div className="relative max-w-7xl  mx-auto px-6 py-24 lg:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-orange-500/20 text-orange-300 px-4 py-2 rounded-full text-sm font-semibold mb-6">
                 <FiTool size={16} />
-                Since 1976 · Centenary Established
+                Since 1990 · Centenary Established
               </div>
               <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-6">
-                Khulna Hardware Mart
-                <span className="block text-orange-400">Management System</span>
+                Khulna Hardware 
+                <span className="block text-orange-400">Mart</span>
               </h1>
               <p className="text-lg text-blue-100 mb-8 max-w-xl">
-                Complete inventory management, invoicing, customer & supplier tracking,
-                and financial reporting — all in one powerful system built for hardware businesses.
+               Quality products. Fair prices. Honest advice — for 35 years.
               </p>
               <div className="flex flex-wrap gap-4">
                 <NavLink to="/dashboard" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl transition-all transform hover:scale-105">
@@ -117,6 +119,8 @@ const Home = () => {
           </svg>
         </div>
       </section>
+      <Marketing></Marketing>
+      <Marque></Marque>
 
       {/* Features Section */}
       <section className="py-20 px-6">
@@ -143,20 +147,9 @@ const Home = () => {
           </div>
         </div>
       </section>
+      
 
-      {/* Stats Banner */}
-      <section className="bg-gradient-to-r from-blue-900 to-blue-800 py-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {stats.map((stat, i) => (
-              <div key={i}>
-                <div className="text-4xl lg:text-5xl font-bold text-white mb-2">{stat.value}</div>
-                <div className="text-blue-200 font-semibold">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      
 
       {/* Why Choose Us */}
       <section className="py-20 px-6 bg-gray-50">
@@ -244,6 +237,7 @@ const Home = () => {
           </p>
         </div>
       </section>
+      
     </div>
   );
 };
