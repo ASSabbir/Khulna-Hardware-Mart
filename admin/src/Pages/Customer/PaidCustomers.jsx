@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import {
   FiCheckCircle, FiSearch, FiX, FiEye, FiTrash2,
   FiPhone, FiMail, FiMapPin, FiCalendar, FiShoppingBag,
+  FiTag, FiFileText, FiChevronLeft, FiChevronRight, FiDownload,
 } from "react-icons/fi";
 
 // 👉 When backend is ready, replace this one line:
@@ -10,13 +11,55 @@ import {
 const API_URL = "/customers.json";
 
 const fmt      = (n) => "৳" + Number(n).toLocaleString();
-const fmtDate  = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const initials = (n) => n.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 const COLORS   = ["bg-green-600","bg-blue-600","bg-purple-600","bg-orange-500","bg-pink-600","bg-teal-600","bg-indigo-600","bg-rose-500"];
 const avatarBg = (id) => COLORS[id % COLORS.length];
 
+// 1 = Retail, 2 = Wholesale
+const CUSTOMER_TYPES = {
+  1: { label: "Retail",     style: "bg-blue-100 text-blue-700" },
+  2: { label: "Wholesale",  style: "bg-purple-100 text-purple-700" },
+};
+const typeLabel = (t) => CUSTOMER_TYPES[t]?.label || CUSTOMER_TYPES[1].label;
+const typeStyle = (t) => CUSTOMER_TYPES[t]?.style || CUSTOMER_TYPES[1].style;
+
+const PAGE_SIZE = 10;
+
+// ───────────────────────── CSV export ─────────────────────────
+function toCsv(rows) {
+  const headers = [
+    "Name", "Phone", "Email", "Address", "Customer Type",
+    "Orders", "Total Spent", "Joined", "Last Order", "Invoice Count",
+  ];
+  const escape = (val) => {
+    const s = String(val ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = rows.map((c) => [
+    c.name, c.phone, c.email || "", c.address || "", typeLabel(c.customerType),
+    c.totalOrders, c.totalSpent, fmtDate(c.joinedAt), fmtDate(c.lastOrder),
+    (c.invoiceHistory || []).length,
+  ].map(escape).join(","));
+  return [headers.join(","), ...lines].join("\n");
+}
+
+function downloadCsv(rows) {
+  const csv = "\ufeff" + toCsv(rows); // BOM so Excel opens ৳/Bangla text correctly
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `paid-customers-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function Drawer({ c, onClose }) {
   if (!c) return null;
+  const invoices = c.invoiceHistory || [];
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
@@ -29,9 +72,14 @@ function Drawer({ c, onClose }) {
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold ${avatarBg(c.id)}`}>{initials(c.name)}</div>
           <div>
             <div className="text-xl font-bold text-gray-900">{c.name}</div>
-            <span className="inline-flex items-center gap-1.5 text-sm px-3 py-0.5 rounded-full font-semibold mt-1 bg-green-100 text-green-700">
-              <FiCheckCircle size={12} /> Fully Paid
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="inline-flex items-center gap-1.5 text-sm px-3 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">
+                <FiCheckCircle size={12} /> Fully Paid
+              </span>
+              <span className={`inline-flex items-center gap-1 text-sm px-3 py-0.5 rounded-full font-semibold ${typeStyle(c.customerType)}`}>
+                <FiTag size={11} /> {typeLabel(c.customerType)}
+              </span>
+            </div>
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -66,6 +114,28 @@ function Drawer({ c, onClose }) {
             <div className="text-sm mt-0.5 text-green-500">All cleared — great customer!</div>
           </div>
         </div>
+
+        {/* Invoice history */}
+        <div className="border-t border-gray-100 mx-6" />
+        <div className="px-6 py-5">
+          <p className="text-xs text-gray-400 mb-3 flex items-center gap-1.5"><FiFileText size={13} /> Invoice History</p>
+          {invoices.length === 0 ? (
+            <p className="text-gray-400 text-base text-center py-6 bg-gray-50 rounded-xl">No invoices yet</p>
+          ) : (
+            <div className="space-y-2">
+              {invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                  <div>
+                    <div className="text-base font-semibold text-gray-800">#{inv.id}</div>
+                    <div className="text-xs text-gray-400">{fmtDate(inv.date)}</div>
+                  </div>
+                  <div className="text-base font-bold text-gray-800">{fmt(inv.amount)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="mt-auto px-6 pb-6">
           <button onClick={onClose} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3.5 rounded-xl text-base transition">Close</button>
         </div>
@@ -78,6 +148,8 @@ export default function PaidCustomers() {
   const [data,    setData]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
+  const [typeFilter, setTypeFilter] = useState("all"); // all | 1 | 2
+  const [page,    setPage]    = useState(1);
   const [drawer,  setDrawer]  = useState(null);
   const [delId,   setDelId]   = useState(null);
   const [toast,   setToast]   = useState("");
@@ -87,17 +159,33 @@ export default function PaidCustomers() {
       .then((res) => {
         const all = Array.isArray(res.data) ? res.data : res.data.data;
         //  Only paid customers — no due
-        setData(all.filter((c) => c.totalDue === 0));
+        setData(all.filter((c) => c.totalDue === 0).map((c) => ({
+          customerType: c.customerType || 1,
+          invoiceHistory: c.invoiceHistory || [],
+          ...c,
+        })));
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const rows = search
-    ? data.filter((c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
+  const filtered = useMemo(() => {
+    let rows = data;
+    if (typeFilter !== "all") rows = rows.filter((c) => String(c.customerType) === String(typeFilter));
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter((c) =>
+        c.name.toLowerCase().includes(q) ||
         c.phone.includes(search) ||
-        (c.email || "").toLowerCase().includes(search.toLowerCase()))
-    : data;
+        (c.email || "").toLowerCase().includes(q));
+    }
+    return rows;
+  }, [data, search, typeFilter]);
+
+  // reset to page 1 whenever the filtered set changes shape
+  useEffect(() => { setPage(1); }, [search, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleDelete = () => {
     setData((p) => p.filter((c) => c.id !== delId));
@@ -161,7 +249,21 @@ export default function PaidCustomers() {
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><FiX size={16} /></button>}
         </div>
 
-        <p className="text-gray-400 text-base">{rows.length} result{rows.length !== 1 ? "s" : ""}</p>
+        {/* Customer type filter */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "all", label: "All Types" },
+            { key: "1",   label: "Retail" },
+            { key: "2",   label: "Wholesale" },
+          ].map(({ key, label }) => (
+            <button key={key} onClick={() => setTypeFilter(key)}
+              className={`px-4 py-2 rounded-xl text-base font-semibold transition ${typeFilter === key ? "bg-green-600 text-white" : "bg-white border border-gray-200 text-gray-500 hover:border-green-400"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-gray-400 text-base">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
 
         {/* Table */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -169,14 +271,14 @@ export default function PaidCustomers() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {["Customer", "Phone", "Address", "Orders", "Total Spent", "Status", "Actions"].map((h) => (
+                  {["Customer", "Type", "Phone", "Address", "Orders", "Total Spent", "Status", "Actions"].map((h) => (
                     <th key={h} className="text-left px-5 py-4 text-base font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {rows.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-16 text-gray-400 text-lg">No paid customers found 🔍</td></tr>
+                  <tr><td colSpan={8} className="text-center py-16 text-gray-400 text-lg">No paid customers found 🔍</td></tr>
                 ) : rows.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50 transition">
                     <td className="px-5 py-4">
@@ -188,6 +290,7 @@ export default function PaidCustomers() {
                         </div>
                       </div>
                     </td>
+                    <td className="px-5 py-4"><span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span></td>
                     <td className="px-5 py-4 text-base text-gray-700 whitespace-nowrap"><span className="flex items-center gap-1.5"><FiPhone size={13} className="text-gray-400" />{c.phone}</span></td>
                     <td className="px-5 py-4 text-base text-gray-500"><span className="flex items-center gap-1.5 max-w-[140px]"><FiMapPin size={13} className="text-gray-400 flex-shrink-0" /><span className="truncate">{c.address || "—"}</span></span></td>
                     <td className="px-5 py-4"><span className="flex items-center gap-1.5 text-base font-semibold text-gray-800"><FiShoppingBag size={13} className="text-gray-400" />{c.totalOrders}</span></td>
@@ -218,7 +321,10 @@ export default function PaidCustomers() {
                       <div className="text-sm text-gray-500 flex items-center gap-1"><FiPhone size={12} />{c.phone}</div>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold px-2.5 py-1 rounded-lg bg-green-100 text-green-700"> Paid</span>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className="text-sm font-semibold px-2.5 py-1 rounded-lg bg-green-100 text-green-700"> Paid</span>
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-lg ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <div className="bg-gray-50 rounded-xl p-3 text-center"><div className="text-base font-bold text-gray-900">{c.totalOrders}</div><div className="text-xs text-gray-400 mt-0.5">Orders</div></div>
@@ -232,6 +338,57 @@ export default function PaidCustomers() {
             ))}
           </div>
         </div>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-gray-400 text-sm">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition"
+              >
+                <FiChevronLeft size={16} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                .reduce((acc, n, i, arr) => {
+                  if (i > 0 && n - arr[i - 1] > 1) acc.push("…");
+                  acc.push(n);
+                  return acc;
+                }, [])
+                .map((n, i) => n === "…" ? (
+                  <span key={`gap-${i}`} className="px-2 text-gray-400">…</span>
+                ) : (
+                  <button key={n} onClick={() => setPage(n)}
+                    className={`w-9 h-9 rounded-xl text-sm font-semibold transition ${page === n ? "bg-green-600 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
+                    {n}
+                  </button>
+                ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition"
+              >
+                <FiChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Download all customer data as CSV */}
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => downloadCsv(data)}
+            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-xl text-base transition"
+          >
+            <FiDownload size={17} /> Download All Customer Data (CSV)
+          </button>
+        </div>
+
         <p className="text-center text-gray-400 text-base pb-4">Khulna Hardware Mart · Paid Customers </p>
       </div>
     </div>

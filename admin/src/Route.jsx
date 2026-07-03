@@ -15,6 +15,8 @@ import AccountLayout from "./Pages/Accounts/AccountLayout";
 import InvoiceLayout from "./Pages/Invoice/InvoiceLayout";
 import AllCustomers from "./Pages/Customer/AllCustomers";
 import PaidCustomers from "./Pages/Customer/PaidCustomers";
+import WholesaleCustomer from "./Pages/Customer/WholesaleCustomer";
+import RetailCustomer from "./Pages/Customer/RetailCustomer";
 import DueCustomers from "./Pages/Customer/DueCustomers";
 import Partners from "./Pages/Customer/Partners";
 import Suppliers from "./Pages/Customer/Suppliers";
@@ -87,6 +89,9 @@ const Route = createBrowserRouter([
           { path: "due", element: <DueCustomers /> },
           { path: "partners", element: <Partners /> },
           { path: "suppliers", element: <Suppliers /> },
+          { path: "suppliers", element: <Suppliers /> },
+          { path: "retail", element: <RetailCustomer /> },
+          { path: "wholesale", element: <WholesaleCustomer /> },
         ],
       },
       {

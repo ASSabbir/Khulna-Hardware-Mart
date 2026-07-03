@@ -4,7 +4,8 @@ import {
   FiTruck, FiSearch, FiX, FiPlus, FiEye, FiTrash2,
   FiPhone, FiMail, FiMapPin, FiCalendar, FiEdit2,
   FiStar, FiPackage, FiDollarSign, FiCheckCircle,
-  FiAlertCircle, FiUser, FiTag,
+  FiAlertCircle, FiUser, FiTag, FiCamera, FiNavigation,
+  FiCreditCard, FiSmartphone, FiLoader,
 } from "react-icons/fi";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
@@ -27,17 +28,83 @@ function Stars({ rating }) {
   );
 }
 
+// Small avatar helper: shows the supplier's photo if present, otherwise the initial-letter fallback
+function SupplierAvatar({ p, size = "w-14 h-14", textSize = "text-xl" }) {
+  if (p?.profilePicture) {
+    return (
+      <img
+        src={p.profilePicture}
+        alt={p.companyName || "Supplier"}
+        className={`${size} rounded-2xl object-cover shrink-0 border border-gray-100`}
+      />
+    );
+  }
+  return (
+    <div className={`${size} rounded-2xl bg-blue-600 flex items-center justify-center text-white ${textSize} font-bold shrink-0`}>
+      {p?.companyName?.charAt(0) || "S"}
+    </div>
+  );
+}
+
+// Hoisted OUTSIDE SupplierModal on purpose: defining this inline inside SupplierModal's render
+// recreated a brand-new component type on every keystroke, which made React unmount/remount the
+// <input> each time — that's what was causing the field to lose focus after one character.
+function Field({ label, fkey, form, errors, onChange, type = "text", placeholder, required }) {
+  return (
+    <div>
+      <label className="block text-base font-semibold text-gray-700 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type} value={form[fkey] || ""} onChange={onChange(fkey)} placeholder={placeholder}
+        className={`w-full bg-gray-50 border ${errors[fkey] ? "border-red-400" : "border-gray-200"} rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 transition`}
+      />
+      {errors[fkey] && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><FiAlertCircle size={13}/>{errors[fkey]}</p>}
+    </div>
+  );
+}
+
 // Add/Edit Modal
 function SupplierModal({ existing, onClose, onSave }) {
   const [form, setForm] = useState(
     existing || {
-      companyName: "", contactPerson: "", phone: "", email: "",
-      address: "", category: "", rating: 5, notes: "", status: "active",
+      companyName: "", contactPerson: "", phone: "", altPhone: "", email: "",
+      location: "", address: "", category: "", rating: 5, notes: "", status: "active",
+      profilePicture: "", products: [],
+      bankName: "", accountNumber: "", mobileBankingNumber: "",
     }
   );
   const [errors, setErrors] = useState({});
+  const [productInput, setProductInput] = useState("");
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const handlePictureChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrors((p) => ({ ...p, profilePicture: "Please choose an image file" }));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((p) => ({ ...p, profilePicture: reader.result }));
+      setErrors((p) => ({ ...p, profilePicture: undefined }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePicture = () => setForm((p) => ({ ...p, profilePicture: "" }));
+
+  const addProduct = () => {
+    const val = productInput.trim();
+    if (!val) return;
+    if ((form.products || []).some((x) => x.toLowerCase() === val.toLowerCase())) { setProductInput(""); return; }
+    setForm((p) => ({ ...p, products: [...(p.products || []), val] }));
+    setProductInput("");
+  };
+
+  const removeProduct = (name) => setForm((p) => ({ ...p, products: (p.products || []).filter((x) => x !== name) }));
 
   const validate = () => {
     const e = {};
@@ -54,23 +121,10 @@ function SupplierModal({ existing, onClose, onSave }) {
     onSave({
       ...form,
       totalPurchaseAmount: existing?.totalPurchaseAmount || 0,
-      productsSupplied: existing?.productsSupplied || 0,
+      productsSupplied: (form.products || []).length,
       rating: Number(form.rating),
     });
   };
-
-  const Field = ({ label, fkey, type = "text", placeholder, required }) => (
-    <div>
-      <label className="block text-base font-semibold text-gray-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type} value={form[fkey] || ""} onChange={set(fkey)} placeholder={placeholder}
-        className={`w-full bg-gray-50 border ${errors[fkey] ? "border-red-400" : "border-gray-200"} rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 transition`}
-      />
-      {errors[fkey] && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><FiAlertCircle size={13}/>{errors[fkey]}</p>}
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
@@ -79,16 +133,46 @@ function SupplierModal({ existing, onClose, onSave }) {
           <h2 className="text-xl font-bold text-gray-900">{existing ? "Edit Supplier" : "Add New Supplier"}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition"><FiX size={20} className="text-gray-500"/></button>
         </div>
+
+        {/* Profile picture */}
+        <div className="px-7 pt-6 flex items-center gap-5">
+          <div className="relative">
+            {form.profilePicture ? (
+              <img src={form.profilePicture} alt="Supplier" className="w-20 h-20 rounded-2xl object-cover border border-gray-100"/>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                {form.companyName?.charAt(0) || "S"}
+              </div>
+            )}
+            <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition">
+              <FiCamera size={14} className="text-gray-600"/>
+              <input type="file" accept="image/*" onChange={handlePictureChange} className="hidden"/>
+            </label>
+          </div>
+          <div>
+            <p className="text-base font-semibold text-gray-700">Profile Picture</p>
+            <p className="text-sm text-gray-400 mt-0.5">JPG or PNG, tap the camera icon to upload</p>
+            {form.profilePicture && (
+              <button onClick={removePicture} className="text-sm text-red-500 font-semibold mt-1 hover:underline">Remove photo</button>
+            )}
+            {errors.profilePicture && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.profilePicture}</p>}
+          </div>
+        </div>
+
         <div className="px-7 py-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <Field label="Company Name" fkey="companyName" placeholder="e.g. Supreme Pipe Industries" required/>
-          <Field label="Contact Person" fkey="contactPerson" placeholder="e.g. Jahangir Alam" required/>
-          <Field label="Phone Number" fkey="phone" placeholder="e.g. 01711-000000" required/>
-          <Field label="Email Address" fkey="email" type="email" placeholder="e.g. info@supplier.bd"/>
+          <Field label="Company Name" fkey="companyName" form={form} errors={errors} onChange={set} placeholder="e.g. Supreme Pipe Industries" required/>
+          <Field label="Contact Person" fkey="contactPerson" form={form} errors={errors} onChange={set} placeholder="e.g. Jahangir Alam" required/>
+          <Field label="Phone Number" fkey="phone" form={form} errors={errors} onChange={set} placeholder="e.g. 01711-000000" required/>
+          <Field label="Alternate / WhatsApp" fkey="altPhone" form={form} errors={errors} onChange={set} placeholder="e.g. 01911-000000"/>
+          <Field label="Email Address" fkey="email" form={form} errors={errors} onChange={set} type="email" placeholder="e.g. info@supplier.bd"/>
+          <Field label="Location" fkey="location" form={form} errors={errors} onChange={set} placeholder="e.g. Khulna, Bangladesh"/>
+
           <div className="sm:col-span-2">
             <label className="block text-base font-semibold text-gray-700 mb-1.5">Address</label>
             <input value={form.address || ""} onChange={set("address")} placeholder="Full address"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
           </div>
+
           <div>
             <label className="block text-base font-semibold text-gray-700 mb-1.5">Category <span className="text-red-500">*</span></label>
             <select value={form.category} onChange={set("category")}
@@ -113,6 +197,44 @@ function SupplierModal({ existing, onClose, onSave }) {
               <option value="inactive">Inactive</option>
             </select>
           </div>
+
+          {/* Product List */}
+          <div className="sm:col-span-2">
+            <label className="block text-base font-semibold text-gray-700 mb-1.5">Product List</label>
+            <div className="flex gap-2">
+              <input
+                value={productInput}
+                onChange={(e) => setProductInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProduct(); } }}
+                placeholder="Type a product name and press Enter"
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              />
+              <button onClick={addProduct} type="button" className="px-4 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 transition">
+                <FiPlus size={18}/>
+              </button>
+            </div>
+            {(form.products || []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {form.products.map((prod) => (
+                  <span key={prod} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-sm font-semibold pl-3 pr-2 py-1.5 rounded-full">
+                    {prod}
+                    <button onClick={() => removeProduct(prod)} type="button" className="hover:text-blue-900"><FiX size={13}/></button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Accounts Info */}
+          <div className="sm:col-span-2 bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <p className="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2"><FiCreditCard size={15}/> Accounts Info</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Field label="Bank Name" fkey="bankName" form={form} errors={errors} onChange={set} placeholder="e.g. Dutch-Bangla Bank"/>
+              <Field label="Account Number" fkey="accountNumber" form={form} errors={errors} onChange={set} placeholder="e.g. 1234567890"/>
+              <Field label="Mobile Banking No." fkey="mobileBankingNumber" form={form} errors={errors} onChange={set} placeholder="e.g. bKash 01711-000000"/>
+            </div>
+          </div>
+
           <div className="sm:col-span-2">
             <label className="block text-base font-semibold text-gray-700 mb-1.5">Notes</label>
             <textarea value={form.notes || ""} onChange={set("notes")} rows={3} placeholder="Any notes about this supplier..."
@@ -142,20 +264,22 @@ function DetailDrawer({ p, onClose, onEdit, onDelete }) {
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition"><FiX size={20} className="text-gray-500"/></button>
         </div>
         <div className="px-6 py-6 flex items-center gap-4 border-b border-gray-100">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-            {p.companyName?.charAt(0) || "S"}
-          </div>
+          <SupplierAvatar p={p} size="w-16 h-16" textSize="text-2xl"/>
           <div>
             <div className="text-lg font-bold text-gray-900 leading-tight">{p.companyName}</div>
             <Stars rating={p.rating}/>
             <span className={`inline-block text-sm px-2.5 py-0.5 rounded-full font-semibold mt-1.5 ${STATUS_STYLE[p.status]}`}>{p.status}</span>
           </div>
         </div>
+
+        {/* Contact + location */}
         <div className="px-6 py-5 space-y-4">
           {[
             { icon: <FiUser size={15}/>, label: "Contact", val: p.contactPerson },
             { icon: <FiPhone size={15}/>, label: "Phone", val: p.phone },
+            { icon: <FiPhone size={15}/>, label: "Alternate / WhatsApp", val: p.altPhone || "Not provided" },
             { icon: <FiMail size={15}/>, label: "Email", val: p.email || "Not provided" },
+            { icon: <FiNavigation size={15}/>, label: "Location", val: p.location || "Not provided" },
             { icon: <FiMapPin size={15}/>, label: "Address", val: p.address || "—" },
             { icon: <FiTag size={15}/>, label: "Category", val: p.category },
             { icon: <FiCalendar size={15}/>, label: "Since", val: fmtDate(p.createdAt) },
@@ -169,23 +293,57 @@ function DetailDrawer({ p, onClose, onEdit, onDelete }) {
             </div>
           ))}
         </div>
+
         <div className="border-t border-gray-100 mx-6"/>
+
+        {/* Purchase stats */}
         <div className="px-6 py-5 grid grid-cols-2 gap-3">
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <div className="text-blue-700 text-xl font-bold">{fmt(p.totalPurchaseAmount)}</div>
             <div className="text-blue-600 text-sm mt-0.5">Total purchased</div>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-            <div className="text-green-700 text-xl font-bold">{p.productsSupplied || 0}</div>
+            <div className="text-green-700 text-xl font-bold">{p.productsSupplied ?? (p.products || []).length}</div>
             <div className="text-green-600 text-sm mt-0.5">Products supplied</div>
           </div>
-          {p.notes && (
-            <div className="col-span-2 bg-gray-50 border border-gray-100 rounded-xl p-4">
+        </div>
+
+        {/* Product list */}
+        {(p.products || []).length > 0 && (
+          <div className="px-6 pb-5">
+            <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5"><FiPackage size={13}/> Product List</p>
+            <div className="flex flex-wrap gap-2">
+              {p.products.map((prod) => (
+                <span key={prod} className="bg-gray-100 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">{prod}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Accounts info */}
+        {(p.bankName || p.accountNumber || p.mobileBankingNumber) && (
+          <div className="px-6 pb-5">
+            <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5"><FiCreditCard size={13}/> Accounts Info</p>
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-2.5">
+              {p.bankName && (
+                <div className="flex items-center gap-2 text-base text-gray-700"><FiCreditCard size={14} className="text-gray-400"/>{p.bankName}{p.accountNumber ? ` — ${p.accountNumber}` : ""}</div>
+              )}
+              {p.mobileBankingNumber && (
+                <div className="flex items-center gap-2 text-base text-gray-700"><FiSmartphone size={14} className="text-gray-400"/>{p.mobileBankingNumber}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {p.notes && (
+          <div className="px-6 pb-5">
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
               <div className="text-xs text-gray-400 mb-1">Notes</div>
               <div className="text-base text-gray-700">{p.notes}</div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
         <div className="mt-auto px-6 pb-6 flex gap-3">
           <button onClick={() => { onClose(); onEdit(p); }} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-base transition">
             <FiEdit2 size={15}/> Edit
@@ -202,8 +360,24 @@ function DetailDrawer({ p, onClose, onEdit, onDelete }) {
 // MAIN PAGE
 export default function Suppliers() {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // Two separate loading flags on purpose:
+  // - initialLoading only drives the full-page spinner on first mount
+  // - fetching drives a small inline indicator for every later search/filter fetch,
+  //   so the whole page (and the search input) never unmounts while you type.
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
+
+  // The input is bound to searchInput immediately (so it never feels laggy),
+  // and the actual API call uses the debounced `search` value 400ms after you
+  // stop typing — this is what stops a request (and a re-render) firing per keystroke.
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const [filter, setFilter] = useState("all");
   const [catFilter, setCatFilter] = useState("all");
   const [drawer, setDrawer] = useState(null);
@@ -212,7 +386,7 @@ export default function Suppliers() {
   const [toast, setToast] = useState({ msg: "", type: "" });
 
   const fetchSuppliers = useCallback(async () => {
-    setLoading(true);
+    setFetching(true);
     try {
       const params = new URLSearchParams({ search, status: filter, category: catFilter });
       const res = await axios.get(`http://localhost:5000/api/suppliers?${params}`);
@@ -221,7 +395,8 @@ export default function Suppliers() {
       console.error(err);
       setToast({ msg: "Failed to load suppliers", type: "error" });
     } finally {
-      setLoading(false);
+      setFetching(false);
+      setInitialLoading(false);
     }
   }, [search, filter, catFilter]);
 
@@ -265,7 +440,7 @@ export default function Suppliers() {
   const usedCategories = ["all", ...new Set((data || []).map((d) => d.category).filter(Boolean))];
   const rows = data || [];
 
-  if (loading) return (
+  if (initialLoading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <div className="w-11 h-11 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
@@ -337,9 +512,13 @@ export default function Suppliers() {
         <div className="flex flex-col gap-3">
           <div className="relative">
             <FiSearch size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by company, contact person or category..."
+            <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search by company, contact person or category..."
               className="w-full bg-white border border-gray-200 rounded-xl pl-11 pr-10 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
-            {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><FiX size={16}/></button>}
+            {fetching ? (
+              <FiLoader size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin"/>
+            ) : searchInput && (
+              <button onClick={() => setSearchInput("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><FiX size={16}/></button>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {["all","active","inactive"].map((s) => (
@@ -368,9 +547,7 @@ export default function Suppliers() {
             {rows.map((p) => (
               <div key={p._id} className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
-                    {p.companyName?.charAt(0) || "S"}
-                  </div>
+                  <SupplierAvatar p={p}/>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-base font-bold text-gray-900 leading-tight truncate">{p.companyName}</h3>
@@ -383,6 +560,9 @@ export default function Suppliers() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-base text-gray-600"><FiUser size={13} className="text-gray-400 shrink-0"/><span className="truncate">{p.contactPerson}</span></div>
                   <div className="flex items-center gap-2 text-base text-gray-600"><FiPhone size={13} className="text-gray-400 shrink-0"/>{p.phone}</div>
+                  {p.location && (
+                    <div className="flex items-center gap-2 text-base text-gray-500"><FiNavigation size={13} className="text-gray-400 shrink-0"/><span className="truncate">{p.location}</span></div>
+                  )}
                   <div className="flex items-center gap-2 text-base text-gray-500"><FiMapPin size={13} className="text-gray-400 shrink-0"/><span className="truncate">{p.address || "—"}</span></div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-4">
@@ -391,7 +571,7 @@ export default function Suppliers() {
                     <div className="text-xs text-gray-400 mt-0.5">Total purchased</div>
                   </div>
                   <div className="bg-green-50 rounded-xl p-3">
-                    <div className="text-sm font-bold text-green-700">{p.productsSupplied || 0}</div>
+                    <div className="text-sm font-bold text-green-700">{p.productsSupplied ?? (p.products || []).length}</div>
                     <div className="text-xs text-gray-400 mt-0.5">Products supplied</div>
                   </div>
                 </div>
