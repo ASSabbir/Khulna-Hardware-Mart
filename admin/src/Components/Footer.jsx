@@ -46,7 +46,7 @@ const Footer = () => {
           <FiCode size={12} />
           <span>Developed by</span>
           <span className="text-yellow-400 font-bold">
-            Techof Solution LTD.
+            Techof Solution.
           </span>
         </div>
 

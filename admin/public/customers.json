@@ -9,6 +9,7 @@
     "totalSpent": 184500,
     "totalDue": 0,
     "status": "active",
+    "type": "Whole Sell",
     "joinedAt": "2023-03-15",
     "lastOrder": "2025-04-10"
   },
@@ -22,6 +23,7 @@
     "totalSpent": 97200,
     "totalDue": 23000,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2023-07-22",
     "lastOrder": "2025-04-18"
   },
@@ -35,6 +37,7 @@
     "totalSpent": 42000,
     "totalDue": 0,
     "status": "active",
+    "type": "Whole Sell",
     "joinedAt": "2024-01-10",
     "lastOrder": "2025-03-25"
   },
@@ -48,6 +51,7 @@
     "totalSpent": 310000,
     "totalDue": 11200,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2022-11-05",
     "lastOrder": "2025-04-20"
   },
@@ -61,6 +65,7 @@
     "totalSpent": 256000,
     "totalDue": 5600,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2023-02-18",
     "lastOrder": "2025-04-15"
   },
@@ -74,6 +79,7 @@
     "totalSpent": 89300,
     "totalDue": 0,
     "status": "inactive",
+    "type": "Whole Sell",
     "joinedAt": "2023-09-30",
     "lastOrder": "2024-11-10"
   },
@@ -87,6 +93,7 @@
     "totalSpent": 520000,
     "totalDue": 0,
     "status": "active",
+    "type": "Whole Sell",
     "joinedAt": "2022-06-14",
     "lastOrder": "2025-04-22"
   },
@@ -100,6 +107,7 @@
     "totalSpent": 134000,
     "totalDue": 23000,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2024-02-28",
     "lastOrder": "2025-04-05"
   },
@@ -113,6 +121,7 @@
     "totalSpent": 67800,
     "totalDue": 8400,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2023-05-07",
     "lastOrder": "2025-04-12"
   },
@@ -126,6 +135,7 @@
     "totalSpent": 28000,
     "totalDue": 0,
     "status": "inactive",
+    "type": "Whole Sell",
     "joinedAt": "2024-04-01",
     "lastOrder": "2024-12-20"
   },
@@ -139,6 +149,7 @@
     "totalSpent": 198000,
     "totalDue": 14500,
     "status": "active",
+    "type": "Retail",
     "joinedAt": "2022-12-20",
     "lastOrder": "2025-04-19"
   },
@@ -152,6 +163,7 @@
     "totalSpent": 54000,
     "totalDue": 0,
     "status": "active",
+    "type": "Whole Sell",
     "joinedAt": "2023-08-15",
     "lastOrder": "2025-03-30"
   }

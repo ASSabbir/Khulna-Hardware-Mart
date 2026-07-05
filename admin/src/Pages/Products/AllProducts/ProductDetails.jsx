@@ -127,7 +127,7 @@ const ProductDetails = () => {
   const retail = product.retailPrice || (product.buyingPrice * 1.05);
 
   return (
-    <div className="flex flex-col gap-5 font-['Barlow',sans-serif] max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-0">
+    <div className="flex flex-col gap-5 font-['Barlow',sans-serif] max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-0 my-12">
 
       {/* ── Breadcrumb ── */}
       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium overflow-x-auto">

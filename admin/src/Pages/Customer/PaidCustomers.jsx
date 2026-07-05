@@ -24,6 +24,14 @@ const CUSTOMER_TYPES = {
 const typeLabel = (t) => CUSTOMER_TYPES[t]?.label || CUSTOMER_TYPES[1].label;
 const typeStyle = (t) => CUSTOMER_TYPES[t]?.style || CUSTOMER_TYPES[1].style;
 
+// Some API records send a "type" string (e.g. "Whole Sell") instead of a numeric
+// customerType. This normalizes either shape into 1 (Retail) / 2 (Wholesale).
+const resolveCustomerType = (c) => {
+  if (c.customerType) return c.customerType;
+  if (c.type && /whole/i.test(c.type)) return 2;
+  return 1;
+};
+
 const PAGE_SIZE = 10;
 
 // ───────────────────────── CSV export ─────────────────────────
@@ -57,6 +65,63 @@ function downloadCsv(rows) {
   URL.revokeObjectURL(url);
 }
 
+// ───────────────────────── Invoice PDF download ─────────────────────────
+function downloadInvoicePdf(customer, invoice) {
+  // If the backend already stores a real PDF for this invoice, just open/download it.
+  if (invoice.pdfUrl) {
+    const a = document.createElement("a");
+    a.href = invoice.pdfUrl;
+    a.download = `invoice-${invoice.id}.pdf`;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+
+  // Otherwise generate a clean printable invoice and let the browser "Save as PDF".
+  const win = window.open("", "_blank", "width=800,height=900");
+  if (!win) return;
+  win.document.write(`
+    <html>
+      <head>
+        <title>Invoice #${invoice.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1f2937; }
+          .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #16a34a; padding-bottom:16px; margin-bottom:24px; }
+          .shop { font-size: 22px; font-weight:700; color:#16a34a; }
+          .invoice-title { font-size:28px; font-weight:700; text-align:right; color:#111827; }
+          table { width:100%; border-collapse:collapse; margin-top:20px; }
+          th, td { padding:10px; text-align:left; border-bottom:1px solid #e5e7eb; }
+          th { width:160px; color:#6b7280; }
+          .total { text-align:right; font-size:20px; font-weight:700; margin-top:24px; color:#16a34a; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="shop">Khulna Hardware Mart</div>
+            <div>Khulna, Bangladesh</div>
+            <div>02477-721990 · +880 1931-272839</div>
+          </div>
+          <div class="invoice-title">INVOICE</div>
+        </div>
+        <table>
+          <tr><th>Invoice No</th><td>#${invoice.id}</td></tr>
+          <tr><th>Date</th><td>${fmtDate(invoice.date)}</td></tr>
+          <tr><th>Customer</th><td>${customer.name}</td></tr>
+          <tr><th>Phone</th><td>${customer.phone}</td></tr>
+          <tr><th>Address</th><td>${customer.address || "—"}</td></tr>
+        </table>
+        <div class="total">Total Paid: ${fmt(invoice.amount)}</div>
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
 function Drawer({ c, onClose }) {
   if (!c) return null;
   const invoices = c.invoiceHistory || [];
@@ -82,6 +147,17 @@ function Drawer({ c, onClose }) {
             </div>
           </div>
         </div>
+
+        {/* Call customer */}
+        <div className="px-6 pt-5">
+          <a
+            href={`tel:${c.phone}`}
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-xl text-base transition"
+          >
+            <FiPhone size={17} /> Call {c.name.split(" ")[0]}
+          </a>
+        </div>
+
         <div className="px-6 py-5 space-y-4">
           {[
             { icon: <FiPhone size={15} />,    label: "Phone",      val: c.phone },
@@ -129,7 +205,16 @@ function Drawer({ c, onClose }) {
                     <div className="text-base font-semibold text-gray-800">#{inv.id}</div>
                     <div className="text-xs text-gray-400">{fmtDate(inv.date)}</div>
                   </div>
-                  <div className="text-base font-bold text-gray-800">{fmt(inv.amount)}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-base font-bold text-gray-800">{fmt(inv.amount)}</div>
+                    <button
+                      onClick={() => downloadInvoicePdf(c, inv)}
+                      title="Download Invoice PDF"
+                      className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"
+                    >
+                      <FiDownload size={15} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -160,9 +245,9 @@ export default function PaidCustomers() {
         const all = Array.isArray(res.data) ? res.data : res.data.data;
         //  Only paid customers — no due
         setData(all.filter((c) => c.totalDue === 0).map((c) => ({
-          customerType: c.customerType || 1,
           invoiceHistory: c.invoiceHistory || [],
           ...c,
+          customerType: resolveCustomerType(c),
         })));
       })
       .finally(() => setLoading(false));
@@ -298,6 +383,7 @@ export default function PaidCustomers() {
                     <td className="px-5 py-4"><span className={`text-sm font-semibold px-3 py-1 rounded-lg capitalize ${c.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{c.status}</span></td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
+                        <a href={`tel:${c.phone}`} className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"><FiPhone size={16} /></a>
                         <button onClick={() => setDrawer(c)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"><FiEye size={16} /></button>
                         <button onClick={() => setDelId(c.id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition"><FiTrash2 size={16} /></button>
                       </div>
@@ -331,6 +417,7 @@ export default function PaidCustomers() {
                   <div className="bg-green-50 rounded-xl p-3 text-center"><div className="text-sm font-bold text-green-700">{fmt(c.totalSpent)}</div><div className="text-xs text-gray-400 mt-0.5">Total Spent</div></div>
                 </div>
                 <div className="flex gap-2">
+                  <a href={`tel:${c.phone}`} className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 font-semibold py-2.5 rounded-xl text-base transition"><FiPhone size={15} />Call</a>
                   <button onClick={() => setDrawer(c)} className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold py-2.5 rounded-xl text-base transition"><FiEye size={15} />View</button>
                   <button onClick={() => setDelId(c.id)} className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 font-semibold py-2.5 rounded-xl text-base transition"><FiTrash2 size={15} />Remove</button>
                 </div>
