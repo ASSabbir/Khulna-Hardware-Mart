@@ -45,9 +45,9 @@ const Card = ({ icon, title, children, accent = false }) => (
 
 /* ─── Info Row ────────────────────────────────────────────────── */
 const InfoRow = ({ label, value, mono = false }) => (
-  <div className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
-    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{label}</span>
-    <span className={`text-sm font-semibold text-[#1E293B] ${mono ? "font-mono" : ""}`}>
+  <div className="flex justify-between items-center gap-3 py-2 border-b border-slate-100 last:border-0">
+    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider shrink-0">{label}</span>
+    <span className={`text-sm font-semibold text-[#1E293B] text-right break-words ${mono ? "font-mono" : ""}`}>
       {value || <span className="text-slate-300">—</span>}
     </span>
   </div>
@@ -127,31 +127,31 @@ const ProductDetails = () => {
   const retail = product.retailPrice || (product.buyingPrice * 1.05);
 
   return (
-    <div className="flex flex-col gap-5 font-['Barlow',sans-serif] max-w-5xl">
+    <div className="flex flex-col gap-5 font-['Barlow',sans-serif] max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-0">
 
       {/* ── Breadcrumb ── */}
-      <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-        <Link to="/products" className="flex items-center gap-1 hover:text-[#1E3A8A] transition-colors">
+      <div className="flex items-center gap-2 text-xs text-slate-400 font-medium overflow-x-auto">
+        <Link to="/products" className="flex items-center gap-1 hover:text-[#1E3A8A] transition-colors shrink-0">
           <FiHome size={12} /> Products
         </Link>
-        <FiChevronRight size={12} />
-        <span className="text-[#1E3A8A] font-semibold">{product.name}</span>
+        <FiChevronRight size={12} className="shrink-0" />
+        <span className="text-[#1E3A8A] font-semibold truncate">{product.name}</span>
       </div>
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 min-w-0">
           {/* Product Image / Icon */}
-          <div className="w-20 h-20 rounded-xl border-2 border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center shrink-0">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center shrink-0">
             {product.images && product.images[0] ? (
               <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
             ) : (
               <FiPackage size={32} className="text-slate-300" />
             )}
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-2xl uppercase tracking-wide leading-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-xl sm:text-2xl uppercase tracking-wide leading-tight break-words">
                 {product.name}
               </h1>
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.cls}`}>
@@ -159,7 +159,7 @@ const ProductDetails = () => {
               </span>
             </div>
             <p className="text-slate-500 text-sm font-medium">{product.brand || product.company}</p>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               {product.category && (
                 <span className="inline-block bg-purple-50 text-purple-700 text-xs font-semibold px-2 py-0.5 rounded border border-purple-200">
                   {product.category}
@@ -173,16 +173,16 @@ const ProductDetails = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Link
             to={`/products/edit/${product._id}`}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#1E3A8A] text-[#1E3A8A] text-sm font-semibold bg-white hover:bg-[#1E3A8A] hover:text-white transition-colors"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-[#1E3A8A] text-[#1E3A8A] text-sm font-semibold bg-white hover:bg-[#1E3A8A] hover:text-white transition-colors"
           >
             <FiEdit size={14} /> Edit
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-red-400 text-red-500 text-sm font-semibold bg-white hover:bg-red-500 hover:text-white transition-colors"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-red-400 text-red-500 text-sm font-semibold bg-white hover:bg-red-500 hover:text-white transition-colors"
           >
             <FiTrash2 size={14} /> Delete
           </button>
@@ -197,7 +197,7 @@ const ProductDetails = () => {
 
           {/* Pricing Card */}
           <Card icon={<FiDollarSign />} title="Pricing" accent>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Buying Price */}
               <div className="rounded-lg border-2 border-slate-200 p-4 text-center bg-slate-50">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Buying Price</p>
@@ -225,7 +225,7 @@ const ProductDetails = () => {
             </div>
 
             {/* Margin details */}
-            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 flex-wrap">
               <div className="text-xs">
                 <span className="text-slate-400">Holcell Margin: </span>
                 <span className="font-bold text-[#1D4ED8]">{product.holcellMargin || 3}%</span>
@@ -244,7 +244,7 @@ const ProductDetails = () => {
           {/* Stock Card */}
           <Card icon={<FiArchive />} title="Stock & Inventory">
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Current Stock */}
                 <div className="rounded-lg border-2 border-slate-200 p-4 text-center bg-slate-50">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Current Stock</p>
