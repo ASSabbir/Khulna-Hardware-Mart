@@ -5,6 +5,7 @@ import {
   FiPackage, FiUser, FiPhone, FiHash, FiAlertTriangle,
   FiCheckCircle, FiX, FiEdit2, FiShoppingCart, FiLoader,
   FiSave, FiChevronRight, FiChevronsLeft, FiChevronsRight,
+  FiDollarSign, FiSmartphone, FiCreditCard, FiPlusCircle,
 } from "react-icons/fi";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
@@ -24,6 +25,18 @@ const useDebounce = (value, delay) => {
   }, [value, delay]);
   return debounced;
 };
+
+// 👉 New: mobile banking providers + banks for the payment method section
+const MOBILE_BANKING_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
+const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
+
+// 👉 New: partner logos printed at the bottom of the invoice.
+// Replace `src` with your real partner logo file paths/URLs when ready.
+const PARTNER_LOGOS = [
+  { name: "Partner 1", src: "" },
+  { name: "Partner 2", src: "" },
+  { name: "Partner 3", src: "" },
+];
 
 /* ══════════════════════════════════════════════════════════════
    Invoice Component
@@ -48,6 +61,17 @@ const Invoice = () => {
   const [discount, setDiscount] = useState("");
   const [priceType, setPriceType] = useState("retail");
   const [toast, setToast] = useState(null);
+
+  // 👉 New: VAT toggle
+  const [vatEnabled, setVatEnabled] = useState(false);
+
+  // 👉 New: Payment method
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // cash | mobile | bank
+  const [mobileProvider, setMobileProvider] = useState(MOBILE_BANKING_PROVIDERS[0]);
+  const [bankName, setBankName] = useState(BANK_OPTIONS[0]);
+
+  // 👉 New: Custom product form (left panel, below the product list)
+  const [customProduct, setCustomProduct] = useState({ name: "", qty: 1, unitPrice: "" });
 
   const printRef = useRef(null);
 
@@ -114,6 +138,29 @@ const Invoice = () => {
     showToast("success", `${p.name} added to memo.`);
   };
 
+  /* ── New: Add a custom (off-catalog) product from the form below the product list ── */
+  const addCustomProductToMemo = () => {
+    const name = customProduct.name.trim();
+    const qty = parseInt(customProduct.qty) || 1;
+    const unitPrice = parseFloat(customProduct.unitPrice) || 0;
+
+    if (!name) { showToast("error", "Enter a product name first."); return; }
+    if (unitPrice <= 0) { showToast("error", "Enter a valid unit price."); return; }
+
+    setMemoItems(prev => [...prev, {
+      productId: null,
+      id: "custom-" + Date.now(),
+      name,
+      company: "Custom",
+      price: unitPrice,
+      qty,
+      stock: null,
+      custom: true,
+    }]);
+    showToast("success", `${name} added to memo.`);
+    setCustomProduct({ name: "", qty: 1, unitPrice: "" });
+  };
+
   /* ── Update memo item ───────────────────────────────────── */
   const updateItem = (id, field, value) => {
     setMemoItems(prev => prev.map(i => {
@@ -135,7 +182,9 @@ const Invoice = () => {
   /* ── Totals ─────────────────────────────────────────────── */
   const subtotal = memoItems.reduce((s, i) => s + (i.price * i.qty), 0);
   const discAmt = Math.min(parseFloat(discount) || 0, subtotal);
-  const grandTotal = subtotal - discAmt;
+  // 👉 New: VAT is 5% of the post-discount amount, added on top when enabled
+  const vatAmt = vatEnabled ? +((subtotal - discAmt) * 0.05).toFixed(2) : 0;
+  const grandTotal = subtotal - discAmt + vatAmt;
 
   /* ── Toast ──────────────────────────────────────────────── */
   const showToast = (type, msg) => {
@@ -173,8 +222,11 @@ const Invoice = () => {
         items,
         subtotal,
         discount: discAmt,
+        vat: vatAmt,
         grandTotal,
         priceType,
+        paymentMethod,
+        paymentDetails: paymentMethod === "mobile" ? mobileProvider : paymentMethod === "bank" ? bankName : null,
       });
 
       // Create or update customer in database
@@ -216,6 +268,8 @@ const Invoice = () => {
       setMemoItems([]);
       setCustomer({ name: "", phone: "", address: "" });
       setDiscount("");
+      setVatEnabled(false);
+      setPaymentMethod("cash");
       setInvoiceNum(invoiceNo());
       // Refresh products to show updated stock
       fetchProducts();
@@ -236,6 +290,8 @@ const Invoice = () => {
     setMemoItems([]);
     setCustomer({ name: "", phone: "", address: "" });
     setDiscount("");
+    setVatEnabled(false);
+    setPaymentMethod("cash");
     setInvoiceNum(invoiceNo());
   };
 
@@ -404,6 +460,52 @@ const Invoice = () => {
               </button>
             </div>
           )}
+
+          {/* ══════════════════════════════════════
+               NEW — Custom Product section
+               (very bottom of the left/product column)
+          ══════════════════════════════════════ */}
+          <div className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <FiPlusCircle size={15} className="text-[#1E3A8A]"/>
+              <h3 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-sm uppercase tracking-wide">Add Custom Product</h3>
+            </div>
+            <input
+              type="text"
+              placeholder="Product name"
+              value={customProduct.name}
+              onChange={e => setCustomProduct(c => ({ ...c, name: e.target.value }))}
+              className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min="1"
+                placeholder="Quantity"
+                value={customProduct.qty}
+                onChange={e => setCustomProduct(c => ({ ...c, qty: e.target.value }))}
+                className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
+              />
+              <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#1D4ED8] transition-colors">
+                <span className="px-2 text-xs text-slate-400 bg-slate-50 border-r border-slate-200 h-full flex items-center">৳</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Unit price"
+                  value={customProduct.unitPrice}
+                  onChange={e => setCustomProduct(c => ({ ...c, unitPrice: e.target.value }))}
+                  className="w-full text-sm px-2 py-2 outline-none font-['Barlow',sans-serif]"
+                />
+              </div>
+            </div>
+            <button
+              onClick={addCustomProductToMemo}
+              className="flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
+            >
+              <FiPlus size={14}/> Add to Invoice
+            </button>
+          </div>
         </div>
 
         {/* ══════════════════════════════════════
@@ -445,6 +547,19 @@ const Invoice = () => {
 
           {/* ── PRINTABLE MEMO ── */}
           <div id="print-area" ref={printRef} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex flex-col flex-1">
+
+            {/* NEW — Print-only centered logo + shop name header (hidden on screen, shown only when printing) */}
+            <div className="hidden print:flex flex-col items-center gap-2 pt-2 pb-4 border-b-2 border-slate-100">
+              <div className="w-14 h-14 bg-[#F97316] rounded-xl flex items-center justify-center">
+                <span className="text-white text-2xl">🔧</span>
+              </div>
+              <p className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-xl uppercase tracking-widest leading-tight text-center">
+                Khulna <span className="text-[#F97316]">Hardware</span> Mart
+              </p>
+              <p className="text-slate-400 text-[10px] font-medium text-center max-w-md">
+                280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna · 02477-721990, +880 1931-272839, +880 1679-123205
+              </p>
+            </div>
 
             {/* Memo top bar */}
             <div className="bg-[#1E3A8A] px-6 py-4 flex items-center justify-between flex-wrap gap-3">
@@ -571,21 +686,33 @@ const Invoice = () => {
             {memoItems.length > 0 && (
               <div className="border-t-2 border-slate-100 px-5 py-4 bg-slate-50">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  {/* Discount input */}
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
-                    <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
-                      <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={discount}
-                        onChange={e => setDiscount(e.target.value)}
-                        className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
-                      />
+                  {/* Discount input + NEW VAT checkbox */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
+                      <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
+                        <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={discount}
+                          onChange={e => setDiscount(e.target.value)}
+                          className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
+                        />
+                      </div>
                     </div>
+                    {/* NEW — VAT (5%) checkbox */}
+                    <label className="flex items-center gap-2 text-xs font-bold text-[#1E3A8A] uppercase tracking-wider cursor-pointer print:cursor-default select-none">
+                      <input
+                        type="checkbox"
+                        checked={vatEnabled}
+                        onChange={e => setVatEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-[#1E3A8A]"
+                      />
+                      Add VAT (5%)
+                    </label>
                   </div>
                   {/* Summary */}
                   <div className="flex flex-col items-end gap-1 min-w-[200px]">
@@ -599,10 +726,69 @@ const Invoice = () => {
                         <span className="tabular-nums">− {fmt(discAmt)}</span>
                       </div>
                     )}
+                    {vatEnabled && (
+                      <div className="flex justify-between w-full text-xs text-slate-500 font-semibold">
+                        <span>VAT (5%)</span>
+                        <span className="tabular-nums">+ {fmt(vatAmt)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between w-full pt-1.5 border-t-2 border-[#1E3A8A] mt-1">
                       <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] uppercase tracking-wide text-sm">Grand Total</span>
                       <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#F97316] text-lg tabular-nums leading-tight">{fmt(grandTotal)}</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* NEW — Payment Method section */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider block mb-2">Payment Method</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("cash")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${
+                        paymentMethod === "cash" ? "border-green-600 bg-green-600 text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                      }`}
+                    >
+                      <FiDollarSign size={13}/> Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("mobile")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${
+                        paymentMethod === "mobile" ? "border-[#1D4ED8] bg-[#1D4ED8] text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                      }`}
+                    >
+                      <FiSmartphone size={13}/> Mobile Banking
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("bank")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${
+                        paymentMethod === "bank" ? "border-purple-600 bg-purple-600 text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"
+                      }`}
+                    >
+                      <FiCreditCard size={13}/> Bank
+                    </button>
+
+                    {paymentMethod === "mobile" && (
+                      <select
+                        value={mobileProvider}
+                        onChange={e => setMobileProvider(e.target.value)}
+                        className="ml-1 text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]"
+                      >
+                        {MOBILE_BANKING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    )}
+                    {paymentMethod === "bank" && (
+                      <select
+                        value={bankName}
+                        onChange={e => setBankName(e.target.value)}
+                        className="ml-1 text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]"
+                      >
+                        {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -612,6 +798,22 @@ const Invoice = () => {
                 </p>
               </div>
             )}
+
+            {/* NEW — Print-only partner logos footer (hidden on screen, shown only when printing) */}
+            <div className="hidden print:flex flex-col items-center gap-2 px-5 pb-4 pt-2 border-t border-slate-100">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Our Partners</p>
+              <div className="flex items-center justify-center gap-4">
+                {PARTNER_LOGOS.map(partner => (
+                  <div key={partner.name} className="w-14 h-14 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                    {partner.src ? (
+                      <img src={partner.src} alt={partner.name} className="w-full h-full object-contain p-1"/>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 font-semibold text-center px-1">{partner.name}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

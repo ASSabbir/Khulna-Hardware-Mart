@@ -5,8 +5,6 @@ import { useState } from "react";
 const NAV_ITEMS = [
   { to: "all", label: "All Customer", icon: <FiUsers size={16} /> },
   { to: "paid", label: "Paid Customer", icon: <FiCheckCircle size={16} /> },
-  { to: "retail", label: "Retail Customer", icon: <FiAlertCircle size={16} /> },
-  { to: "wholesale", label: "Wholesale Customer", icon: <FiAlertCircle size={16} /> },
   { to: "due", label: "Due Customer", icon: <FiAlertCircle size={16} /> },
   { to: "partners", label: "Partners", icon: <FiUserPlus size={16} /> },
   { to: "suppliers", label: "Supliners", icon: <FiTruck size={16} /> },
