@@ -409,7 +409,7 @@ export default function Suppliers() {
     setTimeout(() => setToast({ msg: "", type: "" }), 2800);
   };
 
-  const handleSave = async (supplier) => {
+   const handleSave = async (supplier) => {
     try {
       if (supplier._id) {
         await axios.put(`http://localhost:5000/api/suppliers/${supplier._id}`, supplier);
@@ -421,7 +421,7 @@ export default function Suppliers() {
       fetchSuppliers();
       setModal(null);
     } catch (err) {
-      showToast("Failed to save supplier", "error");
+      showToast(err.response?.data?.message || "Failed to save supplier", "error");
     }
   };
 

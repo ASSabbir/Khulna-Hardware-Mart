@@ -7,7 +7,7 @@ import {
 } from "react-icons/fi";
 
 // 👉 swap to real API when backend ready
-const API_URL = "/accounts.json";
+const API_URL = "http://localhost:5000/api/ledger";
 
 const fmt     = (n) => "৳" + Number(n).toLocaleString();
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -26,11 +26,7 @@ export default function AddMoney() {
 
   useEffect(() => {
     axios.get(API_URL)
-      .then((res) => {
-        let d = res.data;
-        if (Array.isArray(d)) d = { balance: 0, totalIncome: 0, totalExpense: 0, transactions: d };
-        setAccounts(d);
-      })
+      .then((res) => setAccounts(res.data))
       .catch(() => setAccounts({ balance: 0, totalIncome: 0, totalExpense: 0, transactions: [] }))
       .finally(() => setLoading(false));
   }, []);
@@ -53,30 +49,29 @@ export default function AddMoney() {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
-
-    // 👉 real API: POST /api/accounts/income
-    // await axios.post("http://localhost:5000/api/accounts/income", { ...form, type: "income" });
-
-    // mock — update local state
-    await new Promise((r) => setTimeout(r, 600));
-    const newTx = {
-      id: Date.now(),
-      type: "income",
-      category: form.category,
-      amount: Number(form.amount),
-      description: form.description,
-      date: form.date,
-      addedBy: form.addedBy || "Admin",
-    };
-    setAccounts((prev) => ({
-      ...prev,
-      balance: prev.balance + Number(form.amount),
-      totalIncome: prev.totalIncome + Number(form.amount),
-      transactions: [newTx, ...prev.transactions],
-    }));
-    setForm(INITIAL_FORM);
-    setSaving(false);
-    showToast("Money added successfully.");
+    try {
+      const res = await axios.post(API_URL, {
+        type: "income",
+        category: form.category,
+        amount: Number(form.amount),
+        description: form.description,
+        date: form.date,
+        addedBy: form.addedBy || "Admin",
+      });
+      const newTx = res.data;
+      setAccounts((prev) => ({
+        ...prev,
+        balance: prev.balance + Number(form.amount),
+        totalIncome: prev.totalIncome + Number(form.amount),
+        transactions: [newTx, ...prev.transactions],
+      }));
+      setForm(INITIAL_FORM);
+      showToast("Money added successfully.");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to add income.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const showToast = (msg) => {

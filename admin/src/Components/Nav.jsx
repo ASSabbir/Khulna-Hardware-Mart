@@ -5,7 +5,7 @@ import {
   FiHome, FiAlertTriangle, FiGrid, FiUsers, FiDollarSign,
   FiFileText, FiPackage, FiLogIn, FiTool,
   FiPhone, FiMail, FiMapPin, FiMenu, FiX, FiEye, FiEyeOff,
-  FiLock, FiAlertCircle, FiUser, FiLogOut, FiSettings
+  FiLock, FiAlertCircle, FiUser, FiLogOut, FiSettings, FiTruck, FiRotateCcw
 } from "react-icons/fi";
 
 /* ─── Auth Context ─── */
@@ -235,7 +235,7 @@ const Nav = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const { admin, logout, loading } = useAuth();
   /* ─── Nav routes ─── */
-  const adminLinks = [
+ const adminLinks = [
     { to: "/", label: "Home", icon: <FiHome /> },
     { to: "/products-catalog", label: "Products", icon: <FiPackage /> },
     { to: "/stock-warning", label: "Stock Warning", icon: <FiAlertTriangle />, badge: 3 },
@@ -244,6 +244,8 @@ const Nav = () => {
     { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
     { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
     { to: "/products", label: "Inventory", icon: <FiPackage /> },
+    { to: "/products/purchase-history", label: "Purchase History", icon: <FiTruck /> },
+    { to: "/invoice/return", label: "Product Return", icon: <FiRotateCcw /> },
   ];
 
   const userLinks = [

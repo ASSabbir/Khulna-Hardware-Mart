@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FiPackage, FiPlusCircle, FiTool, FiMenu, FiX, FiSettings } from "react-icons/fi";
+import { FiPackage, FiPlusCircle, FiTool, FiMenu, FiX, FiSettings, FiTruck } from "react-icons/fi";
 import { useState } from "react";
 
 const NAV_ITEMS = [
   { to: "all", label: "All Products", icon: <FiPackage size={16} /> },
   { to: "add", label: "Add Product", icon: <FiPlusCircle size={16} /> },
+  { to: "purchase-history", label: "Purchase History", icon: <FiTruck size={16} /> },
   { to: "settings", label: "Settings", icon: <FiSettings size={16} /> },
 
 ];

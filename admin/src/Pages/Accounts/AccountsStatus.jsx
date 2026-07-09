@@ -11,8 +11,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
-// 👉 swap to real API when backend ready
-const API_URL = "/accounts.json";
+const API_URL = "http://localhost:5000/api/ledger";
 
 const fmt      = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate  = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -151,6 +150,7 @@ function StatCard({ label, value, sub, tone }) {
 export default function AccountsStatus() {
   const [accounts, setAccounts] = useState(null);
   const [loading, setLoading]   = useState(true);
+  const [mobileBreakdown, setMobileBreakdown] = useState(null);
   const [period, setPeriod]     = useState("daily"); // daily | monthly | yearly
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -158,15 +158,13 @@ export default function AccountsStatus() {
   const [selectedMonth, setSelectedMonth] = useState(todayStr.slice(0, 7));
   const [selectedYear,  setSelectedYear]  = useState(new Date().getFullYear());
 
-  useEffect(() => {
+useEffect(() => {
     axios.get(API_URL)
       .then((res) => {
-        let d = res.data;
-        if (Array.isArray(d)) d = { balance: 0, totalIncome: 0, totalExpense: 0, transactions: d };
-        if (!d.transactions?.length) d = buildMockAccounts();
-        setAccounts(d);
+        setAccounts(res.data);
+        setMobileBreakdown(res.data.mobileBankingBreakdown || null);
       })
-      .catch(() => setAccounts(buildMockAccounts()))
+      .catch(() => setAccounts({ balance: 0, totalIncome: 0, totalExpense: 0, transactions: [] }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -237,7 +235,7 @@ export default function AccountsStatus() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <div className=" mx-auto px-6 py-8 space-y-8">
 
         {/* ── BALANCE BANNER ── */}
         <div className="bg-gray-900 rounded-2xl p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -292,6 +290,20 @@ export default function AccountsStatus() {
               );
             })}
           </div>
+
+          {mobileBreakdown && (
+            <div className="mt-4 bg-white border border-gray-200 rounded-2xl p-6">
+              <p className="text-gray-500 text-sm font-semibold mb-4">Mobile Banking Breakdown</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {["bKash", "Nagad", "Rocket", "Upay"].map((p) => (
+                  <div key={p} className="bg-blue-50 rounded-xl p-3 text-center">
+                    <p className="text-gray-500 text-xs">{p}</p>
+                    <p className="font-bold text-blue-700 text-lg">{fmt(mobileBreakdown[p])}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── PERIOD TABS: Daily / Monthly / Yearly ── */}

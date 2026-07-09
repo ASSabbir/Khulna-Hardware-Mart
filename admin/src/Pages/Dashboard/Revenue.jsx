@@ -45,6 +45,8 @@ function BarChart({ monthlyData }) {
 const Revenue = () => {
   const [period, setPeriod] = useState("month");
   const [stats, setStats] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [mobileSummary, setMobileSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +55,8 @@ const Revenue = () => {
       try {
         const res = await axios.get("http://localhost:5000/api/invoices/stats");
         setStats(res.data);
+        setPaymentSummary(res.data.paymentMethodSummary || null);
+        setMobileSummary(res.data.mobileBankingBreakdown || null);
       } catch (err) {
         console.error("Failed to fetch stats:", err);
       } finally {
@@ -265,6 +269,66 @@ const Revenue = () => {
             <p className="text-green-200 text-base mt-1">Based on {monthlyData.length} months </p>
           </div>
         </div>
+
+        {stats?.stats && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-7">
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Sales, Returns & Profit</h2>
+            <p className="text-gray-500 text-base mb-6">Accounts-integrated summary (updates automatically with returns)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: "Total Sales (Gross)", value: stats.stats.grossSales, bg: "bg-blue-50", text: "text-blue-700" },
+                { label: "Total Returns", value: stats.stats.totalReturnsAmount, bg: "bg-red-50", text: "text-red-700" },
+                { label: "Net Sales", value: stats.stats.netSales, bg: "bg-green-50", text: "text-green-700" },
+                { label: "Est. Profit", value: stats.stats.totalProfit, bg: "bg-purple-50", text: "text-purple-700" },
+              ].map(({ label, value, bg, text }) => (
+                <div key={label} className={`${bg} rounded-xl p-4`}>
+                  <p className="text-gray-500 text-sm">{label}</p>
+                  <p className={`text-xl font-bold ${text}`}>{fmt(value)}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 mt-3">
+              * Profit is estimated as Net Sales minus recorded cost of goods sold (FIFO batch cost at time of sale).
+            </p>
+          </div>
+        )}
+
+        {(paymentSummary || mobileSummary) && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-7">
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Payment Method Summary</h2>
+            <p className="text-gray-500 text-base mb-6">Collected amount by payment channel</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              {[
+                { label: "Cash", value: paymentSummary?.cash || 0, bg: "bg-green-50", text: "text-green-700" },
+                { label: "Bank", value: paymentSummary?.bank || 0, bg: "bg-purple-50", text: "text-purple-700" },
+                { label: "Mobile Banking", value: paymentSummary?.mobileBanking || 0, bg: "bg-blue-50", text: "text-blue-700" },
+              ].map(({ label, value, bg, text }) => (
+                <div key={label} className={`${bg} rounded-xl p-4`}>
+                  <p className="text-gray-500 text-sm">{label}</p>
+                  <p className={`text-xl font-bold ${text}`}>{fmt(value)}</p>
+                </div>
+              ))}
+            </div>
+            {mobileSummary && (
+              <>
+                <p className="text-gray-500 text-sm font-semibold mb-3">Mobile Banking Breakdown</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "bKash", value: mobileSummary.bKash || 0 },
+                    { label: "Nagad", value: mobileSummary.Nagad || 0 },
+                    { label: "Rocket", value: mobileSummary.Rocket || 0 },
+                    { label: "Upay", value: mobileSummary.Upay || 0 },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-gray-50 rounded-xl p-3 text-center">
+                      <p className="text-gray-500 text-xs">{label}</p>
+                      <p className="font-bold text-gray-800">{fmt(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <p className="text-center text-gray-400 text-base pb-6">
           Khulna Hardware Mart · Revenue Report · Data from database
