@@ -1,30 +1,17 @@
+// FILE: src/Pages/Products/AllProducts/ProductsShow.jsx (FULL REPLACEMENT)
 import React, { useEffect, useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import {
-  FiPackage,
-  FiAlertTriangle,
-  FiChevronLeft,
-  FiChevronRight,
-  FiChevronsLeft,
-  FiChevronsRight,
-  FiEye,
-  FiSearch,
-  FiLoader,
-  FiX,
-  FiFilter,
+  FiPackage, FiAlertTriangle, FiChevronLeft, FiChevronRight,
+  FiChevronsLeft, FiChevronsRight, FiEye, FiSearch, FiLoader, FiX, FiFilter,
 } from "react-icons/fi";
 
-/* ─── Constants ─────────────────────────────────────────────────── */
 const PAGE_SIZE = 30;
 const DEBOUNCE_MS = 300;
 
-/* ─── Helpers ───────────────────────────────────────────────────── */
 const fmt = (n) =>
-  "৳ " + Number(n || 0).toLocaleString("en-BD", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  "৳ " + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const stockBadge = (qty) => {
   if (!qty || qty === 0) return { label: "Out of Stock", cls: "bg-red-100 text-red-700 border border-red-300" };
@@ -32,7 +19,6 @@ const stockBadge = (qty) => {
   return { label: qty, cls: "bg-green-100 text-green-700 border border-green-300" };
 };
 
-// Debounce utility
 const useDebounce = (value, delay) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -42,10 +28,7 @@ const useDebounce = (value, delay) => {
   return debounced;
 };
 
-/* ══════════════════════════════════════════════════════════════════
-   Component
-══════════════════════════════════════════════════════════════════ */
-const ProductsShow = () => {
+const ProductsShow = ({ filterType = "all" }) => {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
@@ -61,10 +44,9 @@ const ProductsShow = () => {
   const categories = [
     "Hand Tools", "Power Tools", "Fasteners & Hardware", "Pipes & Fittings",
     "Electrical", "Paints & Coatings", "Safety Equipment", "Building Materials",
-    "Adhesives & Sealants", "Measuring & Marking", "Other"
+    "Adhesives & Sealants", "Measuring & Marking", "Furniture", "Stationery", "Other"
   ];
 
-  /* ── Fetch products ─────────────────────────────────────────── */
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -74,6 +56,7 @@ const ProductsShow = () => {
         limit: PAGE_SIZE,
         search: debouncedSearch,
         category: debouncedCategory,
+        type: filterType,
       });
 
       const res = await axios.get(`http://localhost:5000/api/products?${params}`);
@@ -85,17 +68,16 @@ const ProductsShow = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, debouncedCategory]);
+  }, [page, debouncedSearch, debouncedCategory, filterType]);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, debouncedCategory]);
+  }, [debouncedSearch, debouncedCategory, filterType]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  /* ── Page number buttons ─────────────────────────────────────── */
   const pageButtons = () => {
     const btns = [];
     const start = Math.max(1, page - 2);
@@ -105,13 +87,10 @@ const ProductsShow = () => {
   };
 
   const goTo = (n) => setPage(Math.min(Math.max(n, 1), totalPages));
-  
 
-  /* ── Render ─────────────────────────────────────────────────── */
   return (
     <div className="flex flex-col gap-4 font-['Barlow',sans-serif]">
 
-      {/* ── Header row ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-[#F97316] rounded-lg flex items-center justify-center flex-shrink-0">
@@ -128,9 +107,7 @@ const ProductsShow = () => {
         </div>
       </div>
 
-      {/* ── Search & Filters ── */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Search input */}
         <div className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 flex-1 min-w-72 focus-within:border-[#1D4ED8]">
           <FiSearch size={15} className="text-slate-400 flex-shrink-0" />
           <input
@@ -147,7 +124,6 @@ const ProductsShow = () => {
           )}
         </div>
 
-        {/* Category filter */}
         <div className="flex items-center gap-2">
           <FiFilter size={15} className="text-slate-400" />
           <select
@@ -162,7 +138,6 @@ const ProductsShow = () => {
           </select>
         </div>
 
-        {/* Clear filters */}
         {(search || category) && (
           <button
             onClick={() => { setSearch(""); setCategory(""); }}
@@ -173,24 +148,6 @@ const ProductsShow = () => {
         )}
       </div>
 
-      {/* ── Active filters badge ── */}
-      {(search || category) && (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400">Active filters:</span>
-          {search && (
-            <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">
-              Search: "{search}" <FiX size={10} className="cursor-pointer" onClick={() => setSearch("")} />
-            </span>
-          )}
-          {category && (
-            <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200">
-              Category: {category} <FiX size={10} className="cursor-pointer" onClick={() => setCategory("")} />
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* ── States: loading / error ── */}
       {loading && (
         <div className="flex items-center justify-center gap-3 py-20 text-[#1D4ED8]">
           <FiLoader size={22} className="animate-spin" />
@@ -205,15 +162,10 @@ const ProductsShow = () => {
         </div>
       )}
 
-      {/* ── Table ── */}
       {!loading && !error && (
         <div className="bg-white border-2 border-slate-200 rounded-lg overflow-hidden">
-
-          {/* Scrollable wrapper */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] border-collapse text-sm">
-
-              {/* Head */}
+            <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr className="bg-[#1E3A8A] text-white text-xs uppercase tracking-wider">
                   <th className="px-4 py-3 text-left font-semibold w-10">#</th>
@@ -221,20 +173,12 @@ const ProductsShow = () => {
                   <th className="px-4 py-3 text-left font-semibold">Category</th>
                   <th className="px-4 py-3 text-left font-semibold">Brand</th>
                   <th className="px-4 py-3 text-right font-semibold">Buying Price</th>
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Holcell
-                    <span className="ml-1 text-[#FACC15] font-bold">(+3%)</span>
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Retail
-                    <span className="ml-1 text-[#FACC15] font-bold">(+5%)</span>
-                  </th>
+                  <th className="px-4 py-3 text-right font-semibold">Retail<span className="ml-1 text-[#FACC15] font-bold">(+5%)</span></th>
                   <th className="px-4 py-3 text-center font-semibold">Stock</th>
+                  <th className="px-4 py-3 text-center font-semibold">Unit</th>
                   <th className="px-4 py-3 text-center font-semibold">Action</th>
                 </tr>
               </thead>
-
-              {/* Body */}
               <tbody>
                 {products.length === 0 ? (
                   <tr>
@@ -244,52 +188,42 @@ const ProductsShow = () => {
                   </tr>
                 ) : (
                   products.map((product, idx) => {
-                    const holcell = product.holcellPrice || (product.buyingPrice * 1.03);
                     const retail = product.retailPrice || (product.buyingPrice * 1.05);
                     const stock = stockBadge(product.stock);
                     const rowNum = (page - 1) * PAGE_SIZE + idx + 1;
                     const isEven = idx % 2 === 1;
 
                     return (
-                      <tr
-                        key={product._id}
-                        className={`border-b border-slate-100 transition-colors duration-100 hover:bg-blue-50 ${isEven ? "bg-slate-50" : "bg-white"}`}
-                      >
+                      <tr key={product._id} className={`border-b border-slate-100 transition-colors duration-100 hover:bg-blue-50 ${isEven ? "bg-slate-50" : "bg-white"}`}>
                         <td className="px-4 py-3 text-slate-400 font-medium text-xs">{rowNum}</td>
-                        <td className="px-4 py-3 font-semibold text-[#1E293B]">{product.name}</td>
-                        <td className="px-4 py-3">
-                          {product.category && (
-                            <span className="inline-block bg-purple-50 text-purple-700 text-xs font-semibold px-2 py-0.5 rounded border border-purple-200">
-                              {product.category}
-                            </span>
+                        <td className="px-4 py-3 font-semibold text-[#1E293B]">
+                          {product.name}
+                          {product.isCustom && (
+                            <span className="ml-2 inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200">CUSTOM</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-block bg-[#EFF6FF] text-[#1D4ED8] text-xs font-semibold px-2 py-0.5 rounded border border-[#BFDBFE]">
-                            {product.brand || "—"}
-                          </span>
+                          {product.category && (
+                            <span className="inline-block bg-purple-50 text-purple-700 text-xs font-semibold px-2 py-0.5 rounded border border-purple-200">{product.category}</span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-slate-700 tabular-nums">
-                          {fmt(product.buyingPrice)}
+                        <td className="px-4 py-3">
+                          <span className="inline-block bg-[#EFF6FF] text-[#1D4ED8] text-xs font-semibold px-2 py-0.5 rounded border border-[#BFDBFE]">{product.brand || "—"}</span>
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-[#1D4ED8] tabular-nums">
-                          {fmt(holcell)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-[#F97316] tabular-nums">
-                          {fmt(retail)}
-                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700 tabular-nums">{fmt(product.buyingPrice)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[#F97316] tabular-nums">{fmt(retail)}</td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${stock.cls}`}>
-                            {stock.label}
-                          </span>
+                          <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${stock.cls}`}>{stock.label}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center text-xs font-semibold text-slate-600">
+                          {product.unitValue ? `${product.unitValue} ${product.unit}` : (product.unit || "pcs")}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <NavLink
                             to={`/products/${product._id}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-[#1E3A8A] text-[#1E3A8A] text-xs font-semibold bg-white hover:bg-[#1E3A8A] hover:text-white transition-colors duration-150"
                           >
-                            <FiEye size={13} />
-                            Detail
+                            <FiEye size={13} /> Detail
                           </NavLink>
                         </td>
                       </tr>
@@ -300,69 +234,28 @@ const ProductsShow = () => {
             </table>
           </div>
 
-          {/* ── Pagination bar ── */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-t-2 border-slate-100 bg-white">
-
               <span className="text-xs text-slate-500 font-medium">
-                Showing{" "}
-                <span className="font-bold text-[#1E3A8A]">
-                  {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalProducts)}
-                </span>{" "}
-                of{" "}
-                <span className="font-bold text-[#1E3A8A]">{totalProducts.toLocaleString()}</span>{" "}
-                products · Page {page} of {totalPages}
+                Showing <span className="font-bold text-[#1E3A8A]">{((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, totalProducts)}</span> of{" "}
+                <span className="font-bold text-[#1E3A8A]">{totalProducts.toLocaleString()}</span> products · Page {page} of {totalPages}
               </span>
-
               <div className="flex items-center gap-1">
-                {/* First */}
-                <button
-                  onClick={() => goTo(1)}
-                  disabled={page === 1}
-                  className="p-2 rounded-md border-2 border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => goTo(1)} disabled={page === 1} className="p-2 rounded-md border-2 border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <FiChevronsLeft size={14} />
                 </button>
-
-                {/* Prev */}
-                <button
-                  onClick={() => goTo(page - 1)}
-                  disabled={page === 1}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-md border-2 text-xs font-semibold border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => goTo(page - 1)} disabled={page === 1} className="flex items-center gap-1 px-3 py-1.5 rounded-md border-2 text-xs font-semibold border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <FiChevronLeft size={14} /> Prev
                 </button>
-
-                {/* Page numbers */}
                 {pageButtons().map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => goTo(n)}
-                    className={`w-8 h-8 rounded-md border-2 text-xs font-bold transition-colors ${
-                      n === page
-                        ? "bg-[#F97316] border-[#F97316] text-white"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-[#F97316] hover:text-[#F97316]"
-                    }`}
-                  >
+                  <button key={n} onClick={() => goTo(n)} className={`w-8 h-8 rounded-md border-2 text-xs font-bold transition-colors ${n === page ? "bg-[#F97316] border-[#F97316] text-white" : "bg-white border-slate-200 text-slate-600 hover:border-[#F97316] hover:text-[#F97316]"}`}>
                     {n}
                   </button>
                 ))}
-
-                {/* Next */}
-                <button
-                  onClick={() => goTo(page + 1)}
-                  disabled={page === totalPages}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-md border-2 text-xs font-semibold border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => goTo(page + 1)} disabled={page === totalPages} className="flex items-center gap-1 px-3 py-1.5 rounded-md border-2 text-xs font-semibold border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   Next <FiChevronRight size={14} />
                 </button>
-
-                {/* Last */}
-                <button
-                  onClick={() => goTo(totalPages)}
-                  disabled={page === totalPages}
-                  className="p-2 rounded-md border-2 border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => goTo(totalPages)} disabled={page === totalPages} className="p-2 rounded-md border-2 border-slate-200 text-slate-600 bg-white hover:border-[#1D4ED8] hover:text-[#1D4ED8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <FiChevronsRight size={14} />
                 </button>
               </div>

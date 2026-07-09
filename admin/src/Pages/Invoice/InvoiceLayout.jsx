@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FiFileText, FiClock, FiAlertCircle, FiCheckCircle, FiMenu, FiX, FiTool } from "react-icons/fi";
+import { FiFileText, FiClock, FiAlertCircle, FiCheckCircle, FiMenu, FiX, FiTool, FiRotateCcw } from "react-icons/fi";
 import { useState } from "react";
 
 const NAV_ITEMS = [
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "draft", label: "Draft Invoice", icon: <FiClock size={16} /> },
   { to: "due", label: "Due All Invoice", icon: <FiAlertCircle size={16} /> },
   { to: "paid", label: "Paid All Invoice", icon: <FiCheckCircle size={16} /> },
+  { to: "return", label: "Product Return", icon: <FiRotateCcw size={16} /> },
 ];
 
 const InvoiceLayout = () => {

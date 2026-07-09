@@ -7,14 +7,15 @@ import {
 } from "react-icons/fi";
 
 // 👉 swap to real API when backend ready
-const API_URL = "/accounts.json";
+const API_URL = "http://localhost:5000/api/ledger";
 
 const fmt     = (n) => "৳" + Number(n).toLocaleString();
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-const EXPENSE_CATEGORIES = ["Purchase", "Salary", "Rent", "Utilities", "Transport", "Marketing", "Maintenance", "Tax", "Loan Repayment", "Other"];
+const EXPENSE_CATEGORIES = ["Withdraw", "Purchase", "Salary", "Rent", "Utilities", "Transport", "Marketing", "Maintenance", "Tax", "Loan Repayment", "Other"];
+const MOBILE_BANKING_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
 
-const INITIAL_FORM = { amount: "", category: "", description: "", date: new Date().toISOString().split("T")[0], addedBy: "" };
+const INITIAL_FORM = { amount: "", category: "", description: "", date: new Date().toISOString().split("T")[0], addedBy: "", method: "cash", provider: "bKash" };
 
 export default function AddExpense() {
   const [accounts, setAccounts] = useState(null);
@@ -26,11 +27,7 @@ export default function AddExpense() {
 
   useEffect(() => {
     axios.get(API_URL)
-      .then((res) => {
-        let d = res.data;
-        if (Array.isArray(d)) d = { balance: 0, totalIncome: 0, totalExpense: 0, transactions: d };
-        setAccounts(d);
-      })
+      .then((res) => setAccounts(res.data))
       .catch(() => setAccounts({ balance: 0, totalIncome: 0, totalExpense: 0, transactions: [] }))
       .finally(() => setLoading(false));
   }, []);
@@ -46,6 +43,10 @@ export default function AddExpense() {
     if (!form.category)           e.category    = "Select a category";
     if (!form.description.trim()) e.description = "Description is required";
     if (!form.date)               e.date        = "Select a date";
+   if (form.category === "Withdraw" && !form.method) e.method = "Select a withdraw method";
+    if (form.category === "Withdraw" && form.method && Number(form.amount) > getAvailableBalance(form.method, form.provider)) {
+      e.amount = `Insufficient balance — only ৳${getAvailableBalance(form.method, form.provider).toLocaleString()} available`;
+    }
     return e;
   };
 
@@ -53,28 +54,31 @@ export default function AddExpense() {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
-
-    // 👉 real API: await axios.post("http://localhost:5000/api/accounts/expense", { ...form, type: "expense" });
-
-    await new Promise((r) => setTimeout(r, 600));
-    const newTx = {
-      id: Date.now(),
-      type: "expense",
-      category: form.category,
-      amount: Number(form.amount),
-      description: form.description,
-      date: form.date,
-      addedBy: form.addedBy || "Admin",
-    };
-    setAccounts((prev) => ({
-      ...prev,
-      balance: prev.balance - Number(form.amount),
-      totalExpense: prev.totalExpense + Number(form.amount),
-      transactions: [newTx, ...prev.transactions],
-    }));
-    setForm(INITIAL_FORM);
-    setSaving(false);
-    showToast("Expense recorded successfully.");
+    try {
+      const res = await axios.post(API_URL, {
+        type: "expense",
+        category: form.category,
+        amount: Number(form.amount),
+        description: form.description,
+        date: form.date,
+        addedBy: form.addedBy || "Admin",
+        method: form.category === "Withdraw" ? form.method : "cash",
+        provider: form.category === "Withdraw" && form.method === "mobile" ? form.provider : null,
+      });
+      const newTx = res.data;
+      setAccounts((prev) => ({
+        ...prev,
+        balance: prev.balance - Number(form.amount),
+        totalExpense: prev.totalExpense + Number(form.amount),
+        transactions: [newTx, ...prev.transactions],
+      }));
+      setForm(INITIAL_FORM);
+      showToast("Expense recorded successfully.");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to record expense.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const showToast = (msg) => {
@@ -82,7 +86,21 @@ export default function AddExpense() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const recentExpenses = (accounts?.transactions || []).filter((t) => t.type === "expense").slice(0, 6);
+ const recentExpenses = (accounts?.transactions || []).filter((t) => t.type === "expense").slice(0, 6);
+
+  // Available balance per withdraw source, derived from all transactions
+  const getAvailableBalance = (method, provider) => {
+    const txns = accounts?.transactions || [];
+    return txns.reduce((sum, t) => {
+      const sameMethod = t.method === method && (method !== "mobile" || t.provider === provider);
+      if (!sameMethod) return sum;
+      return sum + (t.type === "income" ? t.amount : -t.amount);
+    }, 0);
+  };
+
+  const withdrawAvailable = form.category === "Withdraw"
+    ? getAvailableBalance(form.method, form.provider)
+    : null;
 
   // category breakdown for this month
   const thisMonth = new Date().toISOString().slice(0, 7);
@@ -153,7 +171,23 @@ export default function AddExpense() {
                   <label className="block text-base font-semibold text-gray-700 mb-2">Amount <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-base font-semibold">৳</span>
-                    <input type="number" value={form.amount} onChange={set("amount")} placeholder="0.00"
+                    <input
+                      type="number"
+                      value={form.amount}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (form.category === "Withdraw" && form.method) {
+                          const cap = getAvailableBalance(form.method, form.provider);
+                          if (raw !== "" && Number(raw) > cap) {
+                            setForm((p) => ({ ...p, amount: String(cap) }));
+                            setErrors((p) => ({ ...p, amount: "" }));
+                            return;
+                          }
+                        }
+                        set("amount")(e);
+                      }}
+                      max={form.category === "Withdraw" && form.method ? getAvailableBalance(form.method, form.provider) : undefined}
+                      placeholder="0.00"
                       className={`w-full bg-gray-50 border ${errors.amount ? "border-red-400" : "border-gray-200"} rounded-xl pl-9 pr-4 py-3.5 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition`}/>
                   </div>
                   {errors.amount && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.amount}</p>}
@@ -172,6 +206,32 @@ export default function AddExpense() {
                   </div>
                   {errors.category && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.category}</p>}
                 </div>
+
+                {/* Withdraw method — deducts from Accounts balance only, never touches sales totals */}
+                {form.category === "Withdraw" && (
+                  <div className="sm:col-span-2 bg-red-50 border border-red-200 rounded-xl p-4">
+                    <label className="block text-base font-semibold text-gray-700 mb-2">Withdraw From <span className="text-red-500">*</span></label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {[["cash", "Cash"], ["bank", "Bank"], ["mobile", "Mobile Banking"]].map(([v, l]) => (
+                        <button key={v} type="button" onClick={() => setForm((p) => ({ ...p, method: v }))}
+                          className={`px-4 py-2 rounded-lg border-2 text-sm font-bold transition ${form.method === v ? "border-red-500 bg-red-500 text-white" : "border-gray-200 text-gray-600 bg-white"}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                    {form.method === "mobile" && (
+                      <select value={form.provider} onChange={set("provider")}
+                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
+                        {MOBILE_BANKING_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    )}
+                    {errors.method && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.method}</p>}
+                    {form.method && (
+                      <p className="text-sm font-semibold text-gray-700 mt-2">Available: ৳{withdrawAvailable.toLocaleString()}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">This amount only reduces your Accounts balance — total sales figures stay unchanged.</p>
+                  </div>
+                )}
 
                 {/* Date */}
                 <div>

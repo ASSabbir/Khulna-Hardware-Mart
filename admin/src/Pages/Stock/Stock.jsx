@@ -14,125 +14,122 @@ import {
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD");
 
-// Restock Modal
-function RestockModal({ product, onClose, onConfirm }) {
-  const [quantity, setQuantity] = useState(50);
-  const [loading, setLoading] = useState(false);
+// Restock Modal — same supplier-based flow as ProductDetails.jsx (records a
+// real purchase batch: supplier + buying price + quantity + date), instead of
+// a bare stock-number bump.
+function RestockModal({ product, onClose, onDone }) {
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierId, setSupplierId] = useState("");
+  const [isOther, setIsOther] = useState(false);
+  const [otherName, setOtherName] = useState("");
+  const [buyingPrice, setBuyingPrice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/suppliers?limit=200")
+      .then((res) => setSuppliers(res.data.suppliers || []))
+      .catch(() => setSuppliers([]));
+  }, []);
 
   if (!product) return null;
 
-  const currentStock = product.stock || 0;
-  const newStock = currentStock + parseInt(quantity || 0);
+  const handleSelect = (val) => {
+    if (val === "__other__") { setIsOther(true); setSupplierId(""); }
+    else { setIsOther(false); setSupplierId(val); }
+  };
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    await onConfirm(product._id, parseInt(quantity));
-    setLoading(false);
+  const handleSubmit = async () => {
+    setError("");
+    const qty = Number(quantity);
+    const price = Number(buyingPrice);
+    if (!Number.isFinite(qty) || qty <= 0) { setError("Enter a valid quantity."); return; }
+    if (!Number.isFinite(price) || price < 0) { setError("Enter a valid buying price."); return; }
+    if (!supplierId && !otherName.trim()) { setError("Select a supplier or enter a new supplier name."); return; }
+
+    setSaving(true);
+    try {
+      const res = await axios.post(`http://localhost:5000/api/products/${product._id}/restock`, {
+        supplierId: isOther ? undefined : supplierId,
+        supplierName: isOther ? otherName.trim() : undefined,
+        buyingPrice: price,
+        quantity: qty,
+        purchaseDate,
+      });
+      onDone(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to restock product.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900">Restock Product</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition">
-            <FiX size={20} className="text-gray-500" />
-          </button>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-[#1E3A8A]">Restock Product</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg"><FiX size={18} /></button>
         </div>
-
-        <div className="px-7 py-6 space-y-5">
-          {/* Product Info */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white ${
-                currentStock === 0 ? "bg-red-500" : currentStock < 10 ? "bg-orange-500" : "bg-yellow-500"
-              }`}>
-                <FiPackage size={20} />
-              </div>
-              <div>
-                <div className="text-base font-bold text-gray-900">{product.name}</div>
-                <div className="text-sm text-gray-500">{product.brand || product.company || "—"}</div>
-              </div>
-            </div>
+        <div className="p-6 space-y-4">
+          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded-lg">{error}</div>}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm">
+            <p className="font-semibold text-[#1E293B]">{product.name}</p>
+            <p className="text-slate-400 text-xs">Current stock: {product.stock || 0} {product.unit || "pcs"}</p>
           </div>
-
-          {/* Current Stock */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">{currentStock}</div>
-              <div className="text-sm text-red-500">Current Stock</div>
-            </div>
-            <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{newStock}</div>
-              <div className="text-sm text-green-500">After Restock</div>
-            </div>
-          </div>
-
-          {/* Quantity Input */}
           <div>
-            <label className="block text-base font-semibold text-gray-700 mb-2">
-              Quantity to Add
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 10))}
-                className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition"
-              >
-                <FiX size={16} />
-              </button>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <button
-                onClick={() => setQuantity(quantity + 10)}
-                className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition"
-              >
-                <FiPlus size={16} />
-              </button>
-            </div>
-            {/* Quick buttons */}
-            <div className="flex gap-2 mt-3">
-              {[10, 25, 50, 100].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => setQuantity(q)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
-                    quantity === q
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  +{q}
-                </button>
+            <label className="block text-xs font-bold text-[#1E3A8A] uppercase tracking-wider mb-1.5">Supplier</label>
+            <select
+              value={isOther ? "__other__" : supplierId}
+              onChange={(e) => handleSelect(e.target.value)}
+              className="w-full text-sm font-semibold border-2 border-slate-200 rounded-lg px-3 py-2.5 outline-none bg-white"
+            >
+              <option value="">— Select Supplier —</option>
+              {suppliers.map((s) => (
+                <option key={s._id} value={s._id}>{s.companyName}</option>
               ))}
+              <option value="__other__">Others (add new)</option>
+            </select>
+          </div>
+          {isOther && (
+            <input
+              value={otherName}
+              onChange={(e) => setOtherName(e.target.value)}
+              placeholder="New supplier name"
+              className="w-full text-sm font-semibold border-2 border-slate-200 rounded-lg px-3 py-2.5 outline-none"
+            />
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-[#1E3A8A] uppercase tracking-wider mb-1.5">Buying Price</label>
+              <input type="number" min="0" step="0.01" value={buyingPrice} onChange={(e) => setBuyingPrice(e.target.value)}
+                placeholder="0.00" className="w-full text-sm font-semibold border-2 border-slate-200 rounded-lg px-3 py-2.5 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1E3A8A] uppercase tracking-wider mb-1.5">Quantity</label>
+              <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+                placeholder="0" className="w-full text-sm font-semibold border-2 border-slate-200 rounded-lg px-3 py-2.5 outline-none" />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-[#1E3A8A] uppercase tracking-wider mb-1.5">Purchase Date</label>
+            <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)}
+              className="w-full text-sm font-semibold border-2 border-slate-200 rounded-lg px-3 py-2.5 outline-none" />
+          </div>
         </div>
-
-        <div className="px-7 pb-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3.5 rounded-xl text-base hover:bg-gray-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={loading || quantity < 1}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl text-base transition disabled:opacity-50"
-          >
-            {loading ? "Updating..." : "Confirm Restock"}
+        <div className="px-6 pb-6 flex gap-3">
+          <button onClick={onClose} className="flex-1 border-2 border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl hover:bg-slate-50">Cancel</button>
+          <button onClick={handleSubmit} disabled={saving}
+            className="flex-1 bg-[#F97316] hover:bg-[#EA6C0A] text-white font-bold py-2.5 rounded-xl disabled:opacity-50">
+            {saving ? "Saving..." : "Confirm Restock"}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 const Stock = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,25 +158,10 @@ const Stock = () => {
     setTimeout(() => setToast({ msg: "", type: "" }), 2800);
   };
 
-  const handleRestock = async (productId, quantity) => {
-    try {
-      // Find the product to get current stock
-      const product = products.find(p => p._id === productId);
-      if (!product) return;
-
-      // Update stock in database
-      const newStock = (product.stock || 0) + quantity;
-      await axios.put(`http://localhost:5000/api/products/${productId}`, {
-        stock: newStock,
-      });
-
-      showToast(`Stock updated! Added ${quantity} units.`, "success");
-      setRestockModal(null);
-      // Refresh the list
-      fetchLowStockProducts();
-    } catch (err) {
-      showToast("Failed to update stock", "error");
-    }
+  const handleRestockDone = (updatedProduct) => {
+    showToast(`Restock recorded for ${updatedProduct.name}.`, "success");
+    setRestockModal(null);
+    fetchLowStockProducts();
   };
 
   // Stats
@@ -212,7 +194,7 @@ const Stock = () => {
         <RestockModal
           product={restockModal}
           onClose={() => setRestockModal(null)}
-          onConfirm={handleRestock}
+          onDone={handleRestockDone}
         />
       )}
 
