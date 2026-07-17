@@ -10,6 +10,7 @@ import ProductLayout from "./Pages/Products/ProductLayout";
 import AllProducts from "./Pages/Products/AllProducts/AllProducts";
 import AddProduct from "./Pages/Products/AddProduct";
 import ProductDetails from "./Pages/Products/AllProducts/ProductDetails";
+import EditProduct from "./Pages/Products/EditProduct";
 import CustomerLayout from "./Pages/Customer/CustomerLayout";
 import AccountLayout from "./Pages/Accounts/AccountLayout";
 import InvoiceLayout from "./Pages/Invoice/InvoiceLayout";
@@ -32,6 +33,8 @@ import DeshboardOverview from "./Pages/Dashboard/DeshboardOverview";
 import Login from "./Pages/Login/Login";
 import Settings from "./Pages/Settings/Settings";
 import PublicProducts from "./Pages/PublicProducts/PublicProducts";
+import PurchaseHistory from "./Pages/Products/PurchaseHistory";
+import InvoiceReturn from "./Pages/Invoice/InvoiceReturn";
 
 const Route = createBrowserRouter([
   {
@@ -87,6 +90,7 @@ const Route = createBrowserRouter([
           { path: "due", element: <DueCustomers /> },
           { path: "partners", element: <Partners /> },
           { path: "suppliers", element: <Suppliers /> },
+          { path: "suppliers", element: <Suppliers /> },
         ],
       },
       {
@@ -118,6 +122,7 @@ const Route = createBrowserRouter([
           { path: "draft", element: <DraftInvoice /> },
           { path: "due", element: <DueInvoice /> },
           { path: "paid", element: <PaidInvoice /> },
+          { path: "return", element: <InvoiceReturn /> },
         ],
       },
 
@@ -133,7 +138,16 @@ const Route = createBrowserRouter([
 
           { path: "all", element: <AllProducts /> },
           { path: "add", element: <AddProduct /> },
+          { path: "purchase-history", element: <PurchaseHistory /> },
         ],
+      },
+      {
+        path: "products/edit/:id",
+        element: (
+          <ProtectedRoute>
+            <EditProduct />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "products/:id",

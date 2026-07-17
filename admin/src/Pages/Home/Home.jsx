@@ -8,6 +8,8 @@ import {
 import Marketing from './Marketing';
 import Marque from './Marque';
 import Slider from './Slider';
+import Reviews from './Reviews';
+import OwnerInfo from './OwnerInfo';
 
 const Home = () => {
   const features = [
@@ -76,11 +78,11 @@ const Home = () => {
                 Since 1990 · Centenary Established
               </div>
               <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-6">
-                Khulna Hardware 
+                Khulna Hardware
                 <span className="block text-orange-400">Mart</span>
               </h1>
               <p className="text-lg text-blue-100 mb-8 max-w-xl">
-               Quality products. Fair prices. Honest advice — for 35 years.
+                Quality products. Fair prices. Honest advice — for 35 years.
               </p>
               <div className="flex flex-wrap gap-4">
                 <NavLink to="/dashboard" className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl transition-all transform hover:scale-105">
@@ -113,14 +115,15 @@ const Home = () => {
         </div>
 
         {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
+        <div className="absolute -bottom-[1px] left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="red" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white" />
           </svg>
         </div>
       </section>
       <Marketing></Marketing>
       <Marque></Marque>
+      <OwnerInfo></OwnerInfo>
 
       {/* Features Section */}
       <section className="py-20 px-6">
@@ -146,10 +149,11 @@ const Home = () => {
             ))}
           </div>
         </div>
-      </section>
-      
 
-      
+      </section>
+
+
+
 
       {/* Why Choose Us */}
       <section className="py-20 px-6 bg-gray-50">
@@ -179,26 +183,16 @@ const Home = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4">
-              {testimonials.map((t, i) => (
-                <div key={i} className="bg-white rounded-2xl p-6 shadow-md">
-                  <div className="flex gap-1 mb-3">
-                    {[...Array(t.rating)].map((_, r) => (
-                      <FiStar key={r} className="text-amber-400 fill-amber-400" size={16} />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 mb-4">"{t.text}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {t.name.charAt(0)}
-                    </div>
-                    <span className="font-semibold text-gray-900">{t.name}</span>
-                  </div>
-                </div>
-              ))}
+              <img className='rounded-2xl' src="https://s3-media0.fl.yelpcdn.com/bphoto/22DMAka_t5kjGL_gYAv3Sw/1000s.jpg" alt="" />
             </div>
           </div>
         </div>
       </section>
+      <div className='bg-gray-200 py-[4vw]'>
+        <div className='py-20  px-6 max-w-7xl mx-auto'>
+          <Reviews></Reviews>
+        </div>
+      </div>
 
       {/* CTA Section */}
       <section className="py-20 px-6">
@@ -237,7 +231,7 @@ const Home = () => {
           </p>
         </div>
       </section>
-      
+
     </div>
   );
 };

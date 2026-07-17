@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(Remove-Item \"e:\\\\Projects\\\\KHM\\\\server\\\\routes\\\\productRoutes.js\", \"e:\\\\Projects\\\\KHM\\\\server\\\\routes\\\\supplierRoutes.js\", \"e:\\\\Projects\\\\KHM\\\\server\\\\controllers\\\\productController.js\", \"e:\\\\Projects\\\\KHM\\\\server\\\\controllers\\\\supplierController.js\" -Force)",
-      "Bash(npm install *)"
-    ]
-  }
-}

@@ -5,6 +5,7 @@ import {
   FiPackage, FiUser, FiPhone, FiHash, FiAlertTriangle,
   FiCheckCircle, FiX, FiEdit2, FiShoppingCart, FiLoader,
   FiSave, FiChevronRight, FiChevronsLeft, FiChevronsRight,
+  FiDollarSign, FiSmartphone, FiCreditCard, FiPlusCircle,
 } from "react-icons/fi";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
@@ -25,10 +26,53 @@ const useDebounce = (value, delay) => {
   return debounced;
 };
 
+// 👉 New: mobile banking providers + banks for the payment method section
+const MOBILE_BANKING_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
+const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
+
+// 👉 localStorage persistence key + helpers
+const DRAFT_KEY = "khm_invoice_draft_v1";
+
+const loadDraft = () => {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveDraft = (data) => {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  } catch {
+    // ignore quota/serialization errors
+  }
+};
+
+const clearDraft = () => {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+};
+
+// 👉 New: partner logos printed at the bottom of the invoice.
+// Replace `src` with your real partner logo file paths/URLs when ready.
+const PARTNER_LOGOS = [
+  { name: "Partner 1", src: "" },
+  { name: "Partner 2", src: "" },
+  { name: "Partner 3", src: "" },
+];
+
 /* ══════════════════════════════════════════════════════════════
    Invoice Component
 ══════════════════════════════════════════════════════════════════ */
 const Invoice = () => {
+  /* ── Load persisted draft once (runs before first render of dependent state) ── */
+  const draft = loadDraft() || {};
+
   /* ── State ──────────────────────────────────────────────── */
   const [products, setProducts] = useState([]);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -40,16 +84,104 @@ const Invoice = () => {
 
   const debouncedSearch = useDebounce(search, 300);
 
-  // Memo (right side)
-  const [memoItems, setMemoItems] = useState([]);
-  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
-  const [invoiceNum, setInvoiceNum] = useState(invoiceNo());
-  const [invoiceDate, setInvoiceDate] = useState(today());
-  const [discount, setDiscount] = useState("");
-  const [priceType, setPriceType] = useState("retail");
+  // Memo (right side) — restored from localStorage if present
+  const [memoItems, setMemoItems] = useState(draft.memoItems || []);
+  const [customer, setCustomer] = useState(draft.customer || { name: "", phone: "", address: "" });
+  const [invoiceNum, setInvoiceNum] = useState(draft.invoiceNum || invoiceNo());
+  const [invoiceDate, setInvoiceDate] = useState(draft.invoiceDate || today());
+  const [discount, setDiscount] = useState(draft.discount || "");
+  const [priceType, setPriceType] = useState(draft.priceType || "retail");
   const [toast, setToast] = useState(null);
 
+  // VAT toggle
+  const [vatEnabled, setVatEnabled] = useState(draft.vatEnabled || false);
+
+  // Payment method (single / non-split flow) — card removed, bank uses dropdown
+  const [paymentMethod, setPaymentMethod] = useState(draft.paymentMethod || "cash"); // cash | mobile | bank
+  const [mobileProvider, setMobileProvider] = useState(draft.mobileProvider || MOBILE_BANKING_PROVIDERS[0]);
+  const [mobileNumber, setMobileNumber] = useState(draft.mobileNumber || "");
+  const [bankName, setBankName] = useState(draft.bankName || BANK_OPTIONS[0]);
+  const [bankAccountNumber, setBankAccountNumber] = useState(draft.bankAccountNumber || "");
+
+  // Payment status: paid (default) or due
+  const [paymentStatus, setPaymentStatus] = useState(draft.paymentStatus || "paid"); // paid | due
+  const [paidNowAmount, setPaidNowAmount] = useState(draft.paidNowAmount || "");
+
+  // Split payment toggle
+  const [splitPayment, setSplitPayment] = useState(draft.splitPayment || false);
+  const emptySplitRow = () => ({
+    id: Date.now() + Math.random(),
+    method: "cash",
+    amount: "",
+    provider: MOBILE_BANKING_PROVIDERS[0],
+    bankName: BANK_OPTIONS[0],
+    accountNumber: "",
+    mobileNumber: "",
+  });
+  const [splitRows, setSplitRows] = useState(
+    Array.isArray(draft.splitRows) && draft.splitRows.length > 0 ? draft.splitRows : [emptySplitRow()]
+  );
+
+  // Custom product form (left panel, below the product list) — not persisted (transient input)
+  const [customProduct, setCustomProduct] = useState({ name: "", qty: 1, unitPrice: "" });
+
+  // Auto-fill customer name/address when a matching phone number is found
+  const [customerLookupStatus, setCustomerLookupStatus] = useState(""); // "" | "found" | "notfound"
+  const debouncedPhone = useDebounce(customer.phone, 500);
+
   const printRef = useRef(null);
+
+  /* ── Persist draft to localStorage whenever relevant state changes ── */
+  useEffect(() => {
+    saveDraft({
+      memoItems,
+      customer,
+      invoiceNum,
+      invoiceDate,
+      discount,
+      priceType,
+      vatEnabled,
+      paymentMethod,
+      mobileProvider,
+      mobileNumber,
+      bankName,
+      bankAccountNumber,
+      paymentStatus,
+      paidNowAmount,
+      splitPayment,
+      splitRows,
+    });
+  }, [
+    memoItems, customer, invoiceNum, invoiceDate, discount, priceType, vatEnabled,
+    paymentMethod, mobileProvider, mobileNumber, bankName, bankAccountNumber,
+    paymentStatus, paidNowAmount, splitPayment, splitRows,
+  ]);
+
+  /* ── Auto-fill customer by phone number ─────────────────── */
+  useEffect(() => {
+    const phone = (debouncedPhone || "").trim();
+    if (phone.length < 6) { setCustomerLookupStatus(""); return; }
+
+    let cancelled = false;
+    axios.get(`http://localhost:5000/api/customers?search=${encodeURIComponent(phone)}`)
+      .then((res) => {
+        if (cancelled) return;
+        const match = (res.data.customers || []).find((c) => c.phone === phone);
+        if (match) {
+          setCustomer((c) => ({
+            ...c,
+            name: c.name?.trim() ? c.name : (match.name || ""),
+            address: c.address?.trim() ? c.address : (match.address || ""),
+          }));
+          setCustomerLookupStatus("found");
+        } else {
+          setCustomerLookupStatus("notfound");
+        }
+      })
+      .catch(() => { if (!cancelled) setCustomerLookupStatus(""); });
+
+    return () => { cancelled = true; };
+  }, [debouncedPhone]);
 
   /* ── Fetch products ─────────────────────────────────────── */
   const fetchProducts = useCallback(async () => {
@@ -100,42 +232,129 @@ const Invoice = () => {
         showToast("info", `${p.name} already in memo — adjust qty below.`);
         return prev;
       }
-      return [...prev, {
+     return [...prev, {
         productId: p._id,
         id: p._id,
         name: p.name,
         company: p.brand || p.company || "—",
+        unit: p.unit || "pcs",
         price: getPrice(p),
         qty: 1,
         stock: p.stock,
+        suppliers: p.suppliers || [],
+        preferredSupplierId: "",
         custom: false,
       }];
     });
     showToast("success", `${p.name} added to memo.`);
   };
 
+  /* ── New: Add a custom (off-catalog) product from the form below the product list ── */
+  const addCustomProductToMemo = () => {
+    const name = customProduct.name.trim();
+    const qty = parseInt(customProduct.qty) || 1;
+    const unitPrice = parseFloat(customProduct.unitPrice) || 0;
+
+    if (!name) { showToast("error", "Enter a product name first."); return; }
+    if (unitPrice <= 0) { showToast("error", "Enter a valid unit price."); return; }
+
+    setMemoItems(prev => [...prev, {
+      productId: null,
+      id: "custom-" + Date.now(),
+      name,
+      company: "Custom",
+      unit: "pcs",
+      price: unitPrice,
+      qty,
+      stock: null,
+      custom: true,
+    }]);
+    showToast("success", `${name} added to memo.`);
+    setCustomProduct({ name: "", qty: 1, unitPrice: "" });
+  };
+
   /* ── Update memo item ───────────────────────────────────── */
-  const updateItem = (id, field, value) => {
+ const updateItem = (id, field, value) => {
     setMemoItems(prev => prev.map(i => {
-      if (i.id === id) {
-        // Check stock limit
-        if (field === "qty" && !i.custom) {
-          const maxQty = i.stock || 999;
-          const newQty = Math.min(parseInt(value) || 1, maxQty);
-          return { ...i, [field]: newQty };
-        }
-        return { ...i, [field]: value };
+      if (i.id !== id) return i;
+      if (field === "preferredSupplierId") {
+        const updated = { ...i, preferredSupplierId: value };
+        const max = getMaxQtyForItem(updated, prev);
+        return { ...updated, qty: max > 0 ? Math.min(i.qty, max) : 0 };
       }
-      return i;
+      if (field === "qty" && !i.custom) {
+        const max = getMaxQtyForItem(i, prev);
+        const parsed = parseInt(value) || 0;
+        const newQty = max > 0 ? Math.max(1, Math.min(parsed, max)) : 0;
+        return { ...i, qty: newQty };
+      }
+      return { ...i, [field]: value };
     }));
   };
 
-  const removeItem = (id) => setMemoItems(prev => prev.filter(i => i.id !== id));
+   const removeItem = (id) => setMemoItems(prev => prev.filter(i => i.id !== id));
+
+  const getMaxQtyForItem = (item, itemsList) => {
+    if (item.custom) return 9999;
+    const others = itemsList.filter(i => i.id !== item.id && i.productId === item.productId);
+    if (item.preferredSupplierId) {
+      const sup = (item.suppliers || []).find(s => s.supplierId === item.preferredSupplierId);
+      const supStock = sup ? sup.availableQuantity : 0;
+      const usedBySameSupplier = others
+        .filter(i => (i.preferredSupplierId || "") === item.preferredSupplierId)
+        .reduce((s, i) => s + i.qty, 0);
+      return Math.max(0, supStock - usedBySameSupplier);
+    }
+    const usedTotal = others.reduce((s, i) => s + i.qty, 0);
+    return Math.max(0, (item.stock || 0) - usedTotal);
+  };
+
+  const getSupplierRemaining = (item, supplierId) => {
+    const sup = (item.suppliers || []).find(s => s.supplierId === supplierId);
+    if (!sup) return 0;
+    const usedElsewhere = memoItems
+      .filter(i => i.id !== item.id && i.productId === item.productId && (i.preferredSupplierId || "") === supplierId)
+      .reduce((s, i) => s + i.qty, 0);
+    return Math.max(0, sup.availableQuantity - usedElsewhere);
+  };
+
+  const addSupplierLine = (item) => {
+    setMemoItems(prev => [...prev, {
+      ...item,
+      id: item.productId + "-" + Date.now(),
+      preferredSupplierId: "",
+      qty: 1,
+    }]);
+  };
 
   /* ── Totals ─────────────────────────────────────────────── */
   const subtotal = memoItems.reduce((s, i) => s + (i.price * i.qty), 0);
   const discAmt = Math.min(parseFloat(discount) || 0, subtotal);
-  const grandTotal = subtotal - discAmt;
+  // 👉 New: VAT is 5% of the post-discount amount, added on top when enabled
+  const vatAmt = vatEnabled ? +((subtotal - discAmt) * 0.05).toFixed(2) : 0;
+  const grandTotal = +(subtotal - discAmt + vatAmt).toFixed(2);
+
+  // Amount expected to be collected right now
+  const expectedPaidAmount = paymentStatus === "due"
+    ? Math.min(Math.max(parseFloat(paidNowAmount) || 0, 0), grandTotal)
+    : grandTotal;
+  const dueBalance = Math.max(0, +(grandTotal - expectedPaidAmount).toFixed(2));
+
+  const splitTotal = +splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0).toFixed(2);
+  const splitMismatch = splitPayment && Math.abs(splitTotal - expectedPaidAmount) > 0.01;
+
+  const addSplitRow = () => setSplitRows((prev) => [...prev, emptySplitRow()]);
+  const removeSplitRow = (id) => setSplitRows((prev) => prev.length > 1 ? prev.filter((r) => r.id !== id) : prev);
+  const updateSplitRow = (id, field, value) =>
+    setSplitRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+
+  const validateSplitAmounts = () => {
+    for (const r of splitRows) {
+      const amt = parseFloat(r.amount);
+      if (isNaN(amt) || amt < 0) return "Split payment amounts must be valid non-negative numbers.";
+    }
+    return null;
+  };
 
   /* ── Toast ──────────────────────────────────────────────── */
   const showToast = (type, msg) => {
@@ -144,26 +363,88 @@ const Invoice = () => {
   };
 
   /* ── Complete Sale ──────────────────────────────────────── */
+ const buildPayments = () => {
+    if (splitPayment) {
+      return splitRows
+        .filter((r) => (parseFloat(r.amount) || 0) > 0)
+        .map((r) => ({
+          method: r.method,
+          amount: +parseFloat(r.amount).toFixed(2),
+          provider: r.method === "mobile" ? r.provider : null,
+          accountNumber: r.method === "bank" ? r.accountNumber : "",
+          bankName: r.method === "bank" ? r.bankName : "",
+          mobileNumber: r.method === "mobile" ? r.mobileNumber : "",
+        }));
+    }
+    return [{
+      method: paymentMethod,
+      amount: +expectedPaidAmount.toFixed(2),
+      provider: paymentMethod === "mobile" ? mobileProvider : null,
+      accountNumber: paymentMethod === "bank" ? bankAccountNumber : "",
+      bankName: paymentMethod === "bank" ? bankName : "",
+      mobileNumber: paymentMethod === "mobile" ? mobileNumber : "",
+    }];
+  };
+
   const handleCompleteSale = async () => {
-    if (memoItems.length === 0) {
+     if (memoItems.length === 0) {
       showToast("error", "Add at least one product to complete sale.");
       return;
+    }
+    for (const item of memoItems) {
+      if (item.custom) continue;
+      const max = getMaxQtyForItem(item, memoItems);
+      if (item.qty > max) {
+        const supName = item.preferredSupplierId
+          ? ((item.suppliers || []).find(s => s.supplierId === item.preferredSupplierId)?.supplierName || "selected supplier")
+          : "available stock";
+        showToast("error", `${item.name}: quantity exceeds ${supName} (max ${max}).`);
+        return;
+      }
     }
     if (!customer.name.trim()) {
       showToast("error", "Please enter customer name.");
       return;
     }
+    if (paymentStatus === "due" && expectedPaidAmount <= 0) {
+      showToast("error", "Enter the amount the customer is paying now.");
+      return;
+    }
+    if (paymentStatus === "due" && expectedPaidAmount >= grandTotal) {
+      showToast("error", "Paid amount must be less than the grand total for a Due invoice.");
+      return;
+    }
+    if (splitPayment && splitMismatch) {
+      showToast("error", `Split payment total (৳${splitTotal}) must equal ৳${expectedPaidAmount.toFixed(2)}.`);
+      return;
+    }
+    if (splitPayment) {
+      const splitAmtError = validateSplitAmounts();
+      if (splitAmtError) { showToast("error", splitAmtError); return; }
+      const invalidMobile = splitRows.some((r) => (parseFloat(r.amount) || 0) > 0 && r.method === "mobile" && !r.mobileNumber.trim());
+      if (invalidMobile) { showToast("error", "Enter mobile number for each mobile banking split."); return; }
+      const invalidBank = splitRows.some((r) => (parseFloat(r.amount) || 0) > 0 && r.method === "bank" && !r.accountNumber.trim());
+      if (invalidBank) { showToast("error", "Enter bank account number for each bank split."); return; }
+    } else {
+      if (paymentMethod === "mobile" && !mobileNumber.trim()) { showToast("error", "Enter the mobile banking number."); return; }
+      if (paymentMethod === "bank" && !bankAccountNumber.trim()) { showToast("error", "Enter the bank account number."); return; }
+    }
 
     setSaving(true);
     try {
-      const items = memoItems.map(item => ({
+     const items = memoItems.map(item => ({
         productId: item.custom ? null : item.productId,
+        custom: Boolean(item.custom),
         name: item.name,
         company: item.company,
+        unit: item.unit || "pcs",
         price: item.price,
         qty: item.qty,
         total: item.price * item.qty,
+        preferredSupplierId: item.custom ? null : (item.preferredSupplierId || null),
       }));
+
+      const payments = buildPayments();
 
       // Create invoice
       await axios.post("http://localhost:5000/api/invoices", {
@@ -173,8 +454,13 @@ const Invoice = () => {
         items,
         subtotal,
         discount: discAmt,
+        vat: vatAmt,
         grandTotal,
         priceType,
+        paymentStatus,
+        paidAmount: expectedPaidAmount,
+        splitPayment,
+        payments,
       });
 
       // Create or update customer in database
@@ -211,11 +497,21 @@ const Invoice = () => {
         }
       }
 
-      showToast("success", "Sale completed! Stock & customer updated.");
-      // Reset form
+    showToast("success", "Sale completed! Stock & customer updated.");
+      // Reset form + clear persisted draft since the sale is finalized
+      clearDraft();
       setMemoItems([]);
       setCustomer({ name: "", phone: "", address: "" });
       setDiscount("");
+      setVatEnabled(false);
+      setPaymentMethod("cash");
+      setMobileNumber("");
+      setBankName(BANK_OPTIONS[0]);
+      setBankAccountNumber("");
+      setPaymentStatus("paid");
+      setPaidNowAmount("");
+      setSplitPayment(false);
+      setSplitRows([emptySplitRow()]);
       setInvoiceNum(invoiceNo());
       // Refresh products to show updated stock
       fetchProducts();
@@ -233,9 +529,19 @@ const Invoice = () => {
   };
 
   const clearMemo = () => {
+    clearDraft();
     setMemoItems([]);
     setCustomer({ name: "", phone: "", address: "" });
     setDiscount("");
+    setVatEnabled(false);
+    setPaymentMethod("cash");
+    setMobileNumber("");
+    setBankName(BANK_OPTIONS[0]);
+    setBankAccountNumber("");
+    setPaymentStatus("paid");
+    setPaidNowAmount("");
+    setSplitPayment(false);
+    setSplitRows([emptySplitRow()]);
     setInvoiceNum(invoiceNo());
   };
 
@@ -404,6 +710,52 @@ const Invoice = () => {
               </button>
             </div>
           )}
+
+          {/* ══════════════════════════════════════
+               NEW — Custom Product section
+               (very bottom of the left/product column)
+          ══════════════════════════════════════ */}
+          <div className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <FiPlusCircle size={15} className="text-[#1E3A8A]"/>
+              <h3 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-sm uppercase tracking-wide">Add Custom Product</h3>
+            </div>
+            <input
+              type="text"
+              placeholder="Product name"
+              value={customProduct.name}
+              onChange={e => setCustomProduct(c => ({ ...c, name: e.target.value }))}
+              className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min="1"
+                placeholder="Quantity"
+                value={customProduct.qty}
+                onChange={e => setCustomProduct(c => ({ ...c, qty: e.target.value }))}
+                className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
+              />
+              <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#1D4ED8] transition-colors">
+                <span className="px-2 text-xs text-slate-400 bg-slate-50 border-r border-slate-200 h-full flex items-center">৳</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Unit price"
+                  value={customProduct.unitPrice}
+                  onChange={e => setCustomProduct(c => ({ ...c, unitPrice: e.target.value }))}
+                  className="w-full text-sm px-2 py-2 outline-none font-['Barlow',sans-serif]"
+                />
+              </div>
+            </div>
+            <button
+              onClick={addCustomProductToMemo}
+              className="flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
+            >
+              <FiPlus size={14}/> Add to Invoice
+            </button>
+          </div>
         </div>
 
         {/* ══════════════════════════════════════
@@ -446,6 +798,19 @@ const Invoice = () => {
           {/* ── PRINTABLE MEMO ── */}
           <div id="print-area" ref={printRef} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex flex-col flex-1">
 
+            {/* NEW — Print-only centered logo + shop name header (hidden on screen, shown only when printing) */}
+            <div className="hidden print:flex flex-col items-center gap-2 pt-2 pb-4 border-b-2 border-slate-100">
+              <div className="w-14 h-14 bg-[#F97316] rounded-xl flex items-center justify-center">
+                <span className="text-white text-2xl">🔧</span>
+              </div>
+              <p className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-xl uppercase tracking-widest leading-tight text-center">
+                Khulna <span className="text-[#F97316]">Hardware</span> Mart
+              </p>
+              <p className="text-slate-400 text-[10px] font-medium text-center max-w-md">
+                280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna · 02477-721990, +880 1931-272839, +880 1679-123205
+              </p>
+            </div>
+
             {/* Memo top bar */}
             <div className="bg-[#1E3A8A] px-6 py-4 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
@@ -477,17 +842,23 @@ const Invoice = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 py-4 border-b-2 border-slate-100 bg-slate-50">
               {[
                 { icon: <FiUser size={12}/>, key: "name", placeholder: "Customer Name *", label: "Customer" },
-                { icon: <FiPhone size={12}/>, key: "phone", placeholder: "Phone Number", label: "Phone" },
+                { icon: <FiPhone size={12}/>, key: "phone", placeholder: "Phone Number (auto-fills name)", label: "Phone" },
                 { icon: <FiSearch size={12}/>, key: "address", placeholder: "Address (optional)", label: "Address" },
               ].map(f => (
-                <div key={f.key} className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors">
+                <div key={f.key} className={`flex items-center gap-2 bg-white border-2 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors ${f.key === "phone" && customerLookupStatus === "found" ? "border-green-400" : "border-slate-200"}`}>
                   <span className="text-slate-400 shrink-0">{f.icon}</span>
                   <input
                     placeholder={f.placeholder}
                     value={customer[f.key]}
-                    onChange={e => setCustomer(c => ({ ...c, [f.key]: e.target.value }))}
+                    onChange={e => {
+                      setCustomer(c => ({ ...c, [f.key]: e.target.value }));
+                      if (f.key === "phone") setCustomerLookupStatus("");
+                    }}
                     className="flex-1 text-xs outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
                   />
+                  {f.key === "phone" && customerLookupStatus === "found" && (
+                    <FiCheckCircle size={13} className="text-green-500 shrink-0" title="Existing customer found" />
+                  )}
                 </div>
               ))}
             </div>
@@ -514,7 +885,7 @@ const Invoice = () => {
                   </thead>
                   <tbody>
                     {memoItems.map((item, idx) => (
-                      
+
                       <tr key={item.id} className={`border-b border-slate-100 ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"}`}>
                         <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">{idx + 1}</td>
                         <td className="px-4 py-2.5">
@@ -522,19 +893,49 @@ const Invoice = () => {
                           <p className="text-[10px] text-slate-400 font-medium">{item.company}</p>
                           {!item.custom && item.stock && (
                             <p className="text-[10px] text-slate-400 mt-0.5">Stock: {item.stock}</p>
-                          )}{
-                            console.log(item)
-                          }
+                          )}
+                          {!item.custom && Array.isArray(item.suppliers) && item.suppliers.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <select
+                                value={item.preferredSupplierId || ""}
+                                onChange={e => updateItem(item.id, "preferredSupplierId", e.target.value)}
+                                title="Sell from a specific supplier's stock, or leave Auto for FIFO"
+                                className="text-[10px] font-semibold border border-slate-200 rounded px-1.5 py-1 outline-none bg-slate-50 focus:border-[#1D4ED8] max-w-[180px] font-['Barlow',sans-serif]"
+                              >
+                                <option value="">Auto (FIFO)</option>
+                                {item.suppliers.map(s => {
+                                  const remaining = getSupplierRemaining(item, s.supplierId);
+                                  if (remaining <= 0 && s.supplierId !== item.preferredSupplierId) return null;
+                                  return (
+                                    <option key={s.supplierId} value={s.supplierId} disabled={remaining <= 0}>
+                                      {s.supplierName} — ৳{s.buyingPrice} ({remaining} left)
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                              {item.suppliers.some(s => s.supplierId !== item.preferredSupplierId && getSupplierRemaining(item, s.supplierId) > 0) && (
+                                <button
+                                  type="button"
+                                  onClick={() => addSupplierLine(item)}
+                                  title="Add another line for this product from a different supplier"
+                                  className="w-5 h-5 flex items-center justify-center rounded border border-slate-200 text-slate-400 hover:border-[#1D4ED8] hover:text-[#1D4ED8] shrink-0"
+                                >
+                                  <FiPlus size={10}/>
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-2.5 text-center">
                           <input
                             type="number"
                             min="1"
-                            max={item.custom ? 9999 : item.stock}
+                            max={getMaxQtyForItem(item, memoItems)}
                             value={item.qty}
                             onChange={e => updateItem(item.id, "qty", e.target.value)}
                             className="w-16 text-center border-2 border-slate-200 rounded-lg py-1 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
                           />
+                          <p className="text-[9px] text-slate-400 font-medium mt-0.5">{item.unit || "pcs"}</p>
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#1D4ED8] transition-colors">
@@ -571,21 +972,33 @@ const Invoice = () => {
             {memoItems.length > 0 && (
               <div className="border-t-2 border-slate-100 px-5 py-4 bg-slate-50">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  {/* Discount input */}
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
-                    <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
-                      <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={discount}
-                        onChange={e => setDiscount(e.target.value)}
-                        className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
-                      />
+                  {/* Discount input + NEW VAT checkbox */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
+                      <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
+                        <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={discount}
+                          onChange={e => setDiscount(e.target.value)}
+                          className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
+                        />
+                      </div>
                     </div>
+                    {/* NEW — VAT (5%) checkbox */}
+                    <label className="flex items-center gap-2 text-xs font-bold text-[#1E3A8A] uppercase tracking-wider cursor-pointer print:cursor-default select-none">
+                      <input
+                        type="checkbox"
+                        checked={vatEnabled}
+                        onChange={e => setVatEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-[#1E3A8A]"
+                      />
+                      Add VAT (5%)
+                    </label>
                   </div>
                   {/* Summary */}
                   <div className="flex flex-col items-end gap-1 min-w-[200px]">
@@ -599,11 +1012,153 @@ const Invoice = () => {
                         <span className="tabular-nums">− {fmt(discAmt)}</span>
                       </div>
                     )}
+                    {vatEnabled && (
+                      <div className="flex justify-between w-full text-xs text-slate-500 font-semibold">
+                        <span>VAT (5%)</span>
+                        <span className="tabular-nums">+ {fmt(vatAmt)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between w-full pt-1.5 border-t-2 border-[#1E3A8A] mt-1">
                       <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] uppercase tracking-wide text-sm">Grand Total</span>
                       <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#F97316] text-lg tabular-nums leading-tight">{fmt(grandTotal)}</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Payment Status: Paid / Due */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider">Payment Status</label>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setPaymentStatus("paid")}
+                        className={`px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${paymentStatus === "paid" ? "border-green-600 bg-green-600 text-white" : "border-slate-200 text-slate-500"}`}>
+                        Paid
+                      </button>
+                      <button type="button" onClick={() => setPaymentStatus("due")}
+                        className={`px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${paymentStatus === "due" ? "border-red-500 bg-red-500 text-white" : "border-slate-200 text-slate-500"}`}>
+                        Due
+                      </button>
+                    </div>
+                  </div>
+                  {paymentStatus === "due" && (
+                    <div className="flex items-center gap-3 bg-red-50 border-2 border-red-200 rounded-lg px-3 py-2">
+                      <label className="text-xs font-bold text-red-600 whitespace-nowrap">Paying Now (৳)</label>
+                      <input
+                        type="number" min="0" max={grandTotal} step="0.01"
+                        value={paidNowAmount}
+                        onChange={e => setPaidNowAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif]"
+                      />
+                      <span className="text-xs font-bold text-red-600 whitespace-nowrap">Due: ৳{dueBalance.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Method / Split Payment */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider">Payment Method</label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-[#1E3A8A] uppercase tracking-wider cursor-pointer select-none">
+                      <input type="checkbox" checked={splitPayment} onChange={e => setSplitPayment(e.target.checked)} className="w-4 h-4 accent-[#1E3A8A]" />
+                      Split Payment
+                    </label>
+                  </div>
+
+                  {!splitPayment ? (
+                    <div className="flex flex-col gap-2">
+                       <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => setPaymentMethod("cash")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${paymentMethod === "cash" ? "border-green-600 bg-green-600 text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          <FiDollarSign size={13}/> Cash
+                        </button>
+                        <button type="button" onClick={() => setPaymentMethod("mobile")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${paymentMethod === "mobile" ? "border-[#1D4ED8] bg-[#1D4ED8] text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          <FiSmartphone size={13}/> Mobile Banking
+                        </button>
+                        <button type="button" onClick={() => setPaymentMethod("bank")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-colors ${paymentMethod === "bank" ? "border-purple-600 bg-purple-600 text-white" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                          <FiCreditCard size={13}/> Bank
+                        </button>
+                      </div>
+
+                      {paymentMethod === "mobile" && (
+                        <div className="flex flex-wrap gap-2">
+                          <select value={mobileProvider} onChange={e => setMobileProvider(e.target.value)}
+                            className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]">
+                            {MOBILE_BANKING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                          <input type="text" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)}
+                            placeholder="Payment number e.g. 01711-000000"
+                            className="flex-1 min-w-[180px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]" />
+                        </div>
+                      )}
+                      {paymentMethod === "bank" && (
+                        <div className="flex flex-wrap gap-2">
+                          <select value={bankName} onChange={e => setBankName(e.target.value)}
+                            className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]">
+                            {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                          <input type="text" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)}
+                            placeholder="Bank account number"
+                            className="flex-1 min-w-[180px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {splitRows.map((row) => (
+                        <div key={row.id} className="flex flex-wrap items-center gap-2 bg-slate-50 border-2 border-slate-200 rounded-lg p-2">
+                          <select value={row.method} onChange={e => updateSplitRow(row.id, "method", e.target.value)}
+                            className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]">
+                            <option value="cash">Cash</option>
+                            <option value="mobile">Mobile Banking</option>
+                            <option value="bank">Bank</option>
+                          </select>
+                          <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden bg-white">
+                            <span className="px-2 text-xs text-slate-400">৳</span>
+                            <input type="number" min="0" step="0.01" value={row.amount}
+                              onChange={e => updateSplitRow(row.id, "amount", e.target.value)}
+                              placeholder="0.00" className="w-24 px-1 py-1.5 text-xs font-semibold outline-none font-['Barlow',sans-serif]" />
+                          </div>
+                          {row.method === "mobile" && (
+                            <>
+                              <select value={row.provider} onChange={e => updateSplitRow(row.id, "provider", e.target.value)}
+                                className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]">
+                                {MOBILE_BANKING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                              </select>
+                              <input type="text" value={row.mobileNumber} onChange={e => updateSplitRow(row.id, "mobileNumber", e.target.value)}
+                                placeholder="Mobile number"
+                                className="flex-1 min-w-[120px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]" />
+                            </>
+                          )}
+                         {row.method === "bank" && (
+                            <>
+                              <select value={row.bankName} onChange={e => updateSplitRow(row.id, "bankName", e.target.value)}
+                                className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]">
+                                {BANK_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                              </select>
+                              <input type="text" value={row.accountNumber} onChange={e => updateSplitRow(row.id, "accountNumber", e.target.value)}
+                                placeholder="Account number"
+                                className="flex-1 min-w-[120px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]" />
+                            </>
+                          )}
+                          <button type="button" onClick={() => removeSplitRow(row.id)}
+                            className="ml-auto w-7 h-7 flex items-center justify-center rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                            <FiX size={14}/>
+                          </button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={addSplitRow}
+                        className="flex items-center justify-center gap-1.5 border-2 border-dashed border-slate-300 rounded-lg py-2 text-xs font-bold text-slate-500 hover:border-[#1D4ED8] hover:text-[#1D4ED8] transition-colors">
+                        <FiPlus size={13}/> Add Payment Method
+                      </button>
+                      <div className={`flex items-center justify-between text-xs font-bold px-1 ${splitMismatch ? "text-red-600" : "text-green-600"}`}>
+                        <span>Split Total: ৳{splitTotal.toFixed(2)}</span>
+                        <span>Required: ৳{expectedPaidAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Print footer line */}
@@ -612,6 +1167,22 @@ const Invoice = () => {
                 </p>
               </div>
             )}
+
+            {/* NEW — Print-only partner logos footer (hidden on screen, shown only when printing) */}
+            <div className="hidden print:flex flex-col items-center gap-2 px-5 pb-4 pt-2 border-t border-slate-100">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Our Partners</p>
+              <div className="flex items-center justify-center gap-4">
+                {PARTNER_LOGOS.map(partner => (
+                  <div key={partner.name} className="w-14 h-14 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                    {partner.src ? (
+                      <img src={partner.src} alt={partner.name} className="w-full h-full object-contain p-1"/>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 font-semibold text-center px-1">{partner.name}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

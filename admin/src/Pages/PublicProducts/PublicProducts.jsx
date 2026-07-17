@@ -158,19 +158,18 @@ const ImageSlider = ({ images, name }) => {
 function ProductModal({ product, onClose }) {
   if (!product) return null;
 
-  const price = product.retailPrice || product.buyingPrice * 1.05 || 0;
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="relative ">
-          <button
-            onClick={onClose}
-            className="fixed top-4 right-4 z-10 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition"
-          >
-            <FiX size={20} />
-          </button>
+      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+        {/* Close Button - top right of the modal */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white transition"
+        >
+          <FiX size={20} />
+        </button>
 
+        <div className="relative ">
           {/* Image */}
           <ImageSlider images={product.images} name={product.name} />
         </div>
@@ -180,19 +179,11 @@ function ProductModal({ product, onClose }) {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h2>
 
           {/* Rating */}
-          <div className="flex items-center gap-1 mb-4">
+          <div className="flex items-center gap-1 mb-6">
             {[1, 2, 3, 4, 5].map((star) => (
               <FiStar key={star} size={18} className="text-amber-400 fill-amber-400" />
             ))}
             <span className="text-sm text-gray-400 ml-2">(0 reviews)</span>
-          </div>
-
-          {/* Price */}
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-3xl font-bold text-orange-600">{fmt(price)}</span>
-            {product.buyingPrice && (
-              <span className="text-lg text-gray-400 line-through">{fmt(product.buyingPrice)}</span>
-            )}
           </div>
 
           {/* Details */}
@@ -210,9 +201,9 @@ function ProductModal({ product, onClose }) {
               <div className="font-semibold text-gray-900">{product.category || "—"}</div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
-              <div className="text-xs text-gray-500 mb-1">Stock</div>
+              <div className="text-xs text-gray-500 mb-1">Availability</div>
               <div className={`font-semibold ${product.stock === 0 ? "text-red-600" : "text-green-600"}`}>
-                {product.stock || 0} units
+                {product.stock === 0 ? "Out of Stock" : "Available"}
               </div>
             </div>
           </div>
@@ -224,27 +215,54 @@ function ProductModal({ product, onClose }) {
             </div>
           )}
 
-          {/* Contact */}
-          <div className="bg-blue-50 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 text-blue-700 font-semibold mb-2">
-              <FiPhone size={16} />
-              Interested? Contact Us
+          {/* Purchase CTA */}
+          {product.stock === 0 ? (
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
+              <div className="inline-flex items-center gap-2 bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                Currently Out of Stock
+              </div>
+              <p className="text-gray-600 text-sm mb-4">
+                দুঃখিত, এই মুহূর্তে পণ্যটি স্টকে নেই। নতুন স্টক সম্পর্কে জানতে আমাদের সাথে যোগাযোগ করুন।
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <span className="flex items-center gap-2 text-blue-700 font-semibold">
+                  <FiPhone size={16} /> 02477-721990
+                </span>
+                <span className="flex items-center gap-2 text-blue-700 font-semibold">
+                  <FiPhone size={16} /> +880 1931-272839
+                </span>
+              </div>
             </div>
-            <div className="text-sm text-blue-600">
-              02477-721990 · +880 1931-272839
+          ) : (
+            <div className="bg-gradient-to-br from-orange-50 to-blue-50 border border-orange-100 rounded-2xl p-6 text-center">
+              <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Available at Our Store
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                এই পণ্যটি আমাদের কাছে এভেলেবেল রয়েছে!
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                পণ্যটি কিনতে হলে আমাদের ফিজিক্যাল শপে চলে আসুন অথবা নিচের নম্বরে কল করে অর্ডার নিশ্চিত করুন।
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+                <span className="flex items-center gap-2 text-blue-700 font-semibold">
+                  <FiPhone size={16} /> 02477-721990
+                </span>
+                <span className="flex items-center gap-2 text-blue-700 font-semibold">
+                  <FiPhone size={16} /> +880 1931-272839
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-5">
+                <FiMapPin size={16} />
+                Khulna, Bangladesh
+              </div>
+              <div className="w-full py-4 rounded-xl flex items-center justify-center font-bold text-lg bg-orange-500 text-white">
+                আমাদের শপ ভিজিট করুন
+              </div>
             </div>
-          </div>
-
-          <div
-            disabled={product.stock === 0}
-            className={`w-full py-4 rounded-xl flex items-center justify-center font-bold text-lg transition ${
-              product.stock === 0
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-orange-500  text-white"
-            }`}
-          >
-            <h1>{product.stock === 0 ? "Out of Stock" : "In Stock"}</h1>
-          </div>
+          )}
         </div>
       </div>
     </div>
