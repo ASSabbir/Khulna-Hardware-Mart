@@ -11,6 +11,8 @@ const customerSchema = new mongoose.Schema(
     totalDue: { type: Number, default: 0 },
     lastOrderDate: { type: Date },
     status: { type: String, default: "active" },
+    // 1 = Retail, 2 = Wholesale — defaults to Retail; update via customer edit UI if needed
+    customerType: { type: Number, enum: [1, 2], default: 1 },
   },
   { timestamps: true }
 );

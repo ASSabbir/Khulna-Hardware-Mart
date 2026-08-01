@@ -1,171 +1,216 @@
+// FILE: server/routes/invoice.js (FULL REPLACEMENT)
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
 const Invoice = require("../models/Invoice");
 const Product = require("../models/Product");
+const { createCustomProduct, deductStockFIFO, restoreStockFIFO } = require("./product");
 
-// Get Dashboard Stats
+const PAYMENT_METHODS = ["cash", "bank", "mobile"];
+const MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
+const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
+const EPS = 0.01;
+
+function validatePayments(payments, expectedTotal) {
+  if (!Array.isArray(payments) || payments.length === 0) return "At least one payment method is required.";
+  let sum = 0;
+  for (const p of payments) {
+    if (!PAYMENT_METHODS.includes(p.method)) return `Invalid payment method: ${p.method}`;
+    const amt = Number(p.amount);
+    if (!Number.isFinite(amt) || amt <= 0) return "Each payment amount must be a positive number.";
+    if (p.method === "mobile" && !MOBILE_PROVIDERS.includes(p.provider)) return "Invalid mobile banking provider.";
+    if (p.method === "bank" && p.bankName && !BANK_OPTIONS.includes(p.bankName)) return "Invalid bank name.";
+    sum += amt;
+  }
+  if (Math.abs(sum - expectedTotal) > EPS) return `Payment total (${sum.toFixed(2)}) does not match expected amount (${expectedTotal.toFixed(2)}).`;
+  return null;
+}
+
 router.get("/stats", async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const weekStart = new Date(today);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // Get all invoices
     const allInvoices = await Invoice.find().sort({ createdAt: -1 }).lean();
 
-    // Calculate stats
-    const todayRevenue = allInvoices
-      .filter(inv => new Date(inv.createdAt) >= today)
-      .reduce((sum, inv) => sum + inv.grandTotal, 0);
+    const netOf = (inv) => inv.netSaleAmount ?? inv.grandTotal;
 
-    const weekRevenue = allInvoices
-      .filter(inv => new Date(inv.createdAt) >= weekStart)
-      .reduce((sum, inv) => sum + inv.grandTotal, 0);
+    const todayRevenue = allInvoices.filter((i) => new Date(i.createdAt) >= today).reduce((s, i) => s + netOf(i), 0);
+    const weekRevenue = allInvoices.filter((i) => new Date(i.createdAt) >= weekStart).reduce((s, i) => s + netOf(i), 0);
+    const monthRevenue = allInvoices.filter((i) => new Date(i.createdAt) >= monthStart).reduce((s, i) => s + netOf(i), 0);
+    const totalRevenue = allInvoices.reduce((s, i) => s + netOf(i), 0);
+     const totalReturnsAmount = allInvoices.reduce((s, i) => s + (i.totalReturnedAmount || 0), 0);
+    const grossSales = allInvoices.reduce((s, i) => s + i.grandTotal, 0);
+    const totalCOGS = allInvoices.reduce(
+      (s, i) => s + (i.items || []).reduce((si, it) => si + (it.costTotal || 0), 0),
+      0
+    );
+    const totalProfit = +(totalRevenue - totalCOGS).toFixed(2);
+    const grossProfit = +(grossSales - totalCOGS).toFixed(2);
+    const todayOrders = allInvoices.filter((i) => new Date(i.createdAt) >= today).length;
 
-    const monthRevenue = allInvoices
-      .filter(inv => new Date(inv.createdAt) >= monthStart)
-      .reduce((sum, inv) => sum + inv.grandTotal, 0);
-
-    const totalRevenue = allInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-
-    // Today's orders count
-    const todayOrders = allInvoices.filter(inv => new Date(inv.createdAt) >= today).length;
-
-    // Product stats
     const totalProducts = await Product.countDocuments();
-    const lowStockProducts = await Product.countDocuments({ $expr: { $lte: ["$stock", "$reorderLevel"] } });
+    const lowStockProducts = await Product.countDocuments({ stock: { $lte: 10 } });
     const outOfStockProducts = await Product.countDocuments({ stock: 0 });
 
-    // Recent invoices (last 10)
     const recentInvoices = allInvoices.slice(0, 10);
 
-    // Monthly revenue for chart (last 6 months)
     const monthlyRevenue = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const nextMonth = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
-      const revenue = allInvoices
-        .filter(inv => {
-          const invDate = new Date(inv.createdAt);
-          return invDate >= d && invDate < nextMonth;
-        })
-        .reduce((sum, inv) => sum + inv.grandTotal, 0);
-      monthlyRevenue.push({
-        month: d.toLocaleDateString("en-BD", { month: "short" }),
-        revenue: revenue
-      });
+      const revenue = allInvoices.filter((inv) => new Date(inv.createdAt) >= d && new Date(inv.createdAt) < nextMonth).reduce((s, inv) => s + netOf(inv), 0);
+      monthlyRevenue.push({ month: d.toLocaleDateString("en-BD", { month: "short" }), revenue });
     }
 
-    // Revenue by category
     const categoryRevenue = {};
-    allInvoices.forEach(inv => {
-      inv.items.forEach(item => {
-        // Since we don't have category in items, we'll use brand as proxy
+    allInvoices.forEach((inv) => {
+      inv.items.forEach((item) => {
         const key = item.company || "Other";
         categoryRevenue[key] = (categoryRevenue[key] || 0) + item.total;
       });
     });
+    const topCategories = Object.entries(categoryRevenue).map(([name, revenue]) => ({ name, revenue })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
-    const topCategories = Object.entries(categoryRevenue)
-      .map(([name, revenue]) => ({ name, revenue }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+    let totalCollected = 0, totalDueAmount = 0;
+    let cashTotal = 0, bankTotal = 0, mobileTotal = 0;
+    let bkashTotal = 0, nagadTotal = 0, rocketTotal = 0, upayTotal = 0;
+
+    allInvoices.forEach((inv) => {
+      totalCollected += inv.paidAmount || 0;
+      totalDueAmount += inv.dueAmount || 0;
+      (inv.payments || []).forEach((p) => {
+        const amt = p.amount || 0;
+        if (p.method === "cash") cashTotal += amt;
+        else if (p.method === "bank") bankTotal += amt;
+        else if (p.method === "mobile") {
+          mobileTotal += amt;
+          if (p.provider === "bKash") bkashTotal += amt;
+          else if (p.provider === "Nagad") nagadTotal += amt;
+          else if (p.provider === "Rocket") rocketTotal += amt;
+          else if (p.provider === "Upay") upayTotal += amt;
+        }
+      });
+    });
 
     res.json({
       stats: {
-        todayRevenue,
-        todayOrders,
-        weekRevenue,
-        monthRevenue,
-        totalRevenue,
-        totalProducts,
-        lowStockProducts,
-        outOfStockProducts,
+        todayRevenue, todayOrders, weekRevenue, monthRevenue, totalRevenue,
+        totalProducts, lowStockProducts, outOfStockProducts,
+        totalCollected, totalDueAmount, outstandingDue: totalDueAmount,
+        grossSales, totalReturnsAmount, netSales: totalRevenue,
+        totalCOGS, totalProfit, grossProfit,
       },
-      recentInvoices,
-      monthlyRevenue,
-      topCategories,
+      paymentMethodSummary: { cash: cashTotal, bank: bankTotal, mobileBanking: mobileTotal },
+      mobileBankingBreakdown: { bKash: bkashTotal, Nagad: nagadTotal, Rocket: rocketTotal, Upay: upayTotal },
+      recentInvoices, monthlyRevenue, topCategories,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get All Invoices
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 30 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1, limit = 30, paymentStatus, search } = req.query;
+    const skip = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
+
+    const filter = {};
+    if (paymentStatus === "paid" || paymentStatus === "due") filter.paymentStatus = paymentStatus;
+    if (search && String(search).trim()) {
+      const safe = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [
+        { "customer.name": { $regex: safe, $options: "i" } },
+        { "customer.phone": { $regex: safe, $options: "i" } },
+        { invoiceNumber: { $regex: safe, $options: "i" } },
+      ];
+    }
 
     const [invoices, total] = await Promise.all([
-      Invoice.find().sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
-      Invoice.countDocuments(),
+      Invoice.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      Invoice.countDocuments(filter),
     ]);
 
-    res.json({
-      invoices,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit)),
-      },
-    });
+    res.json({ invoices, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get Single Invoice
 router.get("/:id", async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: "Invalid invoice id." });
     const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ message: "Invoice not found." });
     res.json(invoice);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Create Invoice & Update Stock
 router.post("/", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { invoiceNumber, invoiceDate, customer, items, subtotal, discount, grandTotal, priceType } = req.body;
+    const {
+      invoiceNumber, invoiceDate, customer, items, subtotal, discount, vat, grandTotal, priceType,
+      paymentStatus, splitPayment, payments, paidAmount: paidAmountInput,
+    } = req.body;
 
-    // Process each item and update stock
+    if (!invoiceNumber || !invoiceDate || !Array.isArray(items) || items.length === 0) {
+      throw new Error("Invoice number, date and at least one item are required.");
+    }
+    if (!Number.isFinite(Number(grandTotal)) || Number(grandTotal) <= 0) {
+      throw new Error("Invalid grand total.");
+    }
+
+    const status = paymentStatus === "due" ? "due" : "paid";
+    const total = Number(grandTotal);
+
+    let paidAmount = status === "paid" ? total : Number(paidAmountInput);
+    if (!Number.isFinite(paidAmount) || paidAmount < 0) throw new Error("Invalid paid amount.");
+    if (paidAmount > total + EPS) throw new Error("Paid amount cannot exceed the grand total.");
+    const dueAmount = Math.max(0, +(total - paidAmount).toFixed(2));
+    if (status === "paid" && dueAmount > EPS) throw new Error("Paid invoices cannot have a due amount.");
+
+    const isSplit = Boolean(splitPayment);
+    const normalizedPayments = (payments || []).map((p) => ({
+      method: p.method,
+      amount: Number(p.amount),
+      provider: p.method === "mobile" ? p.provider : null,
+      bankName: p.method === "bank" ? String(p.bankName || "") : "",
+      accountNumber: p.method === "bank" ? String(p.accountNumber || "").slice(0, 50) : "",
+      mobileNumber: p.method === "mobile" ? String(p.mobileNumber || "").slice(0, 20) : "",
+    }));
+
+    const validationError = validatePayments(normalizedPayments, paidAmount);
+    if (validationError) throw new Error(validationError);
+
+    const processedItems = [];
     for (const item of items) {
-      if (item.productId && !item.custom) {
-        const product = await Product.findById(item.productId).session(session);
-        if (product) {
-          const newStock = product.stock - item.qty;
-          if (newStock < 0) {
-            throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.qty}`);
-          }
-          product.stock = newStock;
-          await product.save({ session });
-        }
+     if (item.custom && !item.productId) {
+        const newProduct = await createCustomProduct({ name: item.name, unitPrice: item.price, qty: item.qty });
+        const { batchesUsed, costOfGoodsSold } = await deductStockFIFO(newProduct._id, item.qty, session);
+        processedItems.push({ ...item, productId: newProduct._id, company: "Custom", unit: item.unit || "pcs", soldBatches: batchesUsed, costTotal: costOfGoodsSold });
+      } else if (item.productId && !item.custom) {
+        const { batchesUsed, costOfGoodsSold } = await deductStockFIFO(item.productId, item.qty, session, item.preferredSupplierId || null);
+        processedItems.push({ ...item, unit: item.unit || "pcs", soldBatches: batchesUsed, costTotal: costOfGoodsSold });
+      } else {
+        processedItems.push({ ...item, unit: item.unit || "pcs", costTotal: 0 });
       }
     }
 
-    // Create invoice
     const invoice = new Invoice({
-      invoiceNumber,
-      invoiceDate,
-      customer,
-      items,
-      subtotal,
-      discount,
-      grandTotal,
-      priceType,
+      invoiceNumber, invoiceDate, customer,
+      items: processedItems,
+      subtotal, discount, vat: vat || 0, grandTotal: total, priceType,
+      paymentStatus: status, paidAmount, dueAmount,
+      splitPayment: isSplit, payments: normalizedPayments,
+      netSaleAmount: total,
     });
     await invoice.save({ session });
 
@@ -173,26 +218,73 @@ router.post("/", async (req, res) => {
     res.status(201).json(invoice);
   } catch (error) {
     await session.abortTransaction();
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) return res.status(400).json({ message: "Invoice number already exists." });
+    res.status(400).json({ message: error.message });
   } finally {
     session.endSession();
   }
 });
 
-// Delete Invoice (optional - restores stock if needed)
-router.delete("/:id", async (req, res) => {
+router.post("/:id/collect-due", async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new Error("Invalid invoice id.");
+    const { amount, method, provider, bankName, accountNumber, mobileNumber, note } = req.body;
+
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a valid collection amount.");
+    if (!PAYMENT_METHODS.includes(method)) throw new Error("Invalid payment method.");
+    if (method === "mobile" && !MOBILE_PROVIDERS.includes(provider)) throw new Error("Invalid mobile provider.");
+    if (method === "bank" && bankName && !BANK_OPTIONS.includes(bankName)) throw new Error("Invalid bank name.");
+
+    const invoice = await Invoice.findById(req.params.id).session(session);
+    if (!invoice) throw new Error("Invoice not found.");
+    if (invoice.paymentStatus !== "due") throw new Error("This invoice has no outstanding due.");
+    if (amt > invoice.dueAmount + EPS) throw new Error(`Collection amount cannot exceed due balance (৳${invoice.dueAmount.toFixed(2)}).`);
+
+    invoice.paidAmount = +(invoice.paidAmount + amt).toFixed(2);
+    invoice.dueAmount = Math.max(0, +(invoice.dueAmount - amt).toFixed(2));
+    if (invoice.dueAmount <= EPS) {
+      invoice.dueAmount = 0;
+      invoice.paymentStatus = "paid";
     }
 
-    // Restore stock for each item
+    const paymentEntry = {
+      method, amount: amt,
+      provider: method === "mobile" ? provider : null,
+      bankName: method === "bank" ? String(bankName || "") : "",
+      accountNumber: method === "bank" ? String(accountNumber || "").slice(0, 50) : "",
+      mobileNumber: method === "mobile" ? String(mobileNumber || "").slice(0, 20) : "",
+    };
+    invoice.payments.push(paymentEntry);
+    invoice.collectionHistory.push({
+      ...paymentEntry,
+      note: String(note || "").slice(0, 300),
+      collectedAtBST: new Date(Date.now() + 6 * 60 * 60 * 1000),
+    });
+
+    await invoice.save({ session });
+    await session.commitTransaction();
+    res.json(invoice);
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(400).json({ message: error.message });
+  } finally {
+    session.endSession();
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: "Invalid invoice id." });
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+
     for (const item of invoice.items) {
       if (item.productId) {
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { stock: item.qty },
-        });
+        const netQty = item.qty - (item.returnedQty || 0);
+        if (netQty > 0) await restoreStockFIFO(item.productId, netQty, null, item.soldBatches || [], item.qty);
       }
     }
 

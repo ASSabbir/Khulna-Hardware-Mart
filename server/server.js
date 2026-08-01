@@ -2,7 +2,6 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 
-
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -27,6 +26,9 @@ app.use(async (req, res, next) => {
   }
   next();
 });
+const returnRoutes = require("./routes/return");
+const purchaseHistoryRoutes = require("./routes/purchaseHistory");
+const ledgerRoutes = require("./routes/ledger");
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
@@ -35,6 +37,9 @@ app.use("/api/suppliers", require("./routes/supplier"));
 app.use("/api/partners", require("./routes/partner"));
 app.use("/api/customers", require("./routes/customer"));
 app.use("/api/invoices", require("./routes/invoice"));
+app.use("/api/returns", returnRoutes);
+app.use("/api/purchase-history", purchaseHistoryRoutes);
+app.use("/api/ledger", ledgerRoutes);
 
 // Test Route
 app.get("/", (req, res) => {
