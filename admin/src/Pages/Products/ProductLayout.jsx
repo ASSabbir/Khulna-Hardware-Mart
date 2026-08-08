@@ -6,6 +6,8 @@ const NAV_ITEMS = [
   { to: "all", label: "All Products", icon: <FiPackage size={16} /> },
   { to: "add", label: "Add Product", icon: <FiPlusCircle size={16} /> },
   { to: "purchase-history", label: "Purchase History", icon: <FiTruck size={16} /> },
+  { to: "shop-sources", label: "Shop Source History", icon: <FiTruck size={16} /> },
+  { to: "supplier-purchase", label: "Supplier Purchase Order", icon: <FiTruck size={16} /> },
   { to: "settings", label: "Settings", icon: <FiSettings size={16} /> },
 
 ];

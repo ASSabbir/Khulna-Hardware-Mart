@@ -12,7 +12,7 @@ const API_URL = "http://localhost:5000/api/ledger";
 const fmt     = (n) => "৳" + Number(n).toLocaleString();
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-const EXPENSE_CATEGORIES = ["Withdraw", "Purchase", "Salary", "Rent", "Utilities", "Transport", "Marketing", "Maintenance", "Tax", "Loan Repayment", "Other"];
+const EXPENSE_CATEGORIES = ["Withdraw", "Purchase", "Salary", "Rent", "Utilities", "Transport", "Marketing", "Maintenance", "Tax", "Loan Repayment"];
 const MOBILE_BANKING_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
 
 const INITIAL_FORM = { amount: "", category: "", description: "", date: new Date().toISOString().split("T")[0], addedBy: "", method: "cash", provider: "bKash" };
@@ -24,6 +24,9 @@ export default function AddExpense() {
   const [errors,   setErrors]   = useState({});
   const [saving,   setSaving]   = useState(false);
   const [toast,    setToast]    = useState("");
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [isCategoryOther, setIsCategoryOther] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
 
   useEffect(() => {
     axios.get(API_URL)
@@ -31,6 +34,31 @@ export default function AddExpense() {
       .catch(() => setAccounts({ balance: 0, totalIncome: 0, totalExpense: 0, transactions: [] }))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/options/accountCategory")
+      .then((res) => setCategoryOptions((res.data.options || []).filter((c) => !EXPENSE_CATEGORIES.includes(c))))
+      .catch(() => setCategoryOptions([]));
+  }, []);
+
+  const handleCategorySelect = (e) => {
+    const val = e.target.value;
+    if (val === "__others__") { setIsCategoryOther(true); setForm((f) => ({ ...f, category: "" })); }
+    else { setIsCategoryOther(false); setForm((f) => ({ ...f, category: val })); }
+    setErrors((p) => ({ ...p, category: "" }));
+  };
+
+  const saveCustomCategory = async () => {
+    const trimmed = customCategory.trim();
+    if (!trimmed) return;
+    try {
+      const res = await axios.post("http://localhost:5000/api/options/accountCategory", { value: trimmed });
+      setForm((f) => ({ ...f, category: res.data.value }));
+      if (res.data.created) setCategoryOptions((prev) => [...prev, res.data.value]);
+    } catch {
+      setForm((f) => ({ ...f, category: trimmed }));
+    }
+  };
 
   const set = (k) => (e) => {
     setForm((p) => ({ ...p, [k]: e.target.value }));
@@ -198,12 +226,26 @@ export default function AddExpense() {
                   <label className="block text-base font-semibold text-gray-700 mb-2">Category <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <FiTag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
-                    <select value={form.category} onChange={set("category")}
+                    <select value={isCategoryOther ? "__others__" : form.category} onChange={handleCategorySelect}
                       className={`w-full bg-gray-50 border ${errors.category ? "border-red-400" : "border-gray-200"} rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition appearance-none`}>
                       <option value="">Select category...</option>
                       {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="__others__">Others</option>
                     </select>
                   </div>
+                  {isCategoryOther && (
+                    <input
+                      type="text"
+                      autoFocus
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      onBlur={saveCustomCategory}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveCustomCategory(); } }}
+                      placeholder="Type new category name"
+                      className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-red-500 transition"
+                    />
+                  )}
                   {errors.category && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.category}</p>}
                 </div>
 

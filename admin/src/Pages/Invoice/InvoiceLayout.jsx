@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "due", label: "Due All Invoice", icon: <FiAlertCircle size={16} /> },
   { to: "paid", label: "Paid All Invoice", icon: <FiCheckCircle size={16} /> },
   { to: "return", label: "Product Return", icon: <FiRotateCcw size={16} /> },
+  { to: "due-payment-history", label: "Due Payment History", icon: <FiClock size={16} /> },
 ];
 
 const InvoiceLayout = () => {

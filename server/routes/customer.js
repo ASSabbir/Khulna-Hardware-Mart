@@ -131,6 +131,56 @@ router.get("/due", async (req, res) => {
   }
 });
 
+// #11 — Collect a partial/full due payment for a customer, applied against their oldest due invoices (FIFO)
+const { withTransaction } = require("../utils/withTransaction");
+
+router.post("/:id/collect-due", async (req, res) => {
+  try {
+    const Invoice = require("../models/Invoice");
+    const { amount, method, provider, bankName, accountNumber, mobileNumber, note } = req.body;
+    const amt = Number(amount);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new Error("Invalid customer id.");
+    if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a valid payment amount.");
+
+    const result = await withTransaction(async (session) => {
+      const customer = await Customer.findById(req.params.id).session(session);
+      if (!customer) throw new Error("Customer not found.");
+
+      const dueInvoices = await Invoice.find({ "customer.name": customer.name, paymentStatus: "due" }).sort({ createdAt: 1 }).session(session);
+
+      let remaining = amt;
+      const EPS = 0.01;
+      for (const inv of dueInvoices) {
+        if (remaining <= EPS) break;
+        const applied = Math.min(remaining, inv.dueAmount);
+        if (applied <= EPS) continue;
+        inv.paidAmount = +(inv.paidAmount + applied).toFixed(2);
+        inv.dueAmount = Math.max(0, +(inv.dueAmount - applied).toFixed(2));
+        const paymentEntry = {
+          method: method || "cash", amount: applied,
+          provider: method === "mobile" ? provider : null,
+          bankName: method === "bank" ? String(bankName || "") : "",
+          accountNumber: method === "bank" ? String(accountNumber || "").slice(0, 50) : "",
+          mobileNumber: method === "mobile" ? String(mobileNumber || "").slice(0, 20) : "",
+        };
+        inv.payments.push(paymentEntry);
+        inv.collectionHistory.push({ ...paymentEntry, note: String(note || "").slice(0, 300), collectedAtBST: new Date(Date.now() + 6 * 60 * 60 * 1000) });
+        if (inv.dueAmount <= EPS) { inv.dueAmount = 0; inv.paymentStatus = "paid"; }
+        await inv.save({ session });
+        remaining -= applied;
+      }
+
+      customer.totalDue = Math.max(0, +((customer.totalDue || 0) - (amt - remaining)).toFixed(2));
+      await customer.save({ session });
+      return { appliedAmount: amt - remaining, remainingUnapplied: remaining, movedToPaid: customer.totalDue === 0 };
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Create Customer
 router.post("/", async (req, res) => {
   try {

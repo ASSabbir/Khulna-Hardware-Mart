@@ -13,12 +13,16 @@ const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFract
 export default function Accounts() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [valuation, setValuation] = useState(null);
 
   useEffect(() => {
     axios.get("http://localhost:5000/api/invoices/stats")
       .then((res) => setStats(res.data))
       .catch(() => setStats(null))
       .finally(() => setLoading(false));
+    axios.get("http://localhost:5000/api/products/valuation/summary")
+      .then((res) => setValuation(res.data))
+      .catch(() => setValuation(null));
   }, []);
 
   if (loading) {
@@ -48,6 +52,13 @@ export default function Accounts() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+
+        {valuation && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-center justify-between">
+            <p className="text-blue-800 font-semibold">Total Product Stock Value</p>
+            <p className="text-blue-900 text-2xl font-bold">{fmt(valuation.totalValue)}</p>
+          </div>
+        )}
 
         {/* Sales / Returns / Net / Profit — auto-updates with returns (accounts integration) */}
         <div className="bg-gray-900 rounded-2xl p-7">

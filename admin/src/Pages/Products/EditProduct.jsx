@@ -270,7 +270,7 @@ const EditProduct = () => {
                 <Field label="Buying Price (৳)" required>
                   <Input type="number" min="0" step="0.01" value={form.buyingPrice} onChange={set("buyingPrice")} prefix="৳" />
                 </Field>
-                <Field label="Holcell Margin (%)">
+                <Field label="Wholesale Margin (%)">
                   <Input type="number" min="0" step="0.1" value={form.holcellMargin} onChange={set("holcellMargin")} suffix="%" />
                 </Field>
                 <Field label="Retail Margin (%)">
@@ -278,7 +278,7 @@ const EditProduct = () => {
                 </Field>
               </div>
               <div className="flex gap-3 mt-3 text-xs font-semibold text-slate-500">
-                <span>Holcell: <span className="text-[#1D4ED8]">৳{holcell.toFixed(2)}</span></span>
+                <span>Wholesale: <span className="text-[#1D4ED8]">৳{holcell.toFixed(2)}</span></span>
                 <span>Retail: <span className="text-[#F97316]">৳{retail.toFixed(2)}</span></span>
               </div>
             </Section>
@@ -290,7 +290,7 @@ const EditProduct = () => {
                     {["pcs", "kg", "g", "m", "ft", "L", "bag", "roll", "box", "set", "pair"].map((u) => <option key={u} value={u}>{u}</option>)}
                   </Select>
                 </Field>
-                <Field label="Quantity per Unit">
+                <Field label="Unit per Carton">
                   <Input type="number" min="0" step="0.01" value={form.unitValue} onChange={set("unitValue")} suffix={form.unit} />
                 </Field>
                 <Field label="Reorder Level">

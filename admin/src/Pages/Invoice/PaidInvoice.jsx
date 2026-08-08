@@ -1,11 +1,12 @@
-
-
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   FiCheckCircle, FiSearch, FiCalendar, FiUser, FiPhone,
-  FiFileText, FiDollarSign, FiSmartphone, FiCreditCard, FiLoader, FiPrinter,
+  FiFileText, FiDollarSign, FiSmartphone, FiCreditCard, FiLoader, FiPrinter, FiEye,
 } from "react-icons/fi";
+import InvoicePreviewModalEye from "./InvoicePreviewModalEye";
+import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
+import { openPrintWindow } from "../../Print/printUtils";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2 });
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -19,11 +20,12 @@ export default function PaidInvoice() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [eyeId, setEyeId] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-       const params = new URLSearchParams({ page, limit: 20, paymentStatus: "paid" });
+      const params = new URLSearchParams({ page, limit: 20, paymentStatus: "paid" });
       if (search.trim()) params.append("search", search.trim());
       const res = await axios.get(`http://localhost:5000/api/invoices?${params}`);
       setInvoices(res.data.invoices);
@@ -39,49 +41,18 @@ export default function PaidInvoice() {
   useEffect(() => { setPage(1); }, [search]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-   const grandTotalSum = invoices.reduce((s, i) => s + i.grandTotal, 0);
+  const grandTotalSum = invoices.reduce((s, i) => s + i.grandTotal, 0);
 
   const printInvoice = (inv) => {
-    const rows = (inv.items || []).map((it, idx) => `
-      <tr>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${idx + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.name}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${it.qty}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${fmt(it.price)}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${fmt(it.total)}</td>
-      </tr>`).join("");
-    const payments = (inv.payments || []).map((p) =>
-      `${p.method === "mobile" ? p.provider : p.method}: ${fmt(p.amount)}`
-    ).join(" · ");
-    const w = window.open("", "_blank");
-    w.document.write(`
-      <html><head><title>${inv.invoiceNumber}</title>
-      <style>body{font-family:sans-serif;padding:24px;color:#1E293B;} table{width:100%;border-collapse:collapse;margin-top:12px;} th{text-align:left;padding:6px 8px;border-bottom:2px solid #1E3A8A;font-size:12px;text-transform:uppercase;color:#64748b;}</style>
-      </head><body>
-      <h2 style="color:#1E3A8A;margin-bottom:0;">Khulna Hardware Mart</h2>
-      <p style="color:#94a3b8;margin-top:4px;">Sales Memo — ${inv.invoiceNumber}</p>
-      <p><strong>Date:</strong> ${fmtDate(inv.invoiceDate)}<br/>
-      <strong>Customer:</strong> ${inv.customer?.name || "Unknown"} ${inv.customer?.phone ? "· " + inv.customer.phone : ""}</p>
-      <table><thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-      <p style="text-align:right;margin-top:12px;">Subtotal: ${fmt(inv.subtotal)}<br/>
-      ${inv.discount > 0 ? `Discount: -${fmt(inv.discount)}<br/>` : ""}
-      ${inv.vat > 0 ? `VAT: +${fmt(inv.vat)}<br/>` : ""}
-      <strong style="font-size:18px;color:#F97316;">Grand Total: ${fmt(inv.grandTotal)}</strong></p>
-      <p style="color:#64748b;font-size:13px;">Payment: ${payments}</p>
-      </body></html>
-    `);
-    w.document.close();
-    w.focus();
-    w.print();
+    openPrintWindow(buildInvoiceReceiptHTML(inv));
   };
 
- return (
-    <div className="min-h-screen bg-gray-50 p-6">
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="w-full space-y-6">
 
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white">
+          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shrink-0">
             <FiCheckCircle size={22} />
           </div>
           <div>
@@ -96,7 +67,7 @@ export default function PaidInvoice() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-               placeholder="Search by customer name, phone, or invoice number..."
+              placeholder="Search by customer name, phone, or invoice number..."
               className="flex-1 text-sm outline-none"
             />
           </div>
@@ -106,20 +77,20 @@ export default function PaidInvoice() {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="overflow-visible">
-            <table className="w-full table-fixed">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed min-w-[900px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                   {["Invoice #", "Date", "Customer", "Phone", "Items", "Subtotal", "Discount", "VAT", "Grand Total", "Payment", ""].map((h) => (
+                  {["Invoice #", "Date", "Customer", "Phone", "Items", "Subtotal", "Discount", "VAT", "Grand Total", "Payment", ""].map((h) => (
                     <th key={h} className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr><td colSpan={10} className="text-center py-16 text-gray-400"><FiLoader className="animate-spin inline mr-2" />Loading...</td></tr>
+                  <tr><td colSpan={11} className="text-center py-16 text-gray-400"><FiLoader className="animate-spin inline mr-2" />Loading...</td></tr>
                 ) : invoices.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-16 text-gray-400">No paid invoices found.</td></tr>
+                  <tr><td colSpan={11} className="text-center py-16 text-gray-400">No paid invoices found.</td></tr>
                 ) : invoices.map((inv) => (
                   <tr key={inv._id} className="hover:bg-gray-50/60 transition">
                     <td className="px-5 py-4 font-semibold text-gray-900 whitespace-nowrap">
@@ -141,7 +112,7 @@ export default function PaidInvoice() {
                     <td className="px-5 py-4 font-bold text-green-600">{fmt(inv.grandTotal)}</td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-1">
-                         {(inv.payments || []).map((p, i) => {
+                        {(inv.payments || []).map((p, i) => {
                           const Icon = METHOD_ICON[p.method] || FiDollarSign;
                           return (
                             <span key={i} className="inline-flex items-center gap-1 text-xs font-semibold bg-green-50 text-green-700 px-2 py-1 rounded-lg">
@@ -152,10 +123,16 @@ export default function PaidInvoice() {
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <button onClick={() => printInvoice(inv)} title="Print invoice"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-[#1E3A8A] hover:text-[#1E3A8A] transition">
-                        <FiPrinter size={14} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => setEyeId(inv._id)} title="View original invoice"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-blue-500 hover:text-blue-500 transition">
+                          <FiEye size={14} />
+                        </button>
+                        <button onClick={() => printInvoice(inv)} title="Print invoice"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-[#1E3A8A] hover:text-[#1E3A8A] transition">
+                          <FiPrinter size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -171,6 +148,7 @@ export default function PaidInvoice() {
           )}
         </div>
       </div>
+      {eyeId && <InvoicePreviewModalEye invoiceId={eyeId} onClose={() => setEyeId(null)} />}
     </div>
   );
 }

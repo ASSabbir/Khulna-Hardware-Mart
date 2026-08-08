@@ -6,15 +6,15 @@ const Invoice = require("../models/Invoice");
 const Return = require("../models/Return");
 const { restoreStockFIFO } = require("./product");
 
+const { withTransaction } = require("../utils/withTransaction");
+
 router.post("/", async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
   try {
     const { invoiceId, items } = req.body;
-
     if (!mongoose.Types.ObjectId.isValid(invoiceId)) throw new Error("Invalid invoice id.");
     if (!Array.isArray(items) || items.length === 0) throw new Error("At least one return item is required.");
 
+    const result = await withTransaction(async (session) => {
     const invoice = await Invoice.findById(invoiceId).session(session);
     if (!invoice) throw new Error("Invoice not found.");
 
@@ -77,14 +77,12 @@ router.post("/", async (req, res) => {
       [{ invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, items: returnRecordItems, totalReturnAmount, returnDateBST: nowBST }],
       { session }
     );
+      return { invoice, returnRecord: returnRecord[0] };
+    });
 
-    await session.commitTransaction();
-    res.status(201).json({ invoice, returnRecord: returnRecord[0] });
+    res.status(201).json(result);
   } catch (error) {
-    await session.abortTransaction();
     res.status(400).json({ message: error.message });
-  } finally {
-    session.endSession();
   }
 });
 

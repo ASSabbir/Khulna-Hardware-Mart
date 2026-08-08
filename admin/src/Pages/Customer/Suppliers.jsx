@@ -11,6 +11,57 @@ import {
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
+function SupplierPaymentHistoryModal({ supplierId, companyName, onClose }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/api/supplier-payments/${supplierId}`)
+      .then((res) => setData(res.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [supplierId]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">{companyName} — Payment History</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><FiX size={18} /></button>
+        </div>
+        <div className="p-6">
+          {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : !data ? <p className="text-center text-gray-400 py-10">No data.</p> : (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-red-50 rounded-xl p-4"><p className="text-xs text-red-500 font-semibold">Payable (we owe)</p><p className="text-xl font-bold text-red-600">{fmt(data.balance.payableAmount)}</p></div>
+                <div className="bg-green-50 rounded-xl p-4"><p className="text-xs text-green-600 font-semibold">Receivable (owed to us)</p><p className="text-xl font-bold text-green-700">{fmt(data.balance.receivableAmount)}</p></div>
+              </div>
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Purchase History</p>
+              <div className="space-y-1.5 mb-5">
+                {(data.purchases || []).slice(0, 20).map((p) => (
+                  <div key={p._id} className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                    <span>{p.productName} × {p.quantity}</span>
+                    <span className="font-semibold">{fmt(p.totalCost)}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Payment History</p>
+              <div className="space-y-1.5">
+                {(data.payments || []).slice(0, 20).map((p, i) => (
+                  <div key={i} className="flex justify-between text-sm bg-blue-50 rounded-lg px-3 py-2">
+                    <span>{fmtDate(p.date)} — {p.method}{p.provider ? ` (${p.provider})` : ""}</span>
+                    <span className="font-semibold">{fmt(p.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CATEGORIES = ["Plumbing", "Paints", "Hand Tools", "Power Tools", "Washroom", "Electrical", "Safety", "Adhesives", "Other"];
 
 const STATUS_STYLE = {
@@ -384,6 +435,18 @@ export default function Suppliers() {
   const [modal, setModal] = useState(null);
   const [delId, setDelId] = useState(null);
   const [toast, setToast] = useState({ msg: "", type: "" });
+  const [balances, setBalances] = useState({});
+  const [historyFor, setHistoryFor] = useState(null);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/supplier-payments/summary")
+      .then((res) => {
+        const map = {};
+        (res.data.suppliers || []).forEach((s) => { map[s.supplierId] = s; });
+        setBalances(map);
+      })
+      .catch(() => setBalances({}));
+  }, []);
 
   const fetchSuppliers = useCallback(async () => {
     setFetching(true);
@@ -575,9 +638,21 @@ export default function Suppliers() {
                     <div className="text-xs text-gray-400 mt-0.5">Products supplied</div>
                   </div>
                 </div>
+                {balances[p._id] && (balances[p._id].payableAmount > 0 || balances[p._id].receivableAmount > 0) && (
+                  <div className="mb-3">
+                    {balances[p._id].payableAmount > 0 ? (
+                      <span className="inline-block text-xs font-bold px-2.5 py-1 rounded-lg bg-red-100 text-red-700">Due to Supplier: {fmt(balances[p._id].payableAmount)}</span>
+                    ) : (
+                      <span className="inline-block text-xs font-bold px-2.5 py-1 rounded-lg bg-green-100 text-green-700">Receivable: {fmt(balances[p._id].receivableAmount)}</span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2 mt-auto">
                   <button onClick={() => setDrawer(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEye size={15}/> View
+                  </button>
+                  <button onClick={() => setHistoryFor(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2.5 rounded-xl text-base transition">
+                    <FiEye size={15}/> Payments
                   </button>
                   <button onClick={() => setModal(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEdit2 size={15}/> Edit
@@ -593,6 +668,7 @@ export default function Suppliers() {
 
         <p className="text-center text-gray-400 text-base pb-4">Khulna Hardware Mart — Suppliers</p>
       </div>
+      {historyFor && <SupplierPaymentHistoryModal supplierId={historyFor._id} companyName={historyFor.companyName} onClose={() => setHistoryFor(null)} />}
     </div>
   );
 }
