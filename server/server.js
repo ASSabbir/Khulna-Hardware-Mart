@@ -1,6 +1,8 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const compression = require("compression");
+const rateLimit = require("express-rate-limit");
 
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
@@ -14,6 +16,17 @@ const app = express();
 
 // Middleware
 app.use(cors());
+app.use(compression()); // Phase 10 B3 — gzip API responses
+
+// Phase 10 B4 — basic rate limiting to prevent abuse/accidental heavy load
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300, // 300 requests/min per IP, generous for normal admin usage
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please slow down." },
+});
+app.use("/api/", apiLimiter);
 
 // JSON parser with increased limit for large requests
 app.use(express.json({ limit: "10mb" }));
@@ -40,6 +53,10 @@ app.use("/api/invoices", require("./routes/invoice"));
 app.use("/api/returns", returnRoutes);
 app.use("/api/purchase-history", purchaseHistoryRoutes);
 app.use("/api/ledger", ledgerRoutes);
+app.use("/api/options", require("./routes/dynamicOption"));
+app.use("/api/supplier-payments", require("./routes/supplierPayment"));
+app.use("/api/custom-product-sources", require("./routes/customProductSource"));
+app.use("/api/supplier-purchase-orders", require("./routes/supplierPurchaseOrder"));
 
 // Test Route
 app.get("/", (req, res) => {

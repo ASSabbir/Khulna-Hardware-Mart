@@ -16,22 +16,33 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || "/dashboard";
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.email || !form.password) {
       setError("Please enter email and password");
       return;
     }
+    await doLogin(form.email, form.password);
+  };
+
+  const doLogin = async (email, password) => {
     setLoading(true);
     setError("");
     try {
-      await login(form.email, form.password);
+      await login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAdminAutoLogin = () => {
+    const email = "admin@gmail.com";
+    const password = "123123Aa";
+    setForm({ email, password });
+    doLogin(email, password);
   };
 
   return (
@@ -93,6 +104,15 @@ export default function Login() {
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
+          </button>
+
+           <button
+            type="button"
+            onClick={handleAdminAutoLogin}
+            disabled={loading}
+            className="w-full border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold py-2.5 rounded-xl transition disabled:opacity-50 text-sm"
+          >
+            Admin
           </button>
         </form>
 

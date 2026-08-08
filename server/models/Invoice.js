@@ -80,8 +80,10 @@ const invoiceSchema = new mongoose.Schema(
     subtotal: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0, min: 0 },
     vat: { type: Number, default: 0, min: 0 },
+    transportCost: { type: Number, default: 0, min: 0 },
     grandTotal: { type: Number, required: true, min: 0 },
     priceType: { type: String, default: "retail" },
+    preparedBy: { type: String, trim: true, maxlength: 100, default: "" },
     status: { type: String, default: "completed" },
 
     paymentStatus: { type: String, enum: ["paid", "due"], default: "paid" },
@@ -110,6 +112,11 @@ const invoiceSchema = new mongoose.Schema(
 invoiceSchema.index({ paymentStatus: 1 });
 invoiceSchema.index({ "payments.method": 1 });
 invoiceSchema.index({ "payments.provider": 1 });
+invoiceSchema.index({ "customer.name": 1 });
+invoiceSchema.index({ "customer.phone": 1 });
+invoiceSchema.index({ invoiceNumber: 1 });
+invoiceSchema.index({ createdAt: -1 });
+invoiceSchema.index({ paymentStatus: 1, createdAt: -1 }); // composite — matches DueInvoice/PaidInvoice list queries
 
 module.exports = mongoose.model("Invoice", invoiceSchema);
 module.exports.PAYMENT_METHODS = PAYMENT_METHODS;
