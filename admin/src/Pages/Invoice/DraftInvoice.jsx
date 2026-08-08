@@ -6,12 +6,14 @@ import {
   FiCheckCircle, FiX, FiLoader, FiShoppingCart,
   FiChevronsLeft, FiChevronsRight, FiEdit3,
 } from "react-icons/fi";
+import { loadAllDrafts, saveAllDrafts, deleteDraftById as sharedDeleteDraft } from "../../utils/draftStorage";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 const fmt = (n) =>
   "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const today = () => new Date().toLocaleDateString("en-BD", { day: "2-digit", month: "short", year: "numeric" });
+
 
 const draftNo = () => "DRAFT-" + Date.now().toString().slice(-6);
 
@@ -169,6 +171,31 @@ const DraftInvoice = () => {
     setDraftNum(draftNo());
   };
 
+  // #31 — save current working draft into the multi-draft list
+  const saveCurrentDraft = () => {
+    if (memoItems.length === 0) { showToast("error", "Add at least one product before saving a draft."); return; }
+    const drafts = loadAllDrafts();
+    const payload = { id: draftNum, draftNum, draftDate, memoItems, customer, discount, priceType, savedAt: new Date().toISOString() };
+    const idx = drafts.findIndex((d) => d.id === draftNum);
+    if (idx >= 0) drafts[idx] = payload; else drafts.unshift(payload);
+    saveAllDrafts(drafts);
+    showToast("success", "Draft saved.");
+  };
+
+  const deleteSavedDraft = (id) => {
+    sharedDeleteDraft(id);
+    setSavedDrafts(loadAllDrafts());
+  };
+
+  // Load a saved draft into the Invoice page (#31 restore) via sessionStorage handoff
+  const restoreDraftToInvoice = (draft) => {
+    sessionStorage.setItem("khm_restore_draft", JSON.stringify(draft));
+    window.location.href = "/invoice/invoice?restore=1";
+  };
+
+  const [savedDrafts, setSavedDrafts] = useState(loadAllDrafts());
+  const refreshSavedDrafts = () => setSavedDrafts(loadAllDrafts());
+
   /* ── Pagination ─────────────────────────────────────────── */
   const totalPages = Math.ceil(totalProducts / 30);
 
@@ -200,6 +227,20 @@ const DraftInvoice = () => {
         </div>
       )}
 
+      {/* Saved drafts list (#31) */}
+      {savedDrafts.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4 font-['Barlow',sans-serif]">
+          {savedDrafts.map((d) => (
+            <div key={d.id} className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 text-xs">
+              <button onClick={() => restoreDraftToInvoice(d)} className="font-bold text-[#1E3A8A] hover:underline">
+                {d.draftNum} · {d.memoItems.length} items · {d.customer?.name || "No customer"}
+              </button>
+              <button onClick={() => deleteSavedDraft(d.id)} className="text-red-400 hover:text-red-600"><FiX size={12}/></button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── MAIN LAYOUT ── */}
       <div className="flex flex-col xl:flex-row gap-5 font-['Barlow',sans-serif] min-h-[calc(100vh-80px)]">
 
@@ -221,7 +262,7 @@ const DraftInvoice = () => {
             </div>
             {/* Price type switcher */}
             <div className="flex items-center bg-white border-2 border-slate-200 rounded-lg overflow-hidden text-xs font-bold">
-              {[["retail","Retail"], ["holcell","Holcell"], ["buying","Buying"]].map(([v, l]) => (
+              {[["retail","Retail"], ["holcell","Wholesale"], ["buying","Buying"]].map(([v, l]) => (
                 <button key={v} onClick={() => setPriceType(v)}
                   className={`px-3 py-1.5 transition-colors ${priceType === v ? "bg-[#1E3A8A] text-white" : "text-slate-500 hover:text-[#1E3A8A]"}`}>
                   {l}
@@ -348,6 +389,9 @@ const DraftInvoice = () => {
             <div className="flex items-center gap-2">
               <button onClick={addCustomItem} className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors">
                 <FiEdit3 size={13}/> Custom Line
+              </button>
+              <button onClick={() => { saveCurrentDraft(); refreshSavedDrafts(); }} className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1D4ED8] rounded-lg text-[#1D4ED8] text-xs font-semibold hover:bg-blue-50 transition-colors">
+                Save Draft
               </button>
               <button onClick={clearDraft} className="px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors">
                 Clear

@@ -105,13 +105,18 @@ async function buildDerivedTransactions() {
 // GET /api/ledger — full transaction list + running totals, shaped exactly how the UI expects
 router.get("/", async (req, res) => {
   try {
+    const { from, to, type } = req.query; // #17 — custom range / type filter
     const entries = await Ledger.find().sort({ date: -1, createdAt: -1 }).limit(5000).lean();
     const manualTxns = entries.map(toClientShape);
     const derivedTxns = await buildDerivedTransactions();
 
-    const transactions = [...manualTxns, ...derivedTxns].sort(
+    let transactions = [...manualTxns, ...derivedTxns].sort(
       (a, b) => new Date(b.datetime) - new Date(a.datetime)
     );
+
+    if (from) transactions = transactions.filter((t) => t.date >= from);
+    if (to) transactions = transactions.filter((t) => t.date <= to);
+    if (type === "income" || type === "expense") transactions = transactions.filter((t) => t.type === type);
 
     let totalIncome = 0;
     let totalExpense = 0;
@@ -200,6 +205,47 @@ router.delete("/:id", async (req, res) => {
     const deleted = await Ledger.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Entry not found." });
     res.json({ message: "Entry deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/ledger/zakat — daily closing balance → rolling minimum baseline
+router.get("/zakat", async (req, res) => {
+  try {
+    const entries = await Ledger.find().lean();
+    const derivedTxns = await buildDerivedTransactions();
+    const allTxns = [...entries.map(toClientShape), ...derivedTxns];
+
+    const byDate = {};
+    allTxns.forEach((t) => {
+      byDate[t.date] = byDate[t.date] || 0;
+      byDate[t.date] += t.type === "income" ? t.amount : -t.amount;
+    });
+
+    const dates = Object.keys(byDate).sort();
+    let running = 0;
+    const dailyClosing = dates.map((d) => {
+      running += byDate[d];
+      return { date: d, balance: +running.toFixed(2) };
+    });
+
+    if (dailyClosing.length === 0) {
+      return res.json({ baseline: 0, dailyClosing: [], zakatAmount: 0, note: "No transaction history yet." });
+    }
+
+    // Most consistent amount across ALL days — the value that repeats the most (mode),
+    // bucketed to nearest 1000. Not restricted to lowest values.
+    const balances = dailyClosing.map((d) => d.balance);
+    const buckets = {};
+    balances.forEach((b) => {
+      const bucket = Math.round(b / 1000) * 1000;
+      buckets[bucket] = (buckets[bucket] || 0) + 1;
+    });
+    const sortedBuckets = Object.entries(buckets).sort((a, b) => b[1] - a[1]);
+    const baseline = sortedBuckets.length > 0 ? Number(sortedBuckets[0][0]) : (balances[balances.length - 1] || 0);
+
+    res.json({ baseline: Number(baseline) || 0, dailyClosing, zakatAmount: +((Number(baseline) || 0) * 0.025).toFixed(2) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

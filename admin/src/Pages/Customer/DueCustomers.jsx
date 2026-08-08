@@ -4,7 +4,7 @@ import axios from "axios";
 import {
   FiAlertCircle, FiSearch, FiX, FiEye, FiTrash2,
   FiPhone, FiMail, FiMapPin, FiCalendar, FiShoppingBag, FiCheckCircle,
-  FiTag, FiFileText, FiDownload, FiLoader,
+  FiTag, FiFileText, FiDownload, FiLoader, FiDollarSign,
 } from "react-icons/fi";
 import InvoicePreviewModal from "./InvoicePreviewModal";
 
@@ -173,7 +173,34 @@ export default function DueCustomers() {
   const [delId, setDelId] = useState(null);
   const [toast, setToast] = useState("");
   const [previewId, setPreviewId] = useState(null);
+  const [payModal, setPayModal] = useState(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payProvider, setPayProvider] = useState("bKash");
+  const [payLoading, setPayLoading] = useState(false);
 
+  const submitPayment = async () => {
+    const amt = Number(payAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { setToast("Enter a valid amount"); return; }
+    if (!payModal?.customerId) { setToast("This customer has no linked customer record."); return; }
+    setPayLoading(true);
+    try {
+      const res = await axios.post(`http://localhost:5000/api/customers/${payModal.customerId}/collect-due`, {
+        amount: amt, method: payMethod, provider: payMethod === "mobile" ? payProvider : undefined,
+      });
+      setToast(res.data.movedToPaid ? "Fully paid — moved to Paid Customers ✅" : "Payment recorded ✅");
+      setPayModal(null);
+      setPayAmount("");
+      fetchData();
+    } catch (err) {
+      setToast(err.response?.data?.message || "Failed to record payment");
+    } finally {
+      setPayLoading(false);
+      setTimeout(() => setToast(""), 3000);
+    }
+  };
+
+  // Phase 10 C3 — search already debounced 350ms below; kept as-is (already correct), no duplicate immediate fetch on mount + search change
   const fetchData = () => {
     setLoading(true);
     axios.get("http://localhost:5000/api/customers/due", { params: { search } })
@@ -311,6 +338,7 @@ export default function DueCustomers() {
                       <div className="flex items-center gap-2">
                         <a href={`tel:${c.phone}`} className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"><FiPhone size={16} /></a>
                         <button onClick={() => setDrawer(c)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"><FiEye size={16} /></button>
+                        <button onClick={() => { setPayModal(c); setPayAmount(""); }} className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition" title="Collect payment"><FiDollarSign size={16} /></button>
                         <button onClick={() => setDelId(c.customerId || c.name)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition"><FiTrash2 size={16} /></button>
                       </div>
                     </td>
@@ -345,12 +373,47 @@ export default function DueCustomers() {
                 <div className="flex gap-2">
                   <a href={`tel:${c.phone}`} className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 font-semibold py-2.5 rounded-xl text-base transition"><FiPhone size={15} />Call</a>
                   <button onClick={() => setDrawer(c)} className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold py-2.5 rounded-xl text-base transition"><FiEye size={15} />View</button>
+                  <button onClick={() => { setPayModal(c); setPayAmount(""); }} className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 font-semibold py-2.5 rounded-xl text-base transition"><FiDollarSign size={15} />Pay</button>
                   <button onClick={() => setDelId(c.customerId || c.name)} className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 font-semibold py-2.5 rounded-xl text-base transition"><FiTrash2 size={15} />Remove</button>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {payModal && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+            <div className="bg-white rounded-3xl p-7 max-w-sm w-full shadow-2xl">
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Collect Payment</h3>
+              <p className="text-gray-500 text-sm mb-4">{payModal.name} — Due: {fmt(payModal.totalDue)}</p>
+              <input
+                type="number" min="0" max={payModal.totalDue} value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+                placeholder="Amount"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base mb-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <div className="flex gap-2 mb-4">
+                {["cash", "mobile", "bank"].map((m) => (
+                  <button key={m} onClick={() => setPayMethod(m)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold border-2 capitalize ${payMethod === m ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-500"}`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {payMethod === "mobile" && (
+                <select value={payProvider} onChange={(e) => setPayProvider(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-4">
+                  {["bKash", "Nagad", "Rocket", "Upay"].map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => setPayModal(null)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50">Cancel</button>
+                <button onClick={submitPayment} disabled={payLoading} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl disabled:opacity-50">
+                  {payLoading ? "Saving..." : "Confirm Payment"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-center pt-2">
           <button onClick={() => downloadCsv(data)} className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-xl text-base transition">

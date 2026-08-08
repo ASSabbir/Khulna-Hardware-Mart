@@ -1,11 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import ProductsShow from "./ProductsShow";
+
+const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 
 const AllProducts = () => {
   const [tab, setTab] = useState("all");
+  const [valuation, setValuation] = useState(null);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/products/valuation/summary")
+      .then((res) => setValuation(res.data))
+      .catch(() => setValuation(null));
+  }, []);
 
   return (
     <div className="p-6">
+      {valuation && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 inline-flex items-center gap-2 text-sm font-bold text-blue-800">
+          {valuation.totalProducts} Products — {fmt(valuation.totalValue)} Total Stock Value
+        </div>
+      )}
       <div className="flex gap-2 mb-4">
         {[
           { key: "all", label: "All Products" },

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FiTrendingUp, FiTrendingDown } from "react-icons/fi";
 
@@ -76,6 +77,7 @@ function Spark({ data, color = "#22c55e" }) {
 }
 
 const DeshboardOverview = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -271,49 +273,17 @@ const DeshboardOverview = () => {
             })}
           </div>
 
-          {/* ── QUICK INFO ROW ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* ── QUICK INFO ROW + clickable navigation cards (#28) ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              {
-                label: "Total Products",
-                val: (s.totalProducts || 0).toLocaleString(),
-                icon: "📦",
-                sub: `${s.outOfStockProducts || 0} out of stock`,
-              },
-              {
-                label: "Total Revenue",
-                val: fmt(s.totalRevenue || 0),
-                icon: "📈",
-                sub: "All time earnings",
-              },
-              {
-                label: "This Month",
-                val: fmt(s.monthRevenue || 0),
-                icon: "📅",
-                sub: `${targetProgress.toFixed(0)}% of target`,
-              },
-              {
-                label: "Low Stock",
-                val: s.lowStockProducts || 0,
-                icon: "⚠️",
-                sub: "items need restock",
-                warn: true,
-              },
-            ].map(({ label, val, icon, sub, warn }) => (
-              <div
-                key={label}
-                className={`bg-white border ${warn ? "border-red-200" : "border-gray-200"} rounded-2xl p-4 space-y-2 shadow-sm`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{icon}</span>
-                  <span className="text-gray-400 text-sm">{label}</span>
-                </div>
-                <div className="text-gray-800 text-2xl font-bold">{val}</div>
-                <div
-                  className={`text-xs ${warn ? "text-red-500" : "text-gray-400"}`}
-                >
-                  {sub}
-                </div>
+              { label: "All Invoices", icon: "🧾", to: "/invoice/invoice" },
+              { label: "All Customers", icon: "👥", to: "/customer/all" },
+              { label: "All Suppliers", icon: "🚚", to: "/customer/suppliers" },
+            ].map(({ label, icon, to }) => (
+              <div key={label} onClick={() => navigate(to)}
+                className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all">
+                <span className="text-2xl">{icon}</span>
+                <span className="text-gray-800 font-semibold">{label}</span>
               </div>
             ))}
           </div>

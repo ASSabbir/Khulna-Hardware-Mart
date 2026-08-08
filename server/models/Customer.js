@@ -17,4 +17,9 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Phase 10 A1 — indexes for frequently-searched fields
+customerSchema.index({ name: 1 });
+customerSchema.index({ phone: 1 });
+customerSchema.index({ totalDue: 1 });
+
 module.exports = mongoose.model("Customer", customerSchema);

@@ -6,8 +6,9 @@ const NAV_ITEMS = [
   { to: "add-money", label: "Add Money", icon: <FiDollarSign size={16} /> },
   { to: "add-expense", label: "Add Expence", icon: <FiMinusCircle size={16} /> },
   { to: "status", label: "Accounts Status", icon: <FiBarChart2 size={16} /> },
+  { to: "history", label: "History", icon: <FiBarChart2 size={16} /> },
+  { to: "zakat", label: "Zakat", icon: <FiDollarSign size={16} /> },
 ];
-
 const AccountLayout = () => {
   const [open, setOpen] = useState(false);
 

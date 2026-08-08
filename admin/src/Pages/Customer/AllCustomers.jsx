@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import {
   FiUsers, FiSearch, FiX, FiEye, FiTrash2, FiPlus,
@@ -208,12 +208,12 @@ export default function AllCustomers() {
     }
   };
 
-  // Filter based on tab
-  const filteredData = data.filter(c => {
+   // Filter based on tab — Phase 10 C6: memoized so it doesn't recompute on every unrelated re-render (modal open/close, toast, etc.)
+  const filteredData = useMemo(() => data.filter(c => {
     if (tab === "paid") return (c.totalDue || 0) === 0;
     if (tab === "due") return (c.totalDue || 0) > 0;
     return true;
-  });
+  }), [data, tab]);
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
