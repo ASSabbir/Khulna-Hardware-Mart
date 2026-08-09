@@ -118,11 +118,20 @@ export default function Accounts() {
             ))}
           </div>
           <p className="text-gray-500 text-sm font-semibold mb-3">Mobile Banking Breakdown</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             {["bKash", "Nagad", "Rocket", "Upay"].map((p) => (
               <div key={p} className="bg-gray-50 rounded-xl p-3 text-center">
                 <p className="text-gray-500 text-xs">{p}</p>
                 <p className="font-bold text-gray-800">{fmt(mobile[p])}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-gray-500 text-sm font-semibold mb-3">Bank Breakdown</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {Object.entries(stats?.bankBreakdown || {}).map(([bankName, amt]) => (
+              <div key={bankName} className="bg-purple-50 rounded-xl p-3 text-center">
+                <p className="text-gray-500 text-xs">{bankName}</p>
+                <p className="font-bold text-purple-700">{fmt(amt)}</p>
               </div>
             ))}
           </div>

@@ -1,4 +1,4 @@
-// FILE: server/routes/invoice.js (FULL REPLACEMENT) — write-conflict retry + multi-split collect-due 
+// FILE: server/routes/invoice.js (FULL REPLACEMENT) — write-conflict retry + multi-split collect-due
 const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
@@ -63,15 +63,21 @@ router.get("/stats", async (req, res) => {
     allInvoices.forEach((inv) => { inv.items.forEach((item) => { const key = item.company || "Other"; categoryRevenue[key] = (categoryRevenue[key] || 0) + item.total; }); });
     const topCategories = Object.entries(categoryRevenue).map(([name, revenue]) => ({ name, revenue })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
-    let totalCollected = 0, totalDueAmount = 0, cashTotal = 0, bankTotal = 0, mobileTotal = 0;
+    let totalCollected = 0, totalDueAmount = 0;
+    let cashTotal = 0, bankTotal = 0, mobileTotal = 0;
     let bkashTotal = 0, nagadTotal = 0, rocketTotal = 0, upayTotal = 0;
+    const bankByName = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+
     allInvoices.forEach((inv) => {
       totalCollected += inv.paidAmount || 0;
       totalDueAmount += inv.dueAmount || 0;
       (inv.payments || []).forEach((p) => {
         const amt = p.amount || 0;
         if (p.method === "cash") cashTotal += amt;
-        else if (p.method === "bank") bankTotal += amt;
+        else if (p.method === "bank") {
+          bankTotal += amt;
+          if (p.bankName && bankByName[p.bankName] !== undefined) bankByName[p.bankName] += amt;
+        }
         else if (p.method === "mobile") {
           mobileTotal += amt;
           if (p.provider === "bKash") bkashTotal += amt;
@@ -87,6 +93,7 @@ router.get("/stats", async (req, res) => {
         totalCollected, totalDueAmount, outstandingDue: totalDueAmount, grossSales, totalReturnsAmount, netSales: totalRevenue, totalCOGS, totalProfit, grossProfit },
       paymentMethodSummary: { cash: cashTotal, bank: bankTotal, mobileBanking: mobileTotal },
       mobileBankingBreakdown: { bKash: bkashTotal, Nagad: nagadTotal, Rocket: rocketTotal, Upay: upayTotal },
+      bankBreakdown: bankByName,
       recentInvoices, monthlyRevenue, topCategories,
     });
   } catch (error) {

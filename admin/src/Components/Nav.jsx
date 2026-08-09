@@ -5,7 +5,7 @@ import {
   FiHome, FiAlertTriangle, FiGrid, FiUsers, FiDollarSign,
   FiFileText, FiPackage, FiLogIn, FiTool,
   FiPhone, FiMail, FiMapPin, FiMenu, FiX, FiEye, FiEyeOff,
-  FiLock, FiAlertCircle, FiUser, FiLogOut, FiSettings, FiTruck, FiRotateCcw
+  FiLock, FiAlertCircle, FiUser, FiLogOut, FiSettings, FiRotateCcw
 } from "react-icons/fi";
 
 /* ─── Auth Context ─── */
@@ -264,7 +264,6 @@ const Nav = () => {
     { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
     { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
     { to: "/products", label: "Inventory", icon: <FiPackage /> },
-    { to: "/products/purchase-history", label: "Purchase History", icon: <FiTruck /> },
     { to: "/invoice/return", label: "Product Return", icon: <FiRotateCcw /> },
   ];
 
@@ -276,7 +275,7 @@ const Nav = () => {
   const NAV_LINKS =admin?adminLinks:userLinks ;
 
   const baseLink =
-    "flex items-center gap-2 px-3 py-1.5 rounded-md text-[13.5px] font-semibold transition-all duration-150 whitespace-nowrap";
+    "flex items-center gap-1 px-1.5 xl:px-2.5 py-1.5 rounded-md text-[11px] xl:text-[13px] font-semibold transition-all duration-150 whitespace-nowrap [&>svg]:w-3.5 [&>svg]:h-3.5 xl:[&>svg]:w-4 xl:[&>svg]:h-4";
 
   const activeLink = "bg-orange-500 text-white border-2 border-orange-500";
   const normalLink = "text-slate-800 border-2 border-transparent hover:bg-gray-100";
@@ -291,8 +290,8 @@ const Nav = () => {
       )}
 
       {/* ── TOP INFO STRIP (CENTERED ALWAYS) ── */}
-      <div className="hidden md:block bg-blue-900 text-white text-xs font-medium tracking-wide py-1.5 font-primary">
-        <div className="max-w-[1400px] mx-auto px-6 flex flex-wrap justify-center items-center gap-4 text-center">
+      <div className="hidden lg:block bg-blue-900 text-white text-xs font-medium tracking-wide py-1.5 font-primary">
+        <div className=" mx-auto px-4 xl:px-6 flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-center">
           <span className="flex items-center gap-1 opacity-90">
             <FiMapPin size={13} />
             280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna
@@ -318,25 +317,25 @@ const Nav = () => {
 
       {/* ── MAIN NAV ── */}
       <nav className="bg-white border-b-[3px] border-orange-500 sticky top-0 z-50 font-primary">
-        <div className="max-w-[1400px] mx-auto px-6 h-[72px] flex items-center justify-between gap-4">
+        <div className=" mx-auto px-3 sm:px-4 md:px-6 h-16 md:h-[72px] flex items-center justify-between gap-2 sm:gap-4">
 
           {/* BRAND */}
-          <NavLink to="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center text-white">
-              <FiTool size={26} />
+          <NavLink to="/" className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white shrink-0">
+              <FiTool size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5" />
             </div>
-            <div className="flex flex-col leading-tight ">
-              <span className="font-condensed md:text-[8px] lg:text-[18px] font-bold uppercase tracking-wide text-blue-900">
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="font-condensed text-[10px] sm:text-xs md:text-sm lg:text-[15px] font-bold uppercase tracking-wide text-blue-900 truncate">
                 Khulna <span className="text-orange-500">Hardware</span> Mart
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">
+              <span className="hidden sm:block text-[8px] md:text-[9px] uppercase tracking-widest text-slate-500 truncate">
                 Centenary · Est. 1976
               </span>
             </div>
           </NavLink>
 
           {/* DESKTOP MENU */}
-          <ul className="hidden md:flex items-center gap-1 flex-1 justify-center">
+          <ul className="hidden lg:flex items-center gap-0.5 xl:gap-1 flex-1 justify-center flex-nowrap min-w-0 overflow-hidden">
             {NAV_LINKS.map(({ to, label, icon, badge }) => (
               <li key={to}>
                 <NavLink
@@ -353,32 +352,32 @@ const Nav = () => {
             ))}
           </ul>
 
-          {/* AUTH */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             {admin ? (
               <UserMenu admin={admin} onLogout={logout} onLoginClick={() => setLoginModalOpen(true)} />
             ) : (
               <button
                 onClick={() => setLoginModalOpen(true)}
-                className="flex items-center gap-1 px-4 py-2 text-sm font-semibold bg-orange-500 text-white border-2 border-orange-500 rounded-md hover:bg-orange-600 transition"
+                className="flex items-center gap-1 px-3 xl:px-4 py-2 text-xs xl:text-sm font-semibold bg-orange-500 text-white border-2 border-orange-500 rounded-md hover:bg-orange-600 transition whitespace-nowrap"
               >
-                <FiLogIn size={15} /> Login
+                <FiLogIn size={14} /> Login
               </button>
             )}
           </div>
 
           {/* HAMBURGER */}
           <button
-            className="md:hidden"
+            className="lg:hidden shrink-0 p-2 -mr-2"
             onClick={() => setOpen(!open)}
+            aria-label={open ? "Close menu" : "Open menu"}
           >
-            {open ? <FiX size={24} /> : <FiMenu size={24} />}
+            {open ? <FiX size={22} /> : <FiMenu size={22} />}
           </button>
         </div>
 
         {/* MOBILE MENU */}
         {open && (
-          <div className="md:hidden bg-white border-t px-6 py-4 flex flex-col gap-2">
+          <div className="lg:hidden bg-white border-t px-4 sm:px-6 py-4 flex flex-col gap-2 max-h-[calc(100vh-64px)] overflow-y-auto">
             {NAV_LINKS.map(({ to, label, icon, badge }) => (
               <NavLink
                 key={to}

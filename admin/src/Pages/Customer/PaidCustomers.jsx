@@ -5,8 +5,11 @@ import {
   FiCheckCircle, FiSearch, FiX, FiEye, FiTrash2,
   FiPhone, FiMail, FiMapPin, FiCalendar, FiShoppingBag,
   FiTag, FiFileText, FiChevronLeft, FiChevronRight, FiDownload, FiLoader,
+  FiGrid, FiBox, FiClipboard, FiUsers, FiSettings, FiBarChart2, FiPrinter,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import InvoicePreviewModal from "./InvoicePreviewModal";
+import Pagination from "../../Components/Pagination";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -20,11 +23,20 @@ const avatarBg = (key) => {
 };
 
 const CUSTOMER_TYPES = {
-  1: { label: "Retail", style: "bg-blue-100 text-blue-700" },
-  2: { label: "Wholesale", style: "bg-purple-100 text-purple-700" },
+  1: { label: "Retail", style: "bg-blue-50 text-blue-600" },
+  2: { label: "Wholesale", style: "bg-purple-50 text-purple-600" },
 };
 const typeLabel = (t) => CUSTOMER_TYPES[t]?.label || CUSTOMER_TYPES[1].label;
 const typeStyle = (t) => CUSTOMER_TYPES[t]?.style || CUSTOMER_TYPES[1].style;
+
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard", icon: FiGrid },
+  { key: "inventory", label: "Inventory", icon: FiBox },
+  { key: "orders", label: "Orders", icon: FiClipboard },
+  { key: "customers", label: "Customers", icon: FiUsers, active: true },
+  { key: "settings", label: "Settings", icon: FiSettings },
+  { key: "reports", label: "Reports", icon: FiBarChart2 },
+];
 
 const PAGE_SIZE = 10;
 
@@ -74,93 +86,99 @@ function Drawer({ c, onClose, onPreview }) {
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
       <div className="w-full max-w-sm bg-white h-full overflow-y-auto shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900">Customer Info</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition"><FiX size={20} className="text-gray-500" /></button>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#F1F5F9]">
+          <h2 className="text-lg font-extrabold text-[#0F172A]">Customer Details</h2>
+          <button onClick={onClose} className="p-2 hover:bg-[#F1F5F9] rounded-xl transition"><FiX size={20} className="text-[#64748B]" /></button>
         </div>
-        <div className="px-6 py-6 flex items-center gap-4 border-b border-gray-100">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
+        <div className="px-6 py-6 flex items-center gap-4 border-b border-[#F1F5F9]">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-extrabold ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
           <div>
-            <div className="text-xl font-bold text-gray-900">{c.name}</div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="inline-flex items-center gap-1.5 text-sm px-3 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">
-                <FiCheckCircle size={12} /> Fully Paid
+            <div className="text-lg font-extrabold text-[#0F172A]">{c.name}</div>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full font-bold bg-emerald-50 text-[#16A34A]">
+                <FiCheckCircle size={11} /> Fully Paid
               </span>
-              <span className={`inline-flex items-center gap-1 text-sm px-3 py-0.5 rounded-full font-semibold ${typeStyle(c.customerType)}`}>
-                <FiTag size={11} /> {typeLabel(c.customerType)}
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-bold ${typeStyle(c.customerType)}`}>
+                {typeLabel(c.customerType)}
               </span>
             </div>
           </div>
         </div>
 
         <div className="px-6 pt-5">
-          <a href={`tel:${c.phone}`} className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-xl text-base transition">
-            <FiPhone size={17} /> Call {c.name.split(" ")[0]}
+          <a href={`tel:${c.phone}`} className="w-full flex items-center justify-center gap-2 bg-[#16A34A] hover:bg-[#15803D] text-white font-bold py-3.5 rounded-xl text-sm shadow-[0_4px_14px_-2px_rgba(22,163,74,0.35)] transition">
+            <FiPhone size={16} /> Call Customer
           </a>
         </div>
 
         <div className="px-6 py-5 space-y-4">
           {[
-            { icon: <FiPhone size={15} />, label: "Phone", val: c.phone },
-            { icon: <FiMail size={15} />, label: "Email", val: c.email || "Not provided" },
-            { icon: <FiMapPin size={15} />, label: "Address", val: c.address || "—" },
-            { icon: <FiCalendar size={15} />, label: "Joined", val: fmtDate(c.joinedAt) },
-            { icon: <FiCalendar size={15} />, label: "Last Order", val: fmtDate(c.lastOrderDate) },
-          ].map(({ icon, label, val }) => (
-            <div key={label} className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 flex-shrink-0">{icon}</div>
-              <div>
-                <div className="text-xs text-gray-400">{label}</div>
-                <div className={`text-base font-medium ${val === "Not provided" ? "text-gray-400 italic" : "text-gray-800"}`}>{val}</div>
-              </div>
+            { label: "Phone", val: c.phone },
+            { label: "Email", val: c.email || "Not provided" },
+            { label: "Address", val: c.address || "—" },
+            { label: "Joined Date", val: fmtDate(c.joinedAt) },
+            { label: "Last Order Date", val: fmtDate(c.lastOrderDate) },
+          ].map(({ label, val }) => (
+            <div key={label} className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#94A3B8]">{label}</span>
+              <span className={`text-sm font-bold ${val === "Not provided" ? "text-[#94A3B8] italic" : "text-[#0F172A]"}`}>{val}</span>
             </div>
           ))}
         </div>
-        <div className="border-t border-gray-100 mx-6" />
-        <div className="px-6 py-5 grid grid-cols-2 gap-3">
-          <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-            <div className="text-green-700 text-xl font-bold">{fmt(c.totalPaid)}</div>
-            <div className="text-green-600 text-sm mt-0.5">Total spent</div>
+
+        <div className="px-6 pb-5 grid grid-cols-2 gap-3">
+          <div className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-xl p-4">
+            <div className="text-[#0F172A] text-lg font-extrabold">{fmt(c.totalPaid)}</div>
+            <div className="text-[#94A3B8] text-xs mt-0.5 font-semibold">Total Spent</div>
+            <div className="text-[#CBD5E1] text-[11px] mt-2 font-medium">Total Orders</div>
           </div>
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <div className="text-blue-700 text-xl font-bold">{c.invoiceCount}</div>
-            <div className="text-blue-600 text-sm mt-0.5">Orders</div>
-          </div>
-          <div className="bg-green-50 border border-green-100 rounded-xl p-4 col-span-2">
-            <div className="text-green-600 text-xl font-bold">No due</div>
-            <div className="text-sm mt-0.5 text-green-500">All cleared — great customer!</div>
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+            <div className="text-[#16A34A] text-lg font-extrabold">No due</div>
+            <div className="text-emerald-600 text-xs mt-0.5 font-semibold">Payment Status</div>
+            <div className="text-emerald-500 text-[11px] mt-2 font-medium flex items-center gap-1">All cleared — great customer! 👍</div>
           </div>
         </div>
 
-        <div className="border-t border-gray-100 mx-6" />
+        <div className="border-t border-[#F1F5F9] mx-6" />
         <div className="px-6 py-5">
-          <p className="text-xs text-gray-400 mb-3 flex items-center gap-1.5"><FiFileText size={13} /> Invoice History</p>
+          <p className="text-sm font-extrabold text-[#0F172A] mb-3 flex items-center gap-1.5"><FiFileText size={14} /> Invoice History</p>
           {loading ? (
-            <div className="flex items-center gap-2 text-gray-400 text-sm py-6 justify-center"><FiLoader className="animate-spin" size={14} /> Loading…</div>
+            <div className="flex items-center gap-2 text-[#94A3B8] text-sm py-6 justify-center"><FiLoader className="animate-spin" size={14} /> Loading…</div>
           ) : invoices.length === 0 ? (
-            <p className="text-gray-400 text-base text-center py-6 bg-gray-50 rounded-xl">No invoices yet</p>
+            <p className="text-[#94A3B8] text-sm text-center py-6 bg-[#F8FAFC] rounded-xl">No invoices yet</p>
           ) : (
-            <div className="space-y-2">
-              {invoices.map((inv) => (
-                <div key={inv._id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
-                  <div>
-                    <div className="text-base font-semibold text-gray-800">{inv.invoiceNumber}</div>
-                    <div className="text-xs text-gray-400">{inv.invoiceDate}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-base font-bold text-gray-800">{fmt(inv.grandTotal)}</div>
-                    <button onClick={() => onPreview(inv._id)} title="Open & Print" className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition">
-                      <FiDownload size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div className="rounded-xl border border-[#F1F5F9] overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#F8FAFC] border-b border-[#F1F5F9]">
+                    <th className="text-left px-3 py-2.5 text-[10px] font-bold text-[#94A3B8] uppercase">Invoice</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-bold text-[#94A3B8] uppercase">Date</th>
+                    <th className="text-left px-3 py-2.5 text-[10px] font-bold text-[#94A3B8] uppercase">Total</th>
+                    <th className="px-3 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1F5F9]">
+                  {invoices.map((inv) => (
+                    <tr key={inv._id}>
+                      <td className="px-3 py-2.5 font-bold text-[#0F172A] whitespace-nowrap">{inv.invoiceNumber}</td>
+                      <td className="px-3 py-2.5 text-[#64748B] whitespace-nowrap">{inv.invoiceDate}</td>
+                      <td className="px-3 py-2.5 font-bold text-[#0F172A] whitespace-nowrap">{fmt(inv.grandTotal)}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <button className="text-[11px] font-bold text-blue-600 hover:underline">View</button>
+                          <button onClick={() => onPreview(inv._id)} className="text-[11px] font-bold text-[#64748B] hover:underline">Print</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
         <div className="mt-auto px-6 pb-6">
-          <button onClick={onClose} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3.5 rounded-xl text-base transition">Close</button>
+          <button onClick={onClose} className="w-full bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] font-bold py-3 rounded-xl text-sm transition">Close</button>
         </div>
       </div>
     </div>
@@ -217,178 +235,178 @@ export default function PaidCustomers() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-gray-500 text-lg">Loading...</p>
+        <div className="w-12 h-12 border-4 border-[#16A34A] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-[#64748B] text-sm font-medium">Loading...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-green-600 text-white px-5 py-3 rounded-2xl shadow-xl text-base font-medium flex items-center gap-2">
-          <FiCheckCircle size={18} /> {toast}
-        </div>
-      )}
+    <div className="min-h-screen bg-[#F8FAFC] font-sans flex">
 
-      {previewId && <InvoicePreviewModal invoiceId={previewId} onClose={() => setPreviewId(null)} />}
 
-      {delId && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
-            <div className="text-5xl mb-3">🗑️</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Remove customer?</h3>
-            <p className="text-gray-500 text-base mb-6"><strong>{data.find((c) => (c.customerId || c.name) === delId)?.name}</strong> will be removed.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDelId(null)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition">Remove</button>
-            </div>
+
+      {/* ══════════════════ MAIN ══════════════════ */}
+      <div className="flex-1 min-w-0">
+        {toast && (
+          <div className="fixed top-5 right-5 z-50 bg-white border border-emerald-200 text-[#0F172A] px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2.5 max-w-xs">
+            <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <FiCheckCircle size={15} className="text-[#16A34A]" />
+            </span>
+            {toast}
           </div>
-        </div>
-      )}
+        )}
 
-      <Drawer c={drawer} onClose={() => setDrawer(null)} onPreview={setPreviewId} />
+        {previewId && <InvoicePreviewModal invoiceId={previewId} onClose={() => setPreviewId(null)} />}
 
-      <div className="bg-white border-b border-gray-200 px-6 py-7">
-        <div className="max-w-6xl mx-auto flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white"><FiCheckCircle size={24} /></div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Paid Customers</h1>
-            <p className="text-gray-500 text-base mt-0.5">Customers with no outstanding due — the good ones!</p>
-          </div>
-          <div className="ml-auto bg-green-100 text-green-700 text-xl font-bold px-5 py-2 rounded-2xl">{data.length} paid</div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-5">
-        <div className="relative">
-          <FiSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, phone or email..."
-            className="w-full bg-white border border-gray-200 rounded-xl pl-11 pr-10 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 transition" />
-          {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><FiX size={16} /></button>}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {[{ key: "all", label: "All Types" }, { key: "1", label: "Retail" }, { key: "2", label: "Wholesale" }].map(({ key, label }) => (
-            <button key={key} onClick={() => setTypeFilter(key)}
-              className={`px-4 py-2 rounded-xl text-base font-semibold transition ${typeFilter === key ? "bg-green-600 text-white" : "bg-white border border-gray-200 text-gray-500 hover:border-green-400"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <p className="text-gray-400 text-base">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
-
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  {["Customer", "Type", "Phone", "Address", "Orders", "Total Spent", "Status", "Actions"].map((h) => (
-                    <th key={h} className="text-left px-5 py-4 text-base font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {rows.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-16 text-gray-400 text-lg">No paid customers found 🔍</td></tr>
-                ) : rows.map((c) => (
-                  <tr key={c.customerId || c.name} className="hover:bg-gray-50 transition">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
-                        <div>
-                          <div className="text-base font-semibold text-gray-900 whitespace-nowrap">{c.name}</div>
-                          <div className="text-sm text-gray-400">{c.email || <span className="italic">No email</span>}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4"><span className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span></td>
-                    <td className="px-5 py-4 text-base text-gray-700 whitespace-nowrap"><span className="flex items-center gap-1.5"><FiPhone size={13} className="text-gray-400" />{c.phone}</span></td>
-                    <td className="px-5 py-4 text-base text-gray-500"><span className="flex items-center gap-1.5 max-w-[140px]"><FiMapPin size={13} className="text-gray-400 flex-shrink-0" /><span className="truncate">{c.address || "—"}</span></span></td>
-                    <td className="px-5 py-4"><span className="flex items-center gap-1.5 text-base font-semibold text-gray-800"><FiShoppingBag size={13} className="text-gray-400" />{c.invoiceCount}</span></td>
-                    <td className="px-5 py-4 text-base font-semibold text-gray-800 whitespace-nowrap">{fmt(c.totalPaid)}</td>
-                    <td className="px-5 py-4"><span className={`text-sm font-semibold px-3 py-1 rounded-lg capitalize ${c.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{c.status}</span></td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <a href={`tel:${c.phone}`} className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"><FiPhone size={16} /></a>
-                        <button onClick={() => setDrawer(c)} className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"><FiEye size={16} /></button>
-                        <button onClick={() => setDelId(c.customerId || c.name)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition"><FiTrash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden divide-y divide-gray-100">
-            {rows.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-lg">No paid customers found 🔍</div>
-            ) : rows.map((c) => (
-              <div key={c.customerId || c.name} className="p-5">
-                <div className="flex items-start justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
-                    <div>
-                      <div className="text-base font-bold text-gray-900">{c.name}</div>
-                      <div className="text-sm text-gray-500 flex items-center gap-1"><FiPhone size={12} />{c.phone}</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span className="text-sm font-semibold px-2.5 py-1 rounded-lg bg-green-100 text-green-700">Paid</span>
-                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-lg ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="bg-gray-50 rounded-xl p-3 text-center"><div className="text-base font-bold text-gray-900">{c.invoiceCount}</div><div className="text-xs text-gray-400 mt-0.5">Orders</div></div>
-                  <div className="bg-green-50 rounded-xl p-3 text-center"><div className="text-sm font-bold text-green-700">{fmt(c.totalPaid)}</div><div className="text-xs text-gray-400 mt-0.5">Total Spent</div></div>
-                </div>
-                <div className="flex gap-2">
-                  <a href={`tel:${c.phone}`} className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 font-semibold py-2.5 rounded-xl text-base transition"><FiPhone size={15} />Call</a>
-                  <button onClick={() => setDrawer(c)} className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold py-2.5 rounded-xl text-base transition"><FiEye size={15} />View</button>
-                  <button onClick={() => setDelId(c.customerId || c.name)} className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 font-semibold py-2.5 rounded-xl text-base transition"><FiTrash2 size={15} />Remove</button>
-                </div>
+        {delId && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+            <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
+              <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><FiTrash2 size={24} className="text-red-500"/></div>
+              <h3 className="text-lg font-extrabold text-[#0F172A] mb-2">Remove customer?</h3>
+              <p className="text-[#64748B] text-sm mb-6">
+                Name <strong className="text-[#0F172A]">{data.find((c) => (c.customerId || c.name) === delId)?.name}</strong> will be removed.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDelId(null)} className="flex-1 border border-[#E2E8F0] text-[#334155] font-bold py-3 rounded-xl hover:bg-[#F8FAFC] transition">Cancel</button>
+                <button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition">Remove</button>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {filtered.length > 0 && (
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <p className="text-gray-400 text-sm">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</p>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition">
-                <FiChevronLeft size={16} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
-                .reduce((acc, n, i, arr) => { if (i > 0 && n - arr[i - 1] > 1) acc.push("…"); acc.push(n); return acc; }, [])
-                .map((n, i) => n === "…" ? (
-                  <span key={`gap-${i}`} className="px-2 text-gray-400">…</span>
-                ) : (
-                  <button key={n} onClick={() => setPage(n)}
-                    className={`w-9 h-9 rounded-xl text-sm font-semibold transition ${page === n ? "bg-green-600 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
-                    {n}
-                  </button>
-                ))}
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition">
-                <FiChevronRight size={16} />
-              </button>
             </div>
           </div>
         )}
 
-        <div className="flex justify-center pt-2">
-          <button onClick={() => downloadCsv(data)} className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-xl text-base transition">
-            <FiDownload size={17} /> Download All Customer Data (CSV)
-          </button>
-        </div>
+        <Drawer c={drawer} onClose={() => setDrawer(null)} onPreview={setPreviewId} />
 
-        <p className="text-center text-gray-400 text-base pb-4">Khulna Hardware Mart · Paid Customers</p>
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#16A34A] rounded-2xl flex items-center justify-center text-white shadow-[0_4px_14px_-2px_rgba(22,163,74,0.35)]"><FiCheckCircle size={22} /></div>
+              <div>
+                <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#0F172A] tracking-tight">Paid Customers</h1>
+                <p className="text-[#94A3B8] text-sm mt-0.5">Customers with no outstanding due — the good ones!</p>
+              </div>
+            </div>
+            <span className="flex items-center gap-2 bg-emerald-50 text-[#16A34A] text-sm font-bold px-4 py-2.5 rounded-full">
+              <FiBarChart2 size={14} /> Total Paid Customers: {data.length}
+            </span>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <FiSearch size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by customer name, phone, or email"
+              className="w-full bg-white border border-[#E2E8F0] rounded-full pl-11 pr-10 py-3 text-sm placeholder-[#94A3B8] shadow-[0_2px_10px_-2px_rgba(15,23,42,0.06)] focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 transition" />
+            {search && <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#334155]"><FiX size={16} /></button>}
+          </div>
+
+          {/* Type tabs — underline style */}
+          <div className="flex gap-6 border-b border-[#F1F5F9]">
+            {[{ key: "all", label: "All Types" }, { key: "1", label: "Retail" }, { key: "2", label: "Wholesale" }].map(({ key, label }) => (
+              <button key={key} onClick={() => setTypeFilter(key)}
+                className={`pb-3 text-sm font-bold transition border-b-2 -mb-px ${
+                  typeFilter === key ? "text-[#16A34A] border-[#16A34A]" : "text-[#94A3B8] border-transparent hover:text-[#334155]"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div className="bg-white border border-[#F1F5F9] rounded-2xl overflow-hidden shadow-[0_2px_10px_-2px_rgba(15,23,42,0.06)]">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#F8FAFC] border-b border-[#F1F5F9]">
+                    {["Customer", "Type", "Phone", "Address", "Orders", "Total Spent", "Status", "Actions"].map((h) => (
+                      <th key={h} className="text-left px-5 py-3.5 text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1F5F9]">
+                  {rows.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center py-16 text-[#94A3B8] text-sm">No paid customers found 🔍</td></tr>
+                  ) : rows.map((c) => (
+                    <tr key={c.customerId || c.name} className="hover:bg-[#F8FAFC] transition">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
+                          <div>
+                            <div className="text-sm font-bold text-[#0F172A] whitespace-nowrap">{c.name}</div>
+                            <div className="text-xs text-[#94A3B8]">{c.email || <span className="italic">No email</span>}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span></td>
+                      <td className="px-5 py-4 text-sm text-[#64748B] whitespace-nowrap">{c.phone}</td>
+                      <td className="px-5 py-4 text-sm text-[#64748B]"><span className="truncate block max-w-[140px]">{c.address || "—"}</span></td>
+                      <td className="px-5 py-4 text-sm font-bold text-[#334155]">{c.invoiceCount}</td>
+                      <td className="px-5 py-4 text-sm font-bold text-[#334155] whitespace-nowrap">{fmt(c.totalPaid)}</td>
+                      <td className="px-5 py-4"><span className={`text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ${c.status === "active" ? "bg-emerald-50 text-[#16A34A]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>{c.status}</span></td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <a href={`tel:${c.phone}`} className="text-[11px] font-bold text-white bg-[#16A34A] hover:bg-[#15803D] px-3 py-1.5 rounded-full transition">Call</a>
+                          <button onClick={() => setDrawer(c)} className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full transition">View</button>
+                          <button onClick={() => setDelId(c.customerId || c.name)} className="text-[11px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="md:hidden divide-y divide-[#F1F5F9]">
+              {rows.length === 0 ? (
+                <div className="text-center py-16 text-[#94A3B8] text-sm">No paid customers found 🔍</div>
+              ) : rows.map((c) => (
+                <div key={c.customerId || c.name} className="p-5">
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm ${avatarBg(c.customerId || c.name)}`}>{initials(c.name)}</div>
+                      <div>
+                        <div className="text-sm font-bold text-[#0F172A]">{c.name}</div>
+                        <div className="text-xs text-[#64748B] flex items-center gap-1 mt-0.5"><FiPhone size={11} />{c.phone}</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#16A34A]">Paid</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeStyle(c.customerType)}`}>{typeLabel(c.customerType)}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="bg-[#F8FAFC] rounded-xl p-3 text-center"><div className="text-sm font-bold text-[#0F172A]">{c.invoiceCount}</div><div className="text-[10px] text-[#94A3B8] mt-0.5 font-medium">Orders</div></div>
+                    <div className="bg-emerald-50 rounded-xl p-3 text-center"><div className="text-xs font-bold text-emerald-700">{fmt(c.totalPaid)}</div><div className="text-[10px] text-[#94A3B8] mt-0.5 font-medium">Total Spent</div></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href={`tel:${c.phone}`} className="flex-1 flex items-center justify-center gap-1.5 bg-[#16A34A] hover:bg-[#15803D] text-white font-bold py-2.5 rounded-xl text-xs transition"><FiPhone size={13} />Call</a>
+                    <button onClick={() => setDrawer(c)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition"><FiEye size={13} />View</button>
+                    <button onClick={() => setDelId(c.customerId || c.name)} className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs transition"><FiTrash2 size={13} />Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <p className="text-[#94A3B8] text-xs font-medium">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</p>
+              <Pagination page={page} totalPages={totalPages} onChange={setPage} accent="#16A34A" />
+            </div>
+          )}
+
+          {/* CSV Export Section */}
+          <div className="bg-[#0F172A] rounded-2xl p-5">
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wide mb-3">CSV Export Section</p>
+            <button onClick={() => downloadCsv(data)} className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-bold px-6 py-3 rounded-xl text-sm transition">
+              <FiDownload size={16} /> Download All Customer Data (CSV)
+            </button>
+          </div>
+
+          <p className="text-center text-[#94A3B8] text-sm pb-4">Khulna Hardware Mart · Paid Customers</p>
+        </div>
       </div>
     </div>
   );

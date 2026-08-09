@@ -7,6 +7,7 @@ const Invoice = require("../models/Invoice");
 const Return = require("../models/Return");
 
 const MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
+const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
 const EPS_LEDGER = 0.01;
 
 const CATEGORIES = {
@@ -24,6 +25,7 @@ function toClientShape(doc) {
     amount: doc.amount,
     method: doc.method,
     provider: doc.provider || null,
+    bankName: doc.bankName || "",
     description: doc.description,
     addedBy: doc.addedBy,
   };
@@ -34,6 +36,17 @@ function computeMobileBreakdown(transactions) {
   transactions.forEach((t) => {
     if (t.method === "mobile" && out[t.provider] !== undefined) {
       out[t.provider] += t.type === "income" ? t.amount : -t.amount;
+    }
+  });
+  Object.keys(out).forEach((k) => (out[k] = +out[k].toFixed(2)));
+  return out;
+}
+
+function computeBankBreakdown(transactions) {
+  const out = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+  transactions.forEach((t) => {
+    if (t.method === "bank" && t.bankName && out[t.bankName] !== undefined) {
+      out[t.bankName] += t.type === "income" ? t.amount : -t.amount;
     }
   });
   Object.keys(out).forEach((k) => (out[k] = +out[k].toFixed(2)));
@@ -130,6 +143,7 @@ router.get("/", async (req, res) => {
       totalIncome: +totalIncome.toFixed(2),
       totalExpense: +totalExpense.toFixed(2),
       mobileBankingBreakdown: computeMobileBreakdown(transactions),
+      bankBreakdown: computeBankBreakdown(transactions),
       transactions,
     });
   } catch (error) {
@@ -140,7 +154,7 @@ router.get("/", async (req, res) => {
 // POST /api/ledger — add an income or expense entry
 router.post("/", async (req, res) => {
   try {
-    const { type, category, amount, description, date, method, provider, addedBy } = req.body;
+    const { type, category, amount, description, date, method, provider, bankName, addedBy } = req.body;
 
     if (!["income", "expense"].includes(type)) {
       return res.status(400).json({ message: "Type must be 'income' or 'expense'." });
@@ -163,6 +177,9 @@ router.post("/", async (req, res) => {
     }
     if (method === "mobile" && !MOBILE_PROVIDERS.includes(provider)) {
       return res.status(400).json({ message: "Select a valid mobile banking provider." });
+    }
+    if (method === "bank" && bankName && !BANK_OPTIONS.includes(bankName)) {
+      return res.status(400).json({ message: "Select a valid bank name." });
     }
 
      if (type === "expense" && category === "Withdraw") {
@@ -187,6 +204,7 @@ router.post("/", async (req, res) => {
       date,
       method: method || "cash",
       provider: method === "mobile" ? provider : null,
+      bankName: method === "bank" ? String(bankName || "") : "",
       addedBy: (addedBy || "Admin").trim().slice(0, 100),
     });
 

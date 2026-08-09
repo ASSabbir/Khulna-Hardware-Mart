@@ -1,59 +1,171 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  FiPlusCircle, FiDollarSign, FiFileText,
-  FiCalendar, FiTag, FiUser, FiCheckCircle,
-  FiAlertCircle, FiTrendingUp, FiList,
+  FiPlusCircle,
+  FiFileText,
+  FiCalendar,
+  FiTag,
+  FiUser,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiList,
+  FiSearch,
+  FiSliders,
+  FiChevronRight,
+  FiChevronDown,
+  FiBarChart2,
+  FiZap,
+  FiArrowUpRight,
 } from "react-icons/fi";
+import { MOBILE_PROVIDERS, BANK_OPTIONS } from "../../utils/paymentConstants";
 
-// 👉 swap to real API when backend ready
 const API_URL = "http://localhost:5000/api/ledger";
 
-const fmt     = (n) => "৳" + Number(n).toLocaleString();
-const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
+const fmtDate = (d) =>
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+const fmtDateShort = (d) =>
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }) +
+  " · " +
+  new Date(d).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const INCOME_CATEGORIES = ["Sales", "Due Collection", "Investment", "Loan", "Bank Interest", "Refund Received"];
+const INCOME_CATEGORIES = [
+  "Sales",
+  "Due Collection",
+  "Investment",
+  "Loan",
+  "Bank Interest",
+  "Refund Received",
+];
+const QUICK_PRESETS = [5000, 10000, 20000, 50000];
 
-const INITIAL_FORM = { amount: "", category: "", description: "", date: new Date().toISOString().split("T")[0], addedBy: "", method: "cash", provider: "bKash" };
+const INITIAL_FORM = {
+  amount: "",
+  category: "",
+  description: "",
+  date: new Date().toISOString().split("T")[0],
+  addedBy: "",
+  method: "cash",
+  provider: "bKash",
+  bankName: BANK_OPTIONS[0],
+};
+
+function Sparkline({ points, color, fillId }) {
+  return (
+    <svg
+      viewBox="0 0 120 40"
+      className="w-full h-10"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,40 ${points} 120,40`} fill={`url(#${fillId})`} />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function AddMoney() {
   const [accounts, setAccounts] = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [form,     setForm]     = useState(INITIAL_FORM);
-  const [errors,   setErrors]   = useState({});
-  const [saving,   setSaving]   = useState(false);
-  const [toast,    setToast]    = useState("");
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoryOther, setIsCategoryOther] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [activitySearch, setActivitySearch] = useState("");
+  const [showActivitySearch, setShowActivitySearch] = useState(true);
+  const [activityFilterOpen, setActivityFilterOpen] = useState(false);
+  const [activityCategoryFilter, setActivityCategoryFilter] = useState("");
 
   useEffect(() => {
-    axios.get(API_URL)
+    axios
+      .get(API_URL)
       .then((res) => setAccounts(res.data))
-      .catch(() => setAccounts({ balance: 0, totalIncome: 0, totalExpense: 0, transactions: [] }))
+      .catch(() =>
+        setAccounts({
+          balance: 0,
+          totalIncome: 0,
+          totalExpense: 0,
+          transactions: [],
+        }),
+      )
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/options/accountCategory")
-      .then((res) => setCategoryOptions((res.data.options || []).filter((c) => !INCOME_CATEGORIES.includes(c))))
+    axios
+      .get("http://localhost:5000/api/options/accountCategory")
+      .then((res) =>
+        setCategoryOptions(
+          (res.data.options || []).filter(
+            (c) => !INCOME_CATEGORIES.includes(c),
+          ),
+        ),
+      )
       .catch(() => setCategoryOptions([]));
   }, []);
 
-  const handleCategorySelect = (e) => {
-    const val = e.target.value;
-    if (val === "__others__") { setIsCategoryOther(true); setForm((f) => ({ ...f, category: "" })); }
-    else { setIsCategoryOther(false); setForm((f) => ({ ...f, category: val })); }
+  useEffect(() => {
+    if (!categoryOpen && !activityFilterOpen) return;
+    const close = () => {
+      setCategoryOpen(false);
+      setActivityFilterOpen(false);
+    };
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [categoryOpen, activityFilterOpen]);
+
+  const handleCategoryPick = (val) => {
+    if (val === "__others__") {
+      setIsCategoryOther(true);
+      setForm((f) => ({ ...f, category: "" }));
+    } else {
+      setIsCategoryOther(false);
+      setForm((f) => ({ ...f, category: val }));
+    }
     setErrors((p) => ({ ...p, category: "" }));
+    setCategoryOpen(false);
+    setCategorySearch("");
   };
 
   const saveCustomCategory = async () => {
     const trimmed = customCategory.trim();
     if (!trimmed) return;
     try {
-      const res = await axios.post("http://localhost:5000/api/options/accountCategory", { value: trimmed });
+      const res = await axios.post(
+        "http://localhost:5000/api/options/accountCategory",
+        { value: trimmed },
+      );
       setForm((f) => ({ ...f, category: res.data.value }));
-      if (res.data.created) setCategoryOptions((prev) => [...prev, res.data.value]);
+      if (res.data.created)
+        setCategoryOptions((prev) => [...prev, res.data.value]);
     } catch {
       setForm((f) => ({ ...f, category: trimmed }));
     }
@@ -64,18 +176,27 @@ export default function AddMoney() {
     setErrors((p) => ({ ...p, [k]: "" }));
   };
 
+  const applyPreset = (val) => {
+    setForm((p) => ({ ...p, amount: String(val) }));
+    setErrors((p) => ({ ...p, amount: "" }));
+  };
+
   const validate = () => {
     const e = {};
-    if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) e.amount = "Enter a valid amount";
-    if (!form.category)    e.category    = "Select a category";
+    if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0)
+      e.amount = "Enter a valid amount";
+    if (!form.category) e.category = "Select a category";
     if (!form.description.trim()) e.description = "Description is required";
-    if (!form.date)        e.date        = "Select a date";
+    if (!form.date) e.date = "Select a date";
     return e;
   };
 
   const handleSubmit = async () => {
     const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
+    if (Object.keys(e).length) {
+      setErrors(e);
+      return;
+    }
     setSaving(true);
     try {
       const res = await axios.post(API_URL, {
@@ -87,6 +208,7 @@ export default function AddMoney() {
         addedBy: form.addedBy || "Admin",
         method: form.method,
         provider: form.method === "mobile" ? form.provider : null,
+        bankName: form.method === "bank" ? form.bankName : null,
       });
       const newTx = res.data;
       setAccounts((prev) => ({
@@ -96,7 +218,7 @@ export default function AddMoney() {
         transactions: [newTx, ...prev.transactions],
       }));
       setForm(INITIAL_FORM);
-      showToast("Money added successfully.");
+      showToast("Income Added Successfully!");
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to add income.");
     } finally {
@@ -109,194 +231,607 @@ export default function AddMoney() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const recentIncome = (accounts?.transactions || []).filter((t) => t.type === "income").slice(0, 6);
-
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-11 h-11 border-4 border-green-600 border-t-transparent rounded-full animate-spin"/>
-    </div>
+  const allCategories = [...INCOME_CATEGORIES, ...categoryOptions, "Others"];
+  const filteredCategories = allCategories.filter((c) =>
+    c.toLowerCase().includes(categorySearch.toLowerCase()),
   );
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+  const recentIncome = (accounts?.transactions || [])
+    .filter((t) => t.type === "income")
+    .slice(0, 6);
+  const filteredActivity = recentIncome.filter((t) => {
+    const matchesSearch =
+      !activitySearch ||
+      t.description?.toLowerCase().includes(activitySearch.toLowerCase()) ||
+      t.category?.toLowerCase().includes(activitySearch.toLowerCase());
+    const matchesFilter =
+      !activityCategoryFilter || t.category === activityCategoryFilter;
+    return matchesSearch && matchesFilter;
+  });
+  const activityFilterCategories = [
+    ...new Set(recentIncome.map((t) => t.category).filter(Boolean)),
+  ];
+  const todayStr = new Date().toDateString();
+  const todaysIncome = recentIncome
+    .filter((t) => new Date(t.date).toDateString() === todayStr)
+    .reduce((s, t) => s + Number(t.amount), 0);
 
+  if (loading)
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] font-sans">
       {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-green-600 text-white px-5 py-3 rounded-2xl shadow-xl text-base font-semibold flex items-center gap-2">
-          <FiCheckCircle size={18}/> {toast}
+        <div className="fixed top-4 right-4 left-4 sm:left-auto z-50 bg-white border border-[#E2E8F0] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.15)] rounded-2xl px-4 py-3 sm:px-5 flex items-center gap-3 animate-[fadeIn_0.2s_ease]">
+          <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <FiCheckCircle className="text-[#10B981]" size={16} />
+          </span>
+          <div>
+            <p className="text-[#0F172A] font-semibold text-sm leading-tight">
+              Success Notification
+            </p>
+            <p className="text-[#64748B] text-xs mt-0.5">{toast}</p>
+          </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-7">
-        <div className="max-w-5xl mx-auto flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0">
-            <FiPlusCircle size={24}/>
-          </div>
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Top Header */}
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Add Money</h1>
-            <p className="text-gray-500 text-base mt-0.5">Record incoming funds, sales revenue or any other income</p>
+            <div className="flex items-center gap-1.5 text-[13px] text-[#64748B] mb-2">
+              <span>Dashboard</span>
+              <FiChevronRight size={12} />
+              <span>Accounting</span>
+              <FiChevronRight size={12} />
+              <span className="text-[#0F172A] font-semibold">Add Money</span>
+            </div>
+            <h1 className="text-2xl sm:text-[28px] font-bold text-[#0F172A] tracking-tight">
+              Add Money
+            </h1>
+            <p className="text-[#64748B] text-sm sm:text-[15px] mt-1">
+              Record incoming funds and income transactions
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* ── Form ── */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Balance card */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-500 rounded-2xl p-6 text-white">
-              <p className="text-green-100 text-base font-medium">Current Balance</p>
-              <p className="text-4xl font-bold mt-1">{fmt(accounts?.balance || 0)}</p>
-              <div className="flex items-center gap-6 mt-4">
-                <div>
-                  <p className="text-green-200 text-sm">Total Income</p>
-                  <p className="text-white text-xl font-bold">{fmt(accounts?.totalIncome || 0)}</p>
-                </div>
-                <div className="w-px h-10 bg-white/20"/>
-                <div>
-                  <p className="text-green-200 text-sm">Total Expense</p>
-                  <p className="text-white text-xl font-bold">{fmt(accounts?.totalExpense || 0)}</p>
-                </div>
-              </div>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
+          {/* Current Balance */}
+          <div className="rounded-[16px] p-5 sm:p-6 bg-gradient-to-br from-emerald-50 via-white to-white border border-[#E2E8F0] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] backdrop-blur-sm relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <p className="text-[#64748B] text-sm font-medium">
+                Current Balance
+              </p>
+              <span className="text-[#94A3B8]">⋮</span>
             </div>
-
-            {/* Form card */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-7">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Income Details</h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Amount */}
-                <div className="sm:col-span-2">
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Amount <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-base font-semibold">৳</span>
-                    <input
-                      type="number" value={form.amount} onChange={set("amount")} placeholder="0.00"
-                      className={`w-full bg-gray-50 border ${errors.amount ? "border-red-400" : "border-gray-200"} rounded-xl pl-9 pr-4 py-3.5 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 transition`}
-                    />
-                  </div>
-                  {errors.amount && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.amount}</p>}
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <FiTag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
-                    <select value={isCategoryOther ? "__others__" : form.category} onChange={handleCategorySelect}
-                      className={`w-full bg-gray-50 border ${errors.category ? "border-red-400" : "border-gray-200"} rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 transition appearance-none`}>
-                      <option value="">Select category...</option>
-                      {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                      {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                      <option value="__others__">Others</option>
-                    </select>
-                  </div>
-                  {isCategoryOther && (
-                    <input
-                      type="text"
-                      autoFocus
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      onBlur={saveCustomCategory}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveCustomCategory(); } }}
-                      placeholder="Type new category name"
-                      className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-green-500 transition"
-                    />
-                  )}
-                  {errors.category && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.category}</p>}
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Date <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <FiCalendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
-                    <input type="date" value={form.date} onChange={set("date")}
-                      className={`w-full bg-gray-50 border ${errors.date ? "border-red-400" : "border-gray-200"} rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 transition`}/>
-                  </div>
-                  {errors.date && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.date}</p>}
-                </div>
-
-                {/* #21 Payment Method */}
-                <div className="sm:col-span-2">
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Payment Method</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {["cash", "mobile", "bank"].map((m) => (
-                      <button key={m} type="button" onClick={() => setForm((p) => ({ ...p, method: m }))}
-                        className={`px-4 py-2 rounded-lg border-2 text-sm font-bold capitalize transition ${form.method === m ? "border-green-500 bg-green-500 text-white" : "border-gray-200 text-gray-600 bg-white"}`}>
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                  {form.method === "mobile" && (
-                    <select value={form.provider} onChange={(e) => setForm((p) => ({ ...p, provider: e.target.value }))}
-                      className="w-full mt-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-green-500 transition">
-                      {["bKash", "Nagad", "Rocket", "Upay"].map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div className="sm:col-span-2">
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Description <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <FiFileText size={16} className="absolute left-4 top-4 text-gray-400"/>
-                    <textarea value={form.description} onChange={set("description")} rows={3}
-                      placeholder="e.g. Sales revenue from Rahim Construction order..."
-                      className={`w-full bg-gray-50 border ${errors.description ? "border-red-400" : "border-gray-200"} rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 transition resize-none`}/>
-                  </div>
-                  {errors.description && <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1"><FiAlertCircle size={13}/>{errors.description}</p>}
-                </div>
-
-                {/* Added By */}
-                <div className="sm:col-span-2">
-                  <label className="block text-base font-semibold text-gray-700 mb-2">Added By</label>
-                  <div className="relative">
-                    <FiUser size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"/>
-                    <input type="text" value={form.addedBy} onChange={set("addedBy")} placeholder="Your name (optional)"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3.5 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 transition"/>
-                  </div>
-                </div>
-              </div>
-
-              <button onClick={handleSubmit} disabled={saving}
-                className="w-full mt-6 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-bold py-4 rounded-xl text-lg transition flex items-center justify-center gap-2">
-                {saving
-                  ? <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/>Processing...</>
-                  : <><FiPlusCircle size={20}/> Add Income</>
-                }
-              </button>
+            <p className="text-[26px] sm:text-[30px] font-bold text-[#0F172A] mt-2 tracking-tight">
+              {fmt(accounts?.balance || 0)}
+            </p>
+            <div className="flex items-center gap-1 mt-2 text-emerald-600 text-[13px] font-semibold">
+              <FiArrowUpRight size={14} /> +2.5% this month
             </div>
           </div>
 
-          {/* ── Recent Income ── */}
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden h-fit">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-              <FiList size={18} className="text-green-600"/>
-              <h3 className="text-base font-bold text-gray-900">Recent Income</h3>
+          {/* Total Income */}
+          <div className="rounded-[16px] p-5 sm:p-6 bg-white border border-[#E2E8F0] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center justify-between">
+              <p className="text-[#64748B] text-sm font-medium">Total Income</p>
+              <span className="text-[11px] font-bold text-[#10B981] bg-emerald-50 px-2 py-0.5 rounded-full">
+                +18.7%
+              </span>
             </div>
-            <div className="divide-y divide-gray-50">
-              {recentIncome.length === 0 ? (
-                <p className="text-center text-gray-400 text-base py-10">No income records yet</p>
-              ) : recentIncome.map((t) => (
-                <div key={t.id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-gray-900 truncate">{t.description}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{t.category}</span>
-                        <span className="text-xs text-gray-400">{fmtDate(t.date)}</span>
+            <p className="text-[26px] sm:text-[30px] font-bold text-[#0F172A] mt-2 tracking-tight">
+              {fmt(accounts?.totalIncome || 0)}
+            </p>
+            <Sparkline
+              fillId="incomeFill"
+              color="#10B981"
+              points="0,32 15,28 30,30 45,20 60,22 75,12 90,15 105,4 120,8"
+            />
+          </div>
+
+          {/* Total Expense */}
+          <div className="rounded-[16px] p-5 sm:p-6 bg-white border border-[#E2E8F0] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] sm:col-span-2 xl:col-span-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[#64748B] text-sm font-medium">
+                Total Expense
+              </p>
+              <span className="text-[11px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                Reduced 4%
+              </span>
+            </div>
+            <p className="text-[26px] sm:text-[30px] font-bold text-[#0F172A] mt-2 tracking-tight">
+              {fmt(accounts?.totalExpense || 0)}
+            </p>
+            <Sparkline
+              fillId="expenseFill"
+              color="#EF4444"
+              points="0,10 15,18 30,14 45,24 60,20 75,28 90,24 105,32 120,30"
+            />
+          </div>
+        </div>
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5 sm:gap-6">
+          {/* Left: Form */}
+          <div className="bg-white border border-[#E2E8F0] rounded-[16px] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 sm:p-7">
+            <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] mb-5 sm:mb-6">
+              Premium Income-entry Form
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              {/* Amount */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Amount <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#64748B] text-base font-bold">
+                    ৳
+                  </span>
+                  <input
+                    type="number"
+                    value={form.amount}
+                    onChange={set("amount")}
+                    placeholder="0.00"
+                    className={`w-full bg-[#F8FAFC] border ${
+                      errors.amount ? "border-red-400" : "border-[#E2E8F0]"
+                    } rounded-[10px] pl-9 pr-4 py-3.5 text-lg font-bold text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 focus:border-[#10B981] transition`}
+                  />
+                </div>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {QUICK_PRESETS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => applyPreset(v)}
+                      className="px-3 py-1.5 rounded-lg bg-[#F1F5F9] hover:bg-emerald-50 hover:text-[#10B981] text-[#475569] text-xs font-semibold transition"
+                    >
+                      {v >= 1000 ? `${v / 1000}k` : v}
+                    </button>
+                  ))}
+                </div>
+                {errors.amount && (
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <FiAlertCircle size={12} />
+                    {errors.amount}
+                  </p>
+                )}
+              </div>
+
+              {/* Category */}
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCategoryOpen((o) => !o)}
+                  className={`w-full flex items-center justify-between bg-[#F8FAFC] border ${
+                    errors.category ? "border-red-400" : "border-[#E2E8F0]"
+                  } rounded-[10px] pl-4 pr-3 py-3.5 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <FiTag size={14} className="text-[#94A3B8]" />
+                    {isCategoryOther
+                      ? "Others"
+                      : form.category || "Select category..."}
+                  </span>
+                  <FiChevronDown size={14} className="text-[#94A3B8]" />
+                </button>
+
+                {categoryOpen && (
+                  <div className="absolute z-20 mt-2 w-full bg-white border border-[#E2E8F0] rounded-[12px] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.15)] overflow-hidden">
+                    <div className="p-2 border-b border-[#F1F5F9]">
+                      <div className="relative">
+                        <FiSearch
+                          size={13}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]"
+                        />
+                        <input
+                          autoFocus
+                          value={categorySearch}
+                          onChange={(e) => setCategorySearch(e.target.value)}
+                          placeholder="Search category..."
+                          className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40"
+                        />
                       </div>
                     </div>
-                    <span className="text-base font-bold text-green-600 whitespace-nowrap">+{fmt(t.amount)}</span>
+                    <div className="max-h-52 overflow-y-auto">
+                      {filteredCategories.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() =>
+                            handleCategoryPick(
+                              c === "Others" ? "__others__" : c,
+                            )
+                          }
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-emerald-50 transition ${
+                            form.category === c
+                              ? "bg-emerald-50 text-[#10B981] font-semibold"
+                              : "text-[#334155]"
+                          }`}
+                        >
+                          {c}
+                          {form.category === c && <FiCheckCircle size={14} />}
+                        </button>
+                      ))}
+                      {filteredCategories.length === 0 && (
+                        <p className="text-center text-xs text-[#94A3B8] py-4">
+                          No matches
+                        </p>
+                      )}
+                    </div>
                   </div>
+                )}
+
+                {isCategoryOther && (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    onBlur={saveCustomCategory}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveCustomCategory();
+                      }
+                    }}
+                    placeholder="Type new category name"
+                    className="mt-2 w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
+                  />
+                )}
+                {errors.category && (
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <FiAlertCircle size={12} />
+                    {errors.category}
+                  </p>
+                )}
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Date <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <FiCalendar
+                    size={15}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]"
+                  />
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={set("date")}
+                    className={`w-full bg-[#F8FAFC] border ${
+                      errors.date ? "border-red-400" : "border-[#E2E8F0]"
+                    } rounded-[10px] pl-11 pr-4 py-3.5 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition`}
+                  />
                 </div>
-              ))}
+                {errors.date && (
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <FiAlertCircle size={12} />
+                    {errors.date}
+                  </p>
+                )}
+              </div>
+
+              {/* Added By */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Added By
+                </label>
+                <div className="relative">
+                  <FiUser
+                    size={15}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]"
+                  />
+                  <input
+                    type="text"
+                    value={form.addedBy}
+                    onChange={set("addedBy")}
+                    placeholder="Your name (optional)"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] pl-11 pr-4 py-3.5 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Payment Method Selector
+                </label>
+                <div className="flex gap-2 flex-wrap bg-[#F1F5F9] p-1 rounded-[10px] w-full sm:w-fit">
+                  {["cash", "mobile", "bank"].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, method: m }))}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-[8px] text-sm font-semibold transition ${
+                        form.method === m
+                          ? "bg-white text-[#0F172A] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
+                          : "text-[#64748B]"
+                      }`}
+                    >
+                      {m === "mobile"
+                        ? "Mobile Banking"
+                        : m === "bank"
+                          ? "Bank"
+                          : "Cash"}
+                    </button>
+                  ))}
+                </div>
+                {form.method === "mobile" && (
+                  <select
+                    value={form.provider}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, provider: e.target.value }))
+                    }
+                    className="w-full mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
+                  >
+                    {MOBILE_PROVIDERS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {form.method === "bank" && (
+                  <select
+                    value={form.bankName}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, bankName: e.target.value }))
+                    }
+                    className="w-full mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
+                  >
+                    {BANK_OPTIONS.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <FiFileText
+                    size={15}
+                    className="absolute left-4 top-4 text-[#94A3B8]"
+                  />
+                  <textarea
+                    value={form.description}
+                    onChange={set("description")}
+                    rows={3}
+                    placeholder="Payment for Invoice #1234"
+                    className={`w-full bg-[#F8FAFC] border ${
+                      errors.description ? "border-red-400" : "border-[#E2E8F0]"
+                    } rounded-[10px] pl-11 pr-4 py-3.5 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition resize-none`}
+                  />
+                </div>
+                {errors.description && (
+                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <FiAlertCircle size={12} />
+                    {errors.description}
+                  </p>
+                )}
+              </div>
             </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="w-full mt-6 sm:mt-7 bg-[#10B981] hover:bg-[#059669] disabled:bg-emerald-300 text-white font-bold py-3.5 sm:py-4 rounded-[10px] text-base transition flex items-center justify-center gap-2 shadow-[0_4px_14px_-2px_rgba(16,185,129,0.4)]"
+            >
+              {saving ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <FiPlusCircle size={18} /> Add Income
+                </>
+              )}
+            </button>
           </div>
 
+          {/* Right: Sidebar */}
+          <div className="space-y-5">
+            {/* Recent Income Activity */}
+            <div className="bg-white border border-[#E2E8F0] rounded-[16px] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#F1F5F9] flex items-center justify-between">
+                <h3 className="text-sm font-bold text-[#0F172A]">
+                  Recent Income Activity Panel
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowActivitySearch((s) => !s)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
+                      showActivitySearch
+                        ? "bg-emerald-50 text-[#10B981]"
+                        : "hover:bg-[#F1F5F9] text-[#64748B]"
+                    }`}
+                  >
+                    <FiSearch size={14} />
+                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivityFilterOpen((o) => !o);
+                      }}
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
+                        activityCategoryFilter
+                          ? "bg-emerald-50 text-[#10B981]"
+                          : "hover:bg-[#F1F5F9] text-[#64748B]"
+                      }`}
+                    >
+                      <FiSliders size={14} />
+                    </button>
+                    {activityFilterOpen && (
+                      <div
+                        className="absolute z-20 right-0 mt-2 w-44 bg-white border border-[#E2E8F0] rounded-[12px] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.15)] overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivityCategoryFilter("");
+                            setActivityFilterOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-xs font-semibold ${!activityCategoryFilter ? "text-[#10B981] bg-emerald-50" : "text-[#334155] hover:bg-[#F8FAFC]"}`}
+                        >
+                          All categories
+                        </button>
+                        {activityFilterCategories.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => {
+                              setActivityCategoryFilter(c);
+                              setActivityFilterOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-xs ${activityCategoryFilter === c ? "text-[#10B981] bg-emerald-50 font-semibold" : "text-[#334155] hover:bg-[#F8FAFC]"}`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                        {activityFilterCategories.length === 0 && (
+                          <p className="text-center text-[11px] text-[#94A3B8] py-3">
+                            No categories yet
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {showActivitySearch && (
+                <div className="px-4 pt-3">
+                  <input
+                    value={activitySearch}
+                    onChange={(e) => setActivitySearch(e.target.value)}
+                    placeholder="Search transactions..."
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#10B981]/40"
+                  />
+                </div>
+              )}
+              <div className="divide-y divide-[#F1F5F9] max-h-[340px] overflow-y-auto mt-1">
+                {filteredActivity.length === 0 ? (
+                  <p className="text-center text-[#94A3B8] text-sm py-8">
+                    No income records yet
+                  </p>
+                ) : (
+                  filteredActivity.map((t) => (
+                    <div
+                      key={t.id}
+                      className="px-5 py-3.5 flex items-start gap-3"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <FiArrowUpRight size={14} className="text-[#10B981]" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#0F172A] truncate">
+                            {t.description}
+                          </p>
+                          <span className="text-sm font-bold text-[#10B981] whitespace-nowrap">
+                            +{fmt(t.amount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[11px] bg-emerald-50 text-[#10B981] px-2 py-0.5 rounded-full font-semibold">
+                            {t.category}
+                          </span>
+                          <span className="text-[11px] text-[#94A3B8]">
+                            {fmtDate(t.date)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Today's Income Summary */}
+            <div className="bg-white border border-[#E2E8F0] rounded-[16px] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5">
+              <p className="text-sm font-bold text-[#0F172A] mb-1">
+                Today's Income Summary
+              </p>
+              <p className="text-2xl font-bold text-[#0F172A]">
+                {fmt(todaysIncome)}
+              </p>
+            </div>
+
+            {/* Recent Activity Timeline */}
+            <div className="bg-white border border-[#E2E8F0] rounded-[16px] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-bold text-[#0F172A]">
+                  Recent Activity Timeline
+                </p>
+                <button className="text-xs font-semibold text-[#10B981] hover:underline">
+                  View all
+                </button>
+              </div>
+              <div className="space-y-4">
+                {recentIncome.slice(0, 3).map((t, i) => (
+                  <div key={t.id} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                        <FiArrowUpRight size={12} className="text-[#10B981]" />
+                      </span>
+                      {i < Math.min(recentIncome.length, 3) - 1 && (
+                        <span className="w-px flex-1 bg-[#E2E8F0] mt-1" />
+                      )}
+                    </div>
+                    <div className="pb-2 min-w-0">
+                      <p className="text-sm font-semibold text-[#0F172A] truncate">
+                        {t.description}
+                      </p>
+                      <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                        {fmtDateShort(t.date)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {recentIncome.length === 0 && (
+                  <p className="text-center text-[#94A3B8] text-xs py-2">
+                    No activity yet
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Smart Financial Insights */}
+            <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-[16px] p-5 flex items-start gap-3">
+              <span className="w-9 h-9 rounded-xl bg-white border border-emerald-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <FiZap size={16} className="text-[#10B981]" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-[#0F172A]">
+                  Smart Financial Insights
+                </p>
+                <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
+                  Automate recurring income for faster processing
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
