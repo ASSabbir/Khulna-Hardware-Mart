@@ -142,6 +142,11 @@ router.post("/:id/collect-due", async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new Error("Invalid customer id.");
     if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a valid payment amount.");
 
+    const customerCheck = await Customer.findById(req.params.id).lean();
+    if (customerCheck && amt > (customerCheck.totalDue || 0) + 0.01) {
+      throw new Error(`Payment cannot exceed the customer's total due (৳${(customerCheck.totalDue || 0).toFixed(2)}).`);
+    }
+
     const result = await withTransaction(async (session) => {
       const customer = await Customer.findById(req.params.id).session(session);
       if (!customer) throw new Error("Customer not found.");

@@ -10,6 +10,7 @@ const ledgerSchema = new mongoose.Schema(
     date: { type: String, required: true }, // YYYY-MM-DD, user-selected
     method: { type: String, enum: ["cash", "mobile", "bank"], default: "cash" },
     provider: { type: String, enum: ["bKash", "Nagad", "Rocket", "Upay", null], default: null },
+    bankName: { type: String, enum: ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited", ""], default: "" },
     addedBy: { type: String, trim: true, maxlength: 100, default: "Admin" },
   },
   { timestamps: true }

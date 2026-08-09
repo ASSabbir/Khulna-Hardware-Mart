@@ -11,6 +11,7 @@ import {
 import { loadDraft, saveDraft, clearDraft as clearAutosave, loadAllDrafts, saveAllDrafts, deleteDraftById, upsertDraft } from "../../utils/draftStorage";
 import { buildChallanHTML } from "../../Print/challanTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
+import { clampToMax } from "../../utils/paymentConstants";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date().toLocaleDateString("en-BD", { day: "2-digit", month: "short", year: "numeric" });
@@ -568,7 +569,7 @@ const Invoice = () => {
                       <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
                       <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
                         <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
-                        <input type="number" min="0" step="0.01" placeholder="0.00" value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]" />
+                        <input type="number" min="0" max={subtotal} step="0.01" placeholder="0.00" value={discount} onChange={(e) => setDiscount(clampToMax(e.target.value, subtotal))} className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]" />
                       </div>
                     </div>
                     <label className="flex items-center gap-2 text-xs font-bold text-[#1E3A8A] uppercase tracking-wider cursor-pointer print:cursor-default select-none">
@@ -606,7 +607,7 @@ const Invoice = () => {
                   {paymentStatus === "due" && (
                     <div className="flex items-center gap-3 bg-red-50 border-2 border-red-200 rounded-lg px-3 py-2">
                       <label className="text-xs font-bold text-red-600 whitespace-nowrap">Paying Now (৳)</label>
-                      <input type="number" min="0" max={grandTotal} step="0.01" value={paidNowAmount} onChange={(e) => setPaidNowAmount(e.target.value)} disabled={splitPayment} placeholder="0.00" className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif] disabled:bg-red-100" />
+                      <input type="number" min="0" max={grandTotal} step="0.01" value={paidNowAmount} onChange={(e) => setPaidNowAmount(clampToMax(e.target.value, grandTotal))} disabled={splitPayment} placeholder="0.00" className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif] disabled:bg-red-100" />
                       <span className="text-xs font-bold text-red-600 whitespace-nowrap">Due: ৳{dueBalance.toFixed(2)}</span>
                     </div>
                   )}
