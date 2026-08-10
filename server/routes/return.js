@@ -4,15 +4,27 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const Invoice = require("../models/Invoice");
 const Return = require("../models/Return");
+const Customer = require("../models/Customer");
+const Ledger = require("../models/Ledger");
 const { restoreStockFIFO } = require("./product");
 
 const { withTransaction } = require("../utils/withTransaction");
+const EPS_RETURN = 0.01;
 
 router.post("/", async (req, res) => {
   try {
-    const { invoiceId, items } = req.body;
+    const { invoiceId, items, refundPayments } = req.body;
     if (!mongoose.Types.ObjectId.isValid(invoiceId)) throw new Error("Invalid invoice id.");
     if (!Array.isArray(items) || items.length === 0) throw new Error("At least one return item is required.");
+
+    const normalizedRefunds = Array.isArray(refundPayments)
+      ? refundPayments.filter((p) => Number(p.amount) > 0).map((p) => ({
+          method: ["cash", "mobile", "bank"].includes(p.method) ? p.method : "cash",
+          provider: p.method === "mobile" ? p.provider : null,
+          bankName: p.method === "bank" ? String(p.bankName || "") : "",
+          amount: Number(p.amount),
+        }))
+      : [];
 
     const result = await withTransaction(async (session) => {
     const invoice = await Invoice.findById(invoiceId).session(session);
@@ -71,10 +83,46 @@ router.post("/", async (req, res) => {
     invoice.totalReturnedAmount = +((invoice.totalReturnedAmount || 0) + totalReturnAmount).toFixed(2);
     invoice.netSaleAmount = +(invoice.grandTotal - invoice.totalReturnedAmount).toFixed(2);
 
+    // Auto best-logic split: first waive as much of the return value as possible
+    // against any outstanding due on this invoice, then whatever's left over must
+    // be physically refunded to the customer via the chosen method(s).
+    const autoDueAdjustment = Math.min(totalReturnAmount, invoice.dueAmount || 0);
+    const requiredRefund = +(totalReturnAmount - autoDueAdjustment).toFixed(2);
+
+    const refundSum = +normalizedRefunds.reduce((s, p) => s + p.amount, 0).toFixed(2);
+    if (Math.abs(refundSum - requiredRefund) > EPS_RETURN) {
+      throw new Error(`Refund payments (৳${refundSum}) must total ৳${requiredRefund} — the returned amount not already covered by due.`);
+    }
+
+    if (autoDueAdjustment > 0) {
+      invoice.dueAmount = Math.max(0, +((invoice.dueAmount || 0) - autoDueAdjustment).toFixed(2));
+      if (invoice.dueAmount <= EPS_RETURN) {
+        invoice.dueAmount = 0;
+        invoice.paymentStatus = "paid";
+      }
+    }
+
     await invoice.save({ session });
 
+    const today = new Date().toISOString().slice(0, 10);
+    for (const p of normalizedRefunds) {
+      await Ledger.create([{
+        type: "expense", category: "Return", amount: p.amount,
+        description: `Refund — ${invoice.invoiceNumber}`, date: today,
+        method: p.method, provider: p.provider, bankName: p.bankName, addedBy: "System",
+      }], { session });
+    }
+
+    if (autoDueAdjustment > 0 && invoice.customer?.name) {
+      const customer = await Customer.findOne({ name: invoice.customer.name }).session(session);
+      if (customer) {
+        customer.totalDue = Math.max(0, +((customer.totalDue || 0) - autoDueAdjustment).toFixed(2));
+        await customer.save({ session });
+      }
+    }
+
     const returnRecord = await Return.create(
-      [{ invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, items: returnRecordItems, totalReturnAmount, returnDateBST: nowBST }],
+      [{ invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, items: returnRecordItems, totalReturnAmount, returnDateBST: nowBST, refundPayments: normalizedRefunds, dueAdjustment: autoDueAdjustment }],
       { session }
     );
       return { invoice, returnRecord: returnRecord[0] };

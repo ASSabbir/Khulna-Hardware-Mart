@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* Single scroll owner: body only. Any nested wrapper using min-h-screen /
+   h-screen + overflow-y-auto must not also allow the outer page to scroll —
+   enforced globally here instead of per-page. */
+html, body, #root {
+  height: auto;
+  min-height: 100%;
+}
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* Layout shells (sidebar layouts) intentionally use h-screen + internal
+   overflow-y-auto on their content pane — that's the ONE allowed exception
+   and is already scoped to .flex.h-screen.overflow-hidden containers. */

@@ -13,6 +13,13 @@ const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank 
 const EPS = 0.01;
 
 function validatePayments(payments, expectedTotal) {
+  if (expectedTotal <= EPS) {
+    if (Array.isArray(payments) && payments.length > 0) {
+      const sum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      if (sum > EPS) return "No payment amount should be recorded when nothing is being paid now.";
+    }
+    return null;
+  }
   if (!Array.isArray(payments) || payments.length === 0) return "At least one payment method is required.";
   let sum = 0;
   for (const p of payments) {
@@ -108,6 +115,10 @@ router.get("/", async (req, res) => {
     const skip = (Math.max(1, parseInt(page)) - 1) * cappedLimit;
     const filter = {};
     if (paymentStatus === "paid" || paymentStatus === "due") filter.paymentStatus = paymentStatus;
+    if (req.query.customerName && String(req.query.customerName).trim()) {
+      const safeName = String(req.query.customerName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter["customer.name"] = { $regex: `^${safeName}$`, $options: "i" };
+    }
     if (search && String(search).trim()) {
       const safe = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [{ "customer.name": { $regex: safe, $options: "i" } }, { "customer.phone": { $regex: safe, $options: "i" } }, { invoiceNumber: { $regex: safe, $options: "i" } }];

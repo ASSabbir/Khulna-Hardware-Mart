@@ -123,9 +123,11 @@ router.get("/", async (req, res) => {
     const manualTxns = entries.map(toClientShape);
     const derivedTxns = await buildDerivedTransactions();
 
-    let transactions = [...manualTxns, ...derivedTxns].sort(
-      (a, b) => new Date(b.datetime) - new Date(a.datetime)
-    );
+    let transactions = [...manualTxns, ...derivedTxns].sort((a, b) => {
+      const diff = new Date(b.datetime) - new Date(a.datetime);
+      if (diff !== 0) return diff;
+      return String(b.id).localeCompare(String(a.id));
+    });
 
     if (from) transactions = transactions.filter((t) => t.date >= from);
     if (to) transactions = transactions.filter((t) => t.date <= to);
@@ -182,20 +184,8 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "Select a valid bank name." });
     }
 
-     if (type === "expense" && category === "Withdraw") {
-      const derivedTxns = await buildDerivedTransactions();
-      const existingEntries = await Ledger.find().lean();
-      const allTxns = [...existingEntries.map(toClientShape), ...derivedTxns];
-      const available = allTxns.reduce((sum, t) => {
-        const sameMethod = t.method === (method || "cash") && ((method || "cash") !== "mobile" || t.provider === provider);
-        if (!sameMethod) return sum;
-        return sum + (t.type === "income" ? t.amount : -t.amount);
-      }, 0);
-      if (amt > available + EPS_LEDGER) {
-        return res.status(400).json({ message: `Insufficient balance — only ৳${available.toFixed(2)} available for this method.` });
-      }
-    }
-
+    // #22 — overdraw is intentionally allowed for every payment method. The resulting
+    // negative balance is expected and must remain visible, never blocked.
     const entry = await Ledger.create({
       type,
       category,

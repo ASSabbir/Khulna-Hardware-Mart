@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { FiX } from "react-icons/fi";
+import PaymentSplitEditor from "./PaymentSplitEditor";
+import { MOBILE_PROVIDERS, BANK_OPTIONS } from "../utils/paymentConstants";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
-const MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
-const emptyPayment = () => ({ id: Date.now() + Math.random(), method: "cash", amount: "", provider: "bKash" });
+const emptyPayment = () => ({ id: Date.now() + Math.random(), method: "cash", amount: "", provider: "bKash", bankName: BANK_OPTIONS[0], accountNumber: "", mobileNumber: "" });
 
 export default function RestockModal({ product, onClose, onDone }) {
   const [suppliers, setSuppliers] = useState([]);
@@ -146,29 +147,7 @@ export default function RestockModal({ product, onClose, onDone }) {
             {appliedCredit > 0 && (
               <div className="flex justify-between text-sm font-bold text-blue-800 mb-2 pt-1 border-t border-blue-200"><span>Amount to Pay</span><span>{fmt(costAfterCredit)}</span></div>
             )}
-            <label className="block text-xs font-bold text-[#1E3A8A] uppercase tracking-wider mb-1.5">Payment Method(s)</label>
-            <div className="space-y-2">
-              {payments.map((p) => (
-                <div key={p.id} className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 rounded-lg p-2">
-                  <select value={p.method} onChange={(e) => updatePayment(p.id, "method", e.target.value)} className="text-xs font-semibold border border-slate-200 rounded-lg px-2 py-1.5 outline-none">
-                    <option value="cash">Cash</option>
-                    <option value="mobile">Mobile Banking</option>
-                    <option value="bank">Bank</option>
-                  </select>
-                  {p.method === "mobile" && (
-                    <select value={p.provider} onChange={(e) => updatePayment(p.id, "provider", e.target.value)} className="text-xs font-semibold border border-slate-200 rounded-lg px-2 py-1.5 outline-none">
-                      {MOBILE_PROVIDERS.map((mp) => <option key={mp} value={mp}>{mp}</option>)}
-                    </select>
-                  )}
-                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                    <span className="px-2 text-xs text-slate-400">৳</span>
-                    <input type="number" min="0" step="0.01" value={p.amount} onChange={(e) => updatePayment(p.id, "amount", e.target.value)} placeholder="0.00" className="w-20 px-1 py-1.5 text-xs font-semibold outline-none" />
-                  </div>
-                  <button type="button" onClick={() => removePayment(p.id)} className="ml-auto text-slate-300 hover:text-red-500"><FiX size={14} /></button>
-                </div>
-              ))}
-            </div>
-            <button type="button" onClick={addPayment} className="mt-2 w-full text-xs font-bold text-blue-700 border border-dashed border-blue-300 rounded-lg py-1.5 hover:bg-blue-100">+ Add Payment Method</button>
+            <PaymentSplitEditor rows={payments} onChange={setPayments} maxTotal={costAfterCredit} label="Payment Method(s)" />
             <div className="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-blue-200">
               <span className="text-slate-600">Paid Now: {fmt(paidSum)}</span>
               <span className={due > 0 ? "text-red-600" : "text-green-600"}>Due to Supplier: {fmt(due)}</span>

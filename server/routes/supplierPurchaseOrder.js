@@ -58,9 +58,7 @@ router.post("/", async (req, res) => {
         purchasedItems.push({ productName: product.name, buyingPrice: price, quantity: qty, totalCost: price * qty });
       }
 
-      if (credit > 0) {
-        await SupplierPayment.create([{ supplierId: supplier._id, type: "receivable", amount: -credit, date: today, method: "cash", note: "Purchase order — adjusted from receivable" }], { session });
-      }
+      // Credit consumption needs no SupplierPayment entry — see product.js recordPurchasePayments.
       for (const p of payments || []) {
         const amt = Number(p.amount);
         if (!Number.isFinite(amt) || amt <= 0) continue;

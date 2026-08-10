@@ -2,7 +2,8 @@
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2 });
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-export function buildInvoiceReceiptHTML(inv) {
+export function buildInvoiceReceiptHTML(inv, opts = {}) {
+  const { extraHTML = "" } = opts;
   const rows = (inv.items || []).map((it, idx) => `
     <tr>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;">${idx + 1}</td>
@@ -37,5 +38,6 @@ export function buildInvoiceReceiptHTML(inv) {
     </p>
     <p style="color:#64748b;font-size:13px;">Payment: ${payments}</p>
     ${collections ? `<div style="margin-top:12px;padding-top:8px;border-top:1px dashed #cbd5e1;"><p style="font-weight:700;font-size:12px;text-transform:uppercase;color:#64748b;">Due Collection History</p>${collections}</div>` : ""}
+    ${extraHTML}
     </body></html>`;
 }

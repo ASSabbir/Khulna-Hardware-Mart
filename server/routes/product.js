@@ -48,9 +48,15 @@ async function resolveSupplier({ supplierId, supplierName }) {
     if (existing) return { supplierId: existing._id, supplierName: existing.companyName };
   }
   const trimmedName = String(supplierName || "").trim();
-  if (!trimmedName) return { supplierId: null, supplierName: "Unknown Supplier" };
+  if (!trimmedName) {
+    console.warn("[resolveSupplier] no supplierId and empty supplierName — falling back to Unknown Supplier", { supplierId, supplierName });
+    return { supplierId: null, supplierName: "Unknown Supplier" };
+  }
   let supplier = await Supplier.findOne({ companyName: { $regex: `^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } });
-  if (!supplier) supplier = await Supplier.create({ companyName: trimmedName, contactPerson: "N/A", phone: "N/A", autoCreated: true });
+  if (!supplier) {
+    supplier = await Supplier.create({ companyName: trimmedName, contactPerson: "N/A", phone: "N/A", autoCreated: true });
+    console.log("[resolveSupplier] created new 'Others' supplier:", supplier._id.toString(), supplier.companyName);
+  }
   return { supplierId: supplier._id, supplierName: supplier.companyName };
 }
 
@@ -69,8 +75,10 @@ async function updateSupplierStats(supplierId, price, qty, session) {
   const opts = session ? { session } : {};
   await Supplier.findByIdAndUpdate(
     supplierId,
-    { $inc: { totalPurchaseAmount: Number(price) * Number(qty), totalPurchaseCount: 1, totalPurchasedQuantity: Number(qty) },
-      $set: { lastPurchasePrice: Number(price), lastPurchaseDate: new Date() } },
+    {
+      $inc: { totalPurchaseAmount: Number(price) * Number(qty), totalPurchaseCount: 1, totalPurchasedQuantity: Number(qty) },
+      $set: { lastPurchasePrice: Number(price), lastPurchaseDate: new Date() }
+    },
     opts
   );
 }
@@ -80,14 +88,13 @@ async function recordPurchasePayments({ supplierId, productName, qty, unit, spli
   const today = new Date().toISOString().slice(0, 10);
   let paidNow = 0;
 
-  // #adjust — receivable credit reduces what's owed to the supplier without touching cash/bank/mobile accounts.
-  // Recorded as a "receivable" SupplierPayment (offsets against payable in computeSupplierBalance).
+  // No ledger entry needed for credit consumption: computeSupplierBalance derives
+  // payable/receivable purely from (totalOwed - totalPaid). Once this purchase's
+  // full cost is added to totalOwed while only actual cash/bank/mobile payments are
+  // added to totalPaid, the prior overpayment gap closes on its own. Writing an
+  // extra "receivable" entry here double-subtracted the credit — crashing on
+  // negative amounts AND leaving the supplier's profile balance wrong.
   const credit = Number(creditApplied) || 0;
-  if (credit > 0 && supplierId) {
-    await SupplierPayment.create({ supplierId, type: "receivable", amount: -credit, date: today, method: "cash", note: `${contextLabel} — adjusted from receivable (${productName})` });
-    // Note: negative "receivable" amount reduces totalReceived, i.e. consumes the receivable balance.
-    // Equivalent to also being a "payable" reduction — implemented cleanly below via direct balance math in computeSupplierBalance.
-  }
 
   if (!Array.isArray(splits) || splits.length === 0) return { paidNow: 0, creditApplied: credit };
   for (const s of splits) {
@@ -120,8 +127,10 @@ router.get("/valuation/summary", async (req, res) => {
       const untrackedValue = untrackedQty * (p.buyingPrice || 0);
       const value = batchValue + untrackedValue;
       totalValue += value;
-      return { productId: p._id, name: p.name, sku: p.sku, stock: p.stock, unit: p.unit, unitValue: p.unitValue, value,
-        batches: batches.map((b) => ({ batchId: b.batchId, supplierName: b.supplierName, buyingPrice: b.buyingPrice, quantity: b.quantity, value: (b.quantity || 0) * (b.buyingPrice || 0) })) };
+      return {
+        productId: p._id, name: p.name, sku: p.sku, stock: p.stock, unit: p.unit, unitValue: p.unitValue, value,
+        batches: batches.map((b) => ({ batchId: b.batchId, supplierName: b.supplierName, buyingPrice: b.buyingPrice, quantity: b.quantity, value: (b.quantity || 0) * (b.buyingPrice || 0) }))
+      };
     });
     res.json({ totalValue, totalProducts: products.length, products: breakdown });
   } catch (error) {
@@ -206,10 +215,11 @@ router.post("/", async (req, res) => {
     );
 
     for (const entry of resolvedEntries) {
-      await PurchaseHistory.create({
+      const ph = await PurchaseHistory.create({
         productId: product._id, productName: product.name, supplierId: entry.resolved.supplierId, supplierName: entry.resolved.supplierName,
         buyingPrice: entry.price, quantity: entry.qty, totalCost: entry.price * entry.qty, purchaseDate: entry.purchaseDate,
       });
+      console.log("[AddProduct] PurchaseHistory saved:", ph._id.toString(), "supplier:", entry.resolved.supplierName, "supplierId:", String(entry.resolved.supplierId));
       await updateSupplierStats(entry.resolved.supplierId, entry.price, entry.qty);
       await recordPurchasePayments({
         supplierId: entry.resolved.supplierId, productName: product.name, qty: entry.qty, unit: product.unit,
@@ -229,26 +239,29 @@ async function createCustomProduct({ name, unitPrice, qty, shopName }) {
   const trimmedName = String(name || "").trim();
   const qtyNum = Number(qty) || 0;
   const priceNum = Number(unitPrice) || 0;
+  const sourceLabel = shopName && String(shopName).trim() ? String(shopName).trim().slice(0, 200) : "N/A (Custom Product)";
 
   const existing = trimmedName
     ? await Product.findOne({ isCustom: true, name: { $regex: `^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } })
     : null;
 
   if (existing) {
-    existing.batches.push({ supplierId: null, supplierName: shopName ? String(shopName).trim().slice(0, 200) : "N/A (Custom Product)", buyingPrice: priceNum, quantity: qtyNum, originalQuantity: qtyNum, purchaseDate: new Date() });
+    existing.batches.push({ supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, originalQuantity: qtyNum, purchaseDate: new Date() });
     existing.stock = (existing.stock || 0) + qtyNum;
     await existing.save();
+    await PurchaseHistory.create({ productId: existing._id, productName: existing.name, supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, totalCost: priceNum * qtyNum, purchaseDate: new Date() });
     if (shopName && String(shopName).trim()) {
       await CustomProductSource.create({ productId: existing._id, productName: existing.name, shopName: String(shopName).trim(), quantity: qtyNum, unitPrice: priceNum, totalAmount: priceNum * qtyNum });
     }
     return existing;
   }
 
-  const batch = { supplierId: null, supplierName: shopName ? String(shopName).trim().slice(0, 200) : "N/A (Custom Product)", buyingPrice: priceNum, quantity: qtyNum, originalQuantity: qtyNum, purchaseDate: new Date() };
+  const batch = { supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, originalQuantity: qtyNum, purchaseDate: new Date() };
   const newProduct = await createProductWithUniqueSKU(
     { name: trimmedName, category, brand: "Custom", unit: "pcs", buyingPrice: priceNum, holcellPrice: priceNum, retailPrice: priceNum, stock: qtyNum, reorderLevel: 0, status: "active", isCustom: true, batches: [batch] },
     category
   );
+  await PurchaseHistory.create({ productId: newProduct._id, productName: newProduct.name, supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, totalCost: priceNum * qtyNum, purchaseDate: new Date() });
   if (shopName && String(shopName).trim()) {
     await CustomProductSource.create({ productId: newProduct._id, productName: newProduct.name, shopName: String(shopName).trim(), quantity: qtyNum, unitPrice: priceNum, totalAmount: priceNum * qtyNum });
   }

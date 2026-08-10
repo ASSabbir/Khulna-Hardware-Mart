@@ -1,5 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FiFileText, FiClock, FiAlertCircle, FiCheckCircle, FiMenu, FiX, FiTool, FiRotateCcw } from "react-icons/fi";
+import {
+  FiFileText,
+  FiClock,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiMenu,
+  FiX,
+  FiTool,
+  FiRotateCcw,
+} from "react-icons/fi";
 import { useState } from "react";
 
 const NAV_ITEMS = [
@@ -8,15 +17,18 @@ const NAV_ITEMS = [
   { to: "due", label: "Due All Invoice", icon: <FiAlertCircle size={16} /> },
   { to: "paid", label: "Paid All Invoice", icon: <FiCheckCircle size={16} /> },
   { to: "return", label: "Product Return", icon: <FiRotateCcw size={16} /> },
-  { to: "due-payment-history", label: "Due Payment History", icon: <FiClock size={16} /> },
+  {
+    to: "due-payment-history",
+    label: "Due Payment History",
+    icon: <FiClock size={16} />,
+  },
 ];
 
 const InvoiceLayout = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen font-['Barlow',sans-serif] bg-slate-100 overflow-hidden">
-
+    <div className="flex min-h-screen font-['Barlow',sans-serif] bg-slate-100">
       {/* MOBILE OVERLAY */}
       {open && (
         <div
@@ -27,11 +39,10 @@ const InvoiceLayout = () => {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 ${
+        className={`fixed md:static z-50 top-0 left-0 h-full md:h-auto w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-2 border-[#1D4ED8]">
           <div className="flex items-center gap-3">
@@ -49,7 +60,10 @@ const InvoiceLayout = () => {
           </div>
 
           {/* Close btn */}
-          <button className="md:hidden text-white" onClick={() => setOpen(false)}>
+          <button
+            className="md:hidden text-white"
+            onClick={() => setOpen(false)}
+          >
             <FiX size={20} />
           </button>
         </div>
@@ -87,10 +101,8 @@ const InvoiceLayout = () => {
 
       {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {/* Top Bar */}
         <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
-
           <button
             className="md:hidden text-[#1E3A8A]"
             onClick={() => setOpen(true)}
@@ -106,7 +118,7 @@ const InvoiceLayout = () => {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 p-4 md:p-6">
           <Outlet />
         </div>
 

@@ -5,9 +5,11 @@ import {
   FiPhone, FiMail, FiMapPin, FiCalendar, FiEdit2,
   FiStar, FiPackage, FiDollarSign, FiCheckCircle,
   FiAlertCircle, FiUser, FiTag, FiCamera, FiNavigation,
-  FiCreditCard, FiSmartphone, FiLoader, FiBell, FiChevronRight,
+  FiCreditCard, FiSmartphone, FiLoader, FiBell, FiChevronRight, FiPrinter,
 } from "react-icons/fi";
 import Pagination from "../../Components/Pagination";
+import { buildSupplierHistoryHTML } from "../../Print/supplierHistoryTemplate";
+import { openPrintWindow } from "../../Print/printUtils";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -42,7 +44,16 @@ function SupplierPaymentHistoryModal({ supplierId, companyName, onClose }) {
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-[#0F172A]">{companyName} — Payment History</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><FiX size={18} /></button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => data && openPrintWindow(buildSupplierHistoryHTML({ companyName, purchases: data.purchases, payments: data.payments, balance: data.balance }))}
+              disabled={!data}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] hover:bg-[#16296B] text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              <FiPrinter size={14} /> Print
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><FiX size={18} /></button>
+          </div>
         </div>
         <div className="p-6">
           {loading ? <p className="text-center text-gray-400 py-10">Loading...</p> : !data ? <p className="text-center text-gray-400 py-10">No data.</p> : (

@@ -1,10 +1,21 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FiDollarSign, FiMinusCircle, FiBarChart2, FiMenu, FiX, FiTool } from "react-icons/fi";
+import {
+  FiDollarSign,
+  FiMinusCircle,
+  FiBarChart2,
+  FiMenu,
+  FiX,
+  FiTool,
+} from "react-icons/fi";
 import { useState } from "react";
 
 const NAV_ITEMS = [
   { to: "add-money", label: "Add Money", icon: <FiDollarSign size={16} /> },
-  { to: "add-expense", label: "Add Expence", icon: <FiMinusCircle size={16} /> },
+  {
+    to: "add-expense",
+    label: "Add Expence",
+    icon: <FiMinusCircle size={16} />,
+  },
   { to: "status", label: "Accounts Status", icon: <FiBarChart2 size={16} /> },
   { to: "history", label: "History", icon: <FiBarChart2 size={16} /> },
   { to: "zakat", label: "Zakat", icon: <FiDollarSign size={16} /> },
@@ -13,8 +24,7 @@ const AccountLayout = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen font-['Barlow',sans-serif] bg-slate-100 overflow-hidden">
-
+    <div className="flex min-h-screen font-['Barlow',sans-serif] bg-slate-100">
       {/* MOBILE OVERLAY */}
       {open && (
         <div
@@ -25,11 +35,10 @@ const AccountLayout = () => {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 ${
+        className={`fixed md:static z-50 top-0 left-0 h-full md:h-auto w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-2 border-[#1D4ED8]">
           <div className="flex items-center gap-3">
@@ -47,7 +56,10 @@ const AccountLayout = () => {
           </div>
 
           {/* Close btn */}
-          <button className="md:hidden text-white" onClick={() => setOpen(false)}>
+          <button
+            className="md:hidden text-white"
+            onClick={() => setOpen(false)}
+          >
             <FiX size={20} />
           </button>
         </div>
@@ -85,10 +97,8 @@ const AccountLayout = () => {
 
       {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {/* Top Bar */}
         <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
-
           <button
             className="md:hidden text-[#1E3A8A]"
             onClick={() => setOpen(true)}
@@ -104,7 +114,7 @@ const AccountLayout = () => {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 p-4 md:p-6">
           <Outlet />
         </div>
 

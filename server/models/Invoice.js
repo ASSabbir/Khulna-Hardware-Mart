@@ -13,8 +13,9 @@ const paymentSchema = new mongoose.Schema(
     bankName: { type: String, enum: [...BANK_OPTIONS, ""], default: "" },
     accountNumber: { type: String, trim: true, maxlength: 50, default: "" },
     mobileNumber: { type: String, trim: true, maxlength: 20, default: "" },
+    date: { type: Date, default: () => new Date() },
   },
-  { _id: false }
+  { _id: false, timestamps: false }
 );
 
 const collectionSchema = new mongoose.Schema(
@@ -114,7 +115,7 @@ invoiceSchema.index({ "payments.method": 1 });
 invoiceSchema.index({ "payments.provider": 1 });
 invoiceSchema.index({ "customer.name": 1 });
 invoiceSchema.index({ "customer.phone": 1 });
-invoiceSchema.index({ invoiceNumber: 1 });
+
 invoiceSchema.index({ createdAt: -1 });
 invoiceSchema.index({ paymentStatus: 1, createdAt: -1 }); // composite — matches DueInvoice/PaidInvoice list queries
 
