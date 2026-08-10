@@ -1,23 +1,41 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { FiPackage, FiPlusCircle, FiTool, FiMenu, FiX, FiSettings, FiTruck } from "react-icons/fi";
+import {
+  FiPackage,
+  FiPlusCircle,
+  FiTool,
+  FiMenu,
+  FiX,
+  FiSettings,
+  FiTruck,
+} from "react-icons/fi";
 import { useState } from "react";
 
 const NAV_ITEMS = [
   { to: "all", label: "All Products", icon: <FiPackage size={16} /> },
   { to: "add", label: "Add Product", icon: <FiPlusCircle size={16} /> },
-  { to: "purchase-history", label: "Purchase History", icon: <FiTruck size={16} /> },
-  { to: "shop-sources", label: "Shop Source History", icon: <FiTruck size={16} /> },
-  { to: "supplier-purchase", label: "Supplier Purchase Order", icon: <FiTruck size={16} /> },
+  {
+    to: "purchase-history",
+    label: "Purchase History",
+    icon: <FiTruck size={16} />,
+  },
+  {
+    to: "shop-sources",
+    label: "Shop Source History",
+    icon: <FiTruck size={16} />,
+  },
+  {
+    to: "supplier-purchase",
+    label: "Supplier Purchase Order",
+    icon: <FiTruck size={16} />,
+  },
   { to: "settings", label: "Settings", icon: <FiSettings size={16} /> },
-
 ];
 
 const ProductLayout = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen font-['Barlow',sans-serif] bg-slate-100 overflow-hidden">
-
+    <div className="flex min-h-screen font-['Barlow',sans-serif] bg-slate-100">
       {/* MOBILE OVERLAY */}
       {open && (
         <div
@@ -28,11 +46,10 @@ const ProductLayout = () => {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 ${
+        className={`fixed md:static z-50 top-0 left-0 h-full md:h-auto w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-
         {/* Sidebar Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-2 border-[#1D4ED8]">
           <div className="flex items-center gap-3">
@@ -91,10 +108,8 @@ const ProductLayout = () => {
 
       {/* CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {/* Top Bar */}
         <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0 ">
-
           {/* Mobile Menu Button */}
           <button
             className="md:hidden text-[#1E3A8A]"
@@ -110,8 +125,8 @@ const ProductLayout = () => {
           </span>
         </div>
 
-        {/* Page Content with Scroll */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        {/* Page Content */}
+        <div className="flex-1 p-4 md:p-6">
           <Outlet />
         </div>
 

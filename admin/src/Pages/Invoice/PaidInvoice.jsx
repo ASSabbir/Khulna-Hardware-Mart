@@ -1,14 +1,45 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import {
-  FiCheckCircle, FiSearch, FiCalendar, FiUser, FiPhone, FiFileText, FiDollarSign,
-  FiSmartphone, FiCreditCard, FiLoader, FiPrinter, FiEye, FiX, FiRefreshCw, FiDownload,
-  FiTrendingUp, FiTrendingDown, FiPercent, FiInbox, FiUsers, FiActivity, FiChevronLeft,
-  FiChevronRight, FiPackage, FiFilter, FiClock, FiHash,
+  FiCheckCircle,
+  FiSearch,
+  FiCalendar,
+  FiUser,
+  FiPhone,
+  FiFileText,
+  FiDollarSign,
+  FiSmartphone,
+  FiCreditCard,
+  FiLoader,
+  FiPrinter,
+  FiEye,
+  FiX,
+  FiRefreshCw,
+  FiDownload,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiPercent,
+  FiInbox,
+  FiUsers,
+  FiActivity,
+  FiChevronLeft,
+  FiChevronRight,
+  FiPackage,
+  FiFilter,
+  FiClock,
+  FiHash,
 } from "react-icons/fi";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import InvoicePreviewModalEye from "./InvoicePreviewModalEye";
-import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
+import { buildReturnHTML } from "../../Print/returnTemplate";
 import { buildChallanHTML } from "../../Print/challanTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import Pagination from "../../Components/Pagination";
@@ -16,13 +47,36 @@ import Pagination from "../../Components/Pagination";
 const API_BASE = "http://localhost:5000/api/invoices";
 const PAGE_LIMIT = 20;
 
-const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2 });
-const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-const fmtDateTime = (d) => new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-const daysAgo = (d) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
-const initials = (name = "") => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("") || "?";
+const fmt = (n) =>
+  "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2 });
+const fmtDate = (d) =>
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+const fmtDateTime = (d) =>
+  new Date(d).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const daysAgo = (d) =>
+  Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
+const initials = (name = "") =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("") || "?";
 
-const METHOD_ICON = { cash: FiDollarSign, mobile: FiSmartphone, bank: FiCreditCard };
+const METHOD_ICON = {
+  cash: FiDollarSign,
+  mobile: FiSmartphone,
+  bank: FiCreditCard,
+};
 const QUICK_FILTERS = [
   { key: "today", label: "Today" },
   { key: "7d", label: "Last 7 Days" },
@@ -44,44 +98,79 @@ function PaymentDetailsModal({ invoice, onClose }) {
       className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-gray-900">Payment Details</h2>
-            <p className="text-xs sm:text-sm text-gray-500 truncate">{invoice.invoiceNumber} · {invoice.customer?.name || "Unknown"}</p>
+            <h2 className="text-base sm:text-lg font-bold text-gray-900">
+              Payment Details
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 truncate">
+              {invoice.invoiceNumber} · {invoice.customer?.name || "Unknown"}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg shrink-0" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg shrink-0"
+            aria-label="Close"
+          >
             <FiX size={18} />
           </button>
         </div>
         <div className="p-5 space-y-3">
           {payments.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm">No transaction records found.</div>
+            <div className="text-center py-10 text-gray-400 text-sm">
+              No transaction records found.
+            </div>
           ) : (
             payments.map((p, i) => {
               const Icon = METHOD_ICON[p.method] || FiDollarSign;
               return (
-                <div key={i} className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-2">
+                <div
+                  key={i}
+                  className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-2"
+                >
                   <div className="flex items-center gap-3">
                     <span className="w-9 h-9 shrink-0 rounded-lg bg-white border border-emerald-200 flex items-center justify-center text-emerald-600">
                       <Icon size={15} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {p.method === "mobile" ? p.provider : p.method === "bank" ? "Bank Transfer" : "Cash"}
+                        {p.method === "mobile"
+                          ? p.provider
+                          : p.method === "bank"
+                            ? "Bank Transfer"
+                            : "Cash"}
                       </p>
                       <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <FiClock size={10} /> {p.date || p.createdAt ? fmtDateTime(p.date || p.createdAt) : "Date unavailable"}
+                        <FiClock size={10} />{" "}
+                        {fmtDateTime(
+                          p.date ||
+                            p.createdAt ||
+                            invoice.updatedAt ||
+                            invoice.invoiceDate,
+                        )}
                       </p>
                     </div>
-                    <span className="font-bold text-emerald-600 text-sm shrink-0">{fmt(p.amount)}</span>
+                    <span className="font-bold text-emerald-600 text-sm shrink-0">
+                      {fmt(p.amount)}
+                    </span>
                   </div>
                   {(p.transactionId || p.collectedBy) && (
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 pl-12">
-                      {p.transactionId && <span className="flex items-center gap-1"><FiHash size={10} /> {p.transactionId}</span>}
-                      {p.collectedBy && <span className="flex items-center gap-1"><FiUser size={10} /> {p.collectedBy}</span>}
+                      {p.transactionId && (
+                        <span className="flex items-center gap-1">
+                          <FiHash size={10} /> {p.transactionId}
+                        </span>
+                      )}
+                      {p.collectedBy && (
+                        <span className="flex items-center gap-1">
+                          <FiUser size={10} /> {p.collectedBy}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -118,9 +207,16 @@ export default function PaidInvoice() {
     setLoading(true);
     setErrorMsg("");
     try {
-      const params = new URLSearchParams({ page, limit: PAGE_LIMIT, paymentStatus: "paid" });
+      const params = new URLSearchParams({
+        page,
+        limit: PAGE_LIMIT,
+        paymentStatus: "paid",
+      });
       if (search.trim()) params.append("search", search.trim());
-      const res = await axios.get(`${API_BASE}?${params}`, { signal: controller.signal, timeout: 15000 });
+      const res = await axios.get(`${API_BASE}?${params}`, {
+        signal: controller.signal,
+        timeout: 15000,
+      });
       setInvoices(Array.isArray(res.data?.invoices) ? res.data.invoices : []);
       setTotalPages(Number(res.data?.pagination?.totalPages) || 1);
       setTotal(Number(res.data?.pagination?.total) || 0);
@@ -133,43 +229,77 @@ export default function PaidInvoice() {
     }
   }, [page, search]);
 
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { fetchData(); return () => abortRef.current?.abort(); }, [fetchData]);
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+  useEffect(() => {
+    fetchData();
+    return () => abortRef.current?.abort();
+  }, [fetchData]);
 
-  const printInvoice = (inv) => openPrintWindow(buildInvoiceReceiptHTML(inv));
+  const printInvoice = (inv) => openPrintWindow(buildReturnHTML(inv));
 
   const filteredInvoices = useMemo(() => {
     if (!activeQuick) return invoices;
     const now = new Date();
     return invoices.filter((inv) => {
       const d = new Date(inv.invoiceDate);
-      if (activeQuick === "today") return d.toDateString() === now.toDateString();
+      if (activeQuick === "today")
+        return d.toDateString() === now.toDateString();
       if (activeQuick === "7d") return daysAgo(inv.invoiceDate) <= 7;
       if (activeQuick === "30d") return daysAgo(inv.invoiceDate) <= 30;
-      if (activeQuick === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (activeQuick === "month")
+        return (
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
       if (activeQuick === "year") return d.getFullYear() === now.getFullYear();
       return true;
     });
   }, [invoices, activeQuick]);
 
   const stats = useMemo(() => {
-    const grandTotalSum = filteredInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
+    const grandTotalSum = filteredInvoices.reduce(
+      (s, i) => s + (i.grandTotal || 0),
+      0,
+    );
     const now = new Date();
     const todaySum = filteredInvoices
-      .filter((i) => new Date(i.invoiceDate).toDateString() === now.toDateString())
+      .filter(
+        (i) => new Date(i.invoiceDate).toDateString() === now.toDateString(),
+      )
       .reduce((s, i) => s + (i.grandTotal || 0), 0);
     const monthSum = filteredInvoices
-      .filter((i) => { const d = new Date(i.invoiceDate); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+      .filter((i) => {
+        const d = new Date(i.invoiceDate);
+        return (
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
+      })
       .reduce((s, i) => s + (i.grandTotal || 0), 0);
-    const avgInvoice = filteredInvoices.length ? grandTotalSum / filteredInvoices.length : 0;
-    return { grandTotalSum, todaySum, monthSum, avgInvoice, count: filteredInvoices.length };
+    const avgInvoice = filteredInvoices.length
+      ? grandTotalSum / filteredInvoices.length
+      : 0;
+    return {
+      grandTotalSum,
+      todaySum,
+      monthSum,
+      avgInvoice,
+      count: filteredInvoices.length,
+    };
   }, [filteredInvoices]);
 
   const topCustomers = useMemo(() => {
     const map = new Map();
     filteredInvoices.forEach((inv) => {
       const key = inv.customer?.phone || inv.customer?.name || "unknown";
-      const prev = map.get(key) || { name: inv.customer?.name || "Unknown", phone: inv.customer?.phone || "—", revenue: 0, count: 0 };
+      const prev = map.get(key) || {
+        name: inv.customer?.name || "Unknown",
+        phone: inv.customer?.phone || "—",
+        revenue: 0,
+        count: 0,
+      };
       prev.revenue += inv.grandTotal || 0;
       prev.count += 1;
       map.set(key, prev);
@@ -201,16 +331,42 @@ export default function PaidInvoice() {
         });
       });
     });
-    return events.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    return events
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 5);
   }, [filteredInvoices]);
 
   const handleExportCsv = () => {
-    const headers = ["Invoice #", "Date", "Customer", "Phone", "Items", "Subtotal", "Discount", "VAT", "Grand Total"];
+    const headers = [
+      "Invoice #",
+      "Date",
+      "Customer",
+      "Phone",
+      "Items",
+      "Subtotal",
+      "Discount",
+      "VAT",
+      "Grand Total",
+    ];
     const rows = filteredInvoices.map((inv) => [
-      inv.invoiceNumber, fmtDate(inv.invoiceDate), inv.customer?.name || "Unknown", inv.customer?.phone || "",
-      inv.items?.length || 0, inv.subtotal, inv.discount, inv.vat, inv.grandTotal,
+      inv.invoiceNumber,
+      fmtDate(inv.invoiceDate),
+      inv.customer?.name || "Unknown",
+      inv.customer?.phone || "",
+      inv.items?.length || 0,
+      inv.subtotal,
+      inv.discount,
+      inv.vat,
+      inv.grandTotal,
     ]);
-    const csv = [headers, ...rows].map((row) => row.map(sanitizeCsvCell).map((c) => `"${c}"`).join(",")).join("\r\n");
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map(sanitizeCsvCell)
+          .map((c) => `"${c}"`)
+          .join(","),
+      )
+      .join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -222,8 +378,14 @@ export default function PaidInvoice() {
     URL.revokeObjectURL(url);
   };
 
-  const clearFilters = () => { setSearch(""); setActiveQuick(""); };
-  const goToPage = (p) => { if (p < 1 || p > totalPages || p === page) return; setPage(p); };
+  const clearFilters = () => {
+    setSearch("");
+    setActiveQuick("");
+  };
+  const goToPage = (p) => {
+    if (p < 1 || p > totalPages || p === page) return;
+    setPage(p);
+  };
   const pageNumbers = useMemo(() => {
     const nums = [];
     const start = Math.max(1, page - 1);
@@ -238,33 +400,84 @@ export default function PaidInvoice() {
         <div className="lg:col-span-8 xl:col-span-9 space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Paid Invoice Management</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Paid Invoice Management
+              </h1>
               <p className="text-slate-500 text-sm sm:text-base mt-1 max-w-xl">
-                Manage and analyze all fully paid invoices with payment tracking and financial reporting.
+                Manage and analyze all fully paid invoices with payment tracking
+                and financial reporting.
               </p>
             </div>
             <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
               <div className="relative z-10 space-y-1">
-                <p className="text-white/80 text-xs font-semibold">Financial Overview</p>
-                <p className="text-2xl font-extrabold">{fmt(stats.grandTotalSum)}</p>
-                <p className="text-xs text-white/90 pt-1">{stats.count.toLocaleString()} paid invoices</p>
+                <p className="text-white/80 text-xs font-semibold">
+                  Financial Overview
+                </p>
+                <p className="text-2xl font-extrabold">
+                  {fmt(stats.grandTotalSum)}
+                </p>
+                <p className="text-xs text-white/90 pt-1">
+                  {stats.count.toLocaleString()} paid invoices
+                </p>
               </div>
-              <FiCheckCircle className="absolute -right-3 -bottom-3 text-white/20" size={90} />
+              <FiCheckCircle
+                className="absolute -right-3 -bottom-3 text-white/20"
+                size={90}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <KpiCard icon={<FiFileText size={18} />} iconBg="bg-emerald-50 text-emerald-600" label="Total Paid Invoices" value={total.toLocaleString()} trend="up" />
-            <KpiCard icon={<FiDollarSign size={18} />} iconBg="bg-emerald-50 text-emerald-600" label="Total Revenue Collected" value={fmt(stats.grandTotalSum)} trend="up" />
-            <KpiCard icon={<FiCalendar size={18} />} iconBg="bg-slate-100 text-slate-600" label="Today's Collection" value={fmt(stats.todaySum)} trend="flat" />
-            <KpiCard icon={<FiTrendingUp size={18} />} iconBg="bg-slate-100 text-slate-600" label="Monthly Collection" value={fmt(stats.monthSum)} trend="up" />
-            <KpiCard icon={<FiPackage size={18} />} iconBg="bg-slate-100 text-slate-600" label="Average Invoice Value" value={fmt(stats.avgInvoice)} trend="flat" />
-            <KpiCard icon={<FiPercent size={18} />} iconBg="bg-emerald-50 text-emerald-600" label="Collection Growth" value={stats.count ? "Active" : "—"} trend="up" />
+            <KpiCard
+              icon={<FiFileText size={18} />}
+              iconBg="bg-emerald-50 text-emerald-600"
+              label="Total Paid Invoices"
+              value={total.toLocaleString()}
+              trend="up"
+            />
+            <KpiCard
+              icon={<FiDollarSign size={18} />}
+              iconBg="bg-emerald-50 text-emerald-600"
+              label="Total Revenue Collected"
+              value={fmt(stats.grandTotalSum)}
+              trend="up"
+            />
+            <KpiCard
+              icon={<FiCalendar size={18} />}
+              iconBg="bg-slate-100 text-slate-600"
+              label="Today's Collection"
+              value={fmt(stats.todaySum)}
+              trend="flat"
+            />
+            <KpiCard
+              icon={<FiTrendingUp size={18} />}
+              iconBg="bg-slate-100 text-slate-600"
+              label="Monthly Collection"
+              value={fmt(stats.monthSum)}
+              trend="up"
+            />
+            <KpiCard
+              icon={<FiPackage size={18} />}
+              iconBg="bg-slate-100 text-slate-600"
+              label="Average Invoice Value"
+              value={fmt(stats.avgInvoice)}
+              trend="flat"
+            />
+            <KpiCard
+              icon={<FiPercent size={18} />}
+              iconBg="bg-emerald-50 text-emerald-600"
+              label="Collection Growth"
+              value={stats.count ? "Active" : "—"}
+              trend="up"
+            />
           </div>
 
           <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[220px]">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <FiSearch
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={16}
+              />
               <input
                 value={search}
                 maxLength={100}
@@ -279,9 +492,13 @@ export default function PaidInvoice() {
                 <button
                   key={f.key}
                   type="button"
-                  onClick={() => setActiveQuick((prev) => (prev === f.key ? "" : f.key))}
+                  onClick={() =>
+                    setActiveQuick((prev) => (prev === f.key ? "" : f.key))
+                  }
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition flex items-center gap-1 ${
-                    activeQuick === f.key ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    activeQuick === f.key
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
                   <FiFilter size={11} /> {f.label}
@@ -303,7 +520,11 @@ export default function PaidInvoice() {
                 disabled={loading}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 disabled:opacity-40"
               >
-                <FiRefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+                <FiRefreshCw
+                  size={14}
+                  className={loading ? "animate-spin" : ""}
+                />{" "}
+                Refresh
               </button>
               <button
                 type="button"
@@ -325,7 +546,10 @@ export default function PaidInvoice() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {loading ? (
               [...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white border border-slate-100 rounded-2xl p-5 animate-pulse space-y-3">
+                <div
+                  key={i}
+                  className="bg-white border border-slate-100 rounded-2xl p-5 animate-pulse space-y-3"
+                >
                   <div className="h-4 w-32 bg-slate-200 rounded" />
                   <div className="h-3 w-full bg-slate-100 rounded" />
                   <div className="h-3 w-2/3 bg-slate-100 rounded" />
@@ -336,7 +560,9 @@ export default function PaidInvoice() {
                 <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
                   <FiInbox size={26} />
                 </div>
-                <p className="font-bold text-slate-800">No paid invoices found for this filter</p>
+                <p className="font-bold text-slate-800">
+                  No paid invoices found for this filter
+                </p>
                 <button
                   type="button"
                   onClick={clearFilters}
@@ -347,9 +573,14 @@ export default function PaidInvoice() {
               </div>
             ) : (
               filteredInvoices.map((inv) => {
-                const lastPayment = (inv.payments || [])[inv.payments.length - 1];
+                const lastPayment = (inv.payments || [])[
+                  inv.payments.length - 1
+                ];
                 return (
-                  <div key={inv._id} className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition">
+                  <div
+                    key={inv._id}
+                    className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+                  >
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 shrink-0 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
@@ -357,11 +588,20 @@ export default function PaidInvoice() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
-                            <FiFileText size={13} className="text-slate-300 shrink-0" /> {inv.invoiceNumber}
+                            <FiFileText
+                              size={13}
+                              className="text-slate-300 shrink-0"
+                            />{" "}
+                            {inv.invoiceNumber}
                           </p>
                           <p className="text-xs text-slate-400 flex items-center gap-3 flex-wrap">
-                            <span className="flex items-center gap-1"><FiUser size={11} /> {inv.customer?.name || "Unknown"}</span>
-                            <span className="flex items-center gap-1"><FiPhone size={11} /> {inv.customer?.phone || "—"}</span>
+                            <span className="flex items-center gap-1">
+                              <FiUser size={11} />{" "}
+                              {inv.customer?.name || "Unknown"}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FiPhone size={11} /> {inv.customer?.phone || "—"}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -371,44 +611,75 @@ export default function PaidInvoice() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
-                      <span className="flex items-center gap-1"><FiCalendar size={11} /> {fmtDate(inv.invoiceDate)}</span>
-                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">{inv.items?.length || 0} Items</span>
+                      <span className="flex items-center gap-1">
+                        <FiCalendar size={11} /> {fmtDate(inv.invoiceDate)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                        {inv.items?.length || 0} Items
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mb-3 text-sm">
                       <div>
                         <p className="text-xs text-slate-400">Subtotal</p>
-                        <p className="font-semibold text-slate-800">{fmt(inv.subtotal)}</p>
+                        <p className="font-semibold text-slate-800">
+                          {fmt(inv.subtotal)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">Discount</p>
-                        <p className="font-semibold text-slate-800">{inv.discount > 0 ? `-${fmt(inv.discount)}` : "—"}</p>
+                        <p className="font-semibold text-slate-800">
+                          {inv.discount > 0 ? `-${fmt(inv.discount)}` : "—"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">VAT</p>
-                        <p className="font-semibold text-slate-800">{inv.vat > 0 ? fmt(inv.vat) : "—"}</p>
+                        <p className="font-semibold text-slate-800">
+                          {inv.vat > 0 ? fmt(inv.vat) : "—"}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 pt-3 mb-3">
-                      <span className="text-xs text-slate-400 font-semibold">Grand Total</span>
-                      <span className="font-bold text-slate-900 text-lg">{fmt(inv.grandTotal)}</span>
+                      <span className="text-xs text-slate-400 font-semibold">{inv.totalReturnedAmount > 0 ? "Original Total" : "Grand Total"}</span>
+                      <span className={`font-bold text-lg ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-900"}`}>{fmt(inv.grandTotal)}</span>
                     </div>
+                    {inv.totalReturnedAmount > 0 && (
+                      <>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-rose-500 font-semibold">Returned</span>
+                          <span className="font-bold text-rose-600 text-sm">-{fmt(inv.totalReturnedAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs text-emerald-600 font-semibold">Net Amount</span>
+                          <span className="font-bold text-emerald-700 text-lg">{fmt(inv.netSaleAmount ?? inv.grandTotal)}</span>
+                        </div>
+                      </>
+                    )}
 
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <div className="flex flex-wrap gap-1">
                         {(inv.payments || []).map((p, i) => {
                           const Icon = METHOD_ICON[p.method] || FiDollarSign;
                           return (
-                            <span key={i} className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg">
-                              <Icon size={11} /> {p.method === "mobile" ? p.provider : p.method}
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg"
+                            >
+                              <Icon size={11} />{" "}
+                              {p.method === "mobile" ? p.provider : p.method}
                             </span>
                           );
                         })}
                       </div>
                       {lastPayment && (
                         <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <FiClock size={10} /> {fmtDateTime(lastPayment.date || lastPayment.createdAt || inv.invoiceDate)}
+                          <FiClock size={10} />{" "}
+                          {fmtDateTime(
+                            lastPayment.date ||
+                              lastPayment.createdAt ||
+                              inv.invoiceDate,
+                          )}
                         </span>
                       )}
                     </div>
@@ -429,7 +700,15 @@ export default function PaidInvoice() {
                         <FiPrinter size={13} /> Print
                       </button>
                       <button
-                        onClick={() => openPrintWindow(buildChallanHTML({ invoiceNum: inv.invoiceNumber, customer: inv.customer, items: inv.items }))}
+                        onClick={() =>
+                          openPrintWindow(
+                            buildChallanHTML({
+                              invoiceNum: inv.invoiceNumber,
+                              customer: inv.customer,
+                              items: inv.items,
+                            }),
+                          )
+                        }
                         title="Print challan (no prices)"
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:border-amber-500 hover:text-amber-600 transition"
                       >
@@ -451,32 +730,76 @@ export default function PaidInvoice() {
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-100 rounded-2xl px-5 py-4">
             <p className="text-sm text-slate-500 order-2 sm:order-1">
-              {total === 0 ? "Showing 0 invoices" : `Showing ${(page - 1) * PAGE_LIMIT + 1}-${(page - 1) * PAGE_LIMIT + invoices.length} of ${total.toLocaleString()} invoices`}
+              {total === 0
+                ? "Showing 0 invoices"
+                : `Showing ${(page - 1) * PAGE_LIMIT + 1}-${(page - 1) * PAGE_LIMIT + invoices.length} of ${total.toLocaleString()} invoices`}
             </p>
-           <div className="order-1 sm:order-2">
-              <Pagination page={page} totalPages={totalPages} onChange={goToPage} accent="#059669" />
+            <div className="order-1 sm:order-2">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onChange={goToPage}
+                accent="#059669"
+              />
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-4 xl:col-span-3 space-y-6 min-w-0">
           <div className="bg-white border border-slate-100 rounded-2xl p-5">
-            <h3 className="font-bold text-slate-900 text-sm mb-1">Revenue Trend</h3>
-            <p className="text-xs text-slate-400 mb-3">Based on invoices currently loaded</p>
+            <h3 className="font-bold text-slate-900 text-sm mb-1">
+              Revenue Trend
+            </h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Based on invoices currently loaded
+            </p>
             <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueTrend} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={revenueTrend}
+                  margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10B981" stopOpacity={0.35} />
+                    <linearGradient
+                      id="revenueFill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="#10B981"
+                        stopOpacity={0.35}
+                      />
                       <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `৳${v}`} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#F1F5F9"
+                  />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: "#94A3B8" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#94A3B8" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `৳${v}`}
+                  />
                   <Tooltip formatter={(v) => fmt(v)} />
-                  <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2} fill="url(#revenueFill)" />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10B981"
+                    strokeWidth={2}
+                    fill="url(#revenueFill)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -484,22 +807,33 @@ export default function PaidInvoice() {
 
           <div className="bg-white border border-slate-100 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5"><FiUsers size={14} /> Top Customers by Revenue</h3>
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <FiUsers size={14} /> Top Customers by Revenue
+              </h3>
             </div>
             <div className="space-y-3">
               {topCustomers.length === 0 ? (
                 <p className="text-xs text-slate-400">No data yet.</p>
               ) : (
                 topCustomers.map((c) => (
-                  <div key={c.phone + c.name} className="flex items-center gap-3">
+                  <div
+                    key={c.phone + c.name}
+                    className="flex items-center gap-3"
+                  >
                     <div className="w-9 h-9 shrink-0 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
                       {initials(c.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
-                      <p className="text-xs text-slate-400 truncate">{c.phone} · {c.count} invoice{c.count !== 1 ? "s" : ""}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {c.name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {c.phone} · {c.count} invoice{c.count !== 1 ? "s" : ""}
+                      </p>
                     </div>
-                    <span className="shrink-0 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">{fmt(c.revenue)}</span>
+                    <span className="shrink-0 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
+                      {fmt(c.revenue)}
+                    </span>
                   </div>
                 ))
               )}
@@ -507,7 +841,9 @@ export default function PaidInvoice() {
           </div>
 
           <div className="bg-white border border-slate-100 rounded-2xl p-5">
-            <h3 className="font-bold text-slate-900 text-sm mb-4 flex items-center gap-1.5"><FiActivity size={14} /> Recent Activity</h3>
+            <h3 className="font-bold text-slate-900 text-sm mb-4 flex items-center gap-1.5">
+              <FiActivity size={14} /> Recent Activity
+            </h3>
             <div className="space-y-4">
               {recentActivity.length === 0 ? (
                 <p className="text-xs text-slate-400">No recent activity.</p>
@@ -516,13 +852,18 @@ export default function PaidInvoice() {
                   <div key={e.key} className="flex gap-3">
                     <div className="flex flex-col items-center">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      {i !== recentActivity.length - 1 && <span className="w-px flex-1 bg-slate-200 mt-1" />}
+                      {i !== recentActivity.length - 1 && (
+                        <span className="w-px flex-1 bg-slate-200 mt-1" />
+                      )}
                     </div>
                     <div className="pb-1">
                       <p className="text-sm text-slate-800 leading-snug">
-                        {e.invoiceNumber} — {fmt(e.amount)} via {e.method === "mobile" ? e.provider : e.method}
+                        {e.invoiceNumber} — {fmt(e.amount)} via{" "}
+                        {e.method === "mobile" ? e.provider : e.method}
                       </p>
-                      <p className="text-xs text-slate-400">{daysAgo(e.date)} days ago</p>
+                      <p className="text-xs text-slate-400">
+                        {daysAgo(e.date)} days ago
+                      </p>
                     </div>
                   </div>
                 ))
@@ -532,8 +873,18 @@ export default function PaidInvoice() {
         </div>
       </div>
 
-      {eyeId && <InvoicePreviewModalEye invoiceId={eyeId} onClose={() => setEyeId(null)} />}
-      {detailsModal && <PaymentDetailsModal invoice={detailsModal} onClose={() => setDetailsModal(null)} />}
+      {eyeId && (
+        <InvoicePreviewModalEye
+          invoiceId={eyeId}
+          onClose={() => setEyeId(null)}
+        />
+      )}
+      {detailsModal && (
+        <PaymentDetailsModal
+          invoice={detailsModal}
+          onClose={() => setDetailsModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -541,13 +892,21 @@ export default function PaidInvoice() {
 function KpiCard({ icon, iconBg, label, value, trend }) {
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</div>
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
+      >
+        {icon}
+      </div>
       <div className="min-w-0">
         <p className="text-xs text-slate-400 font-medium truncate">{label}</p>
         <div className="flex items-center gap-1.5">
           <p className="text-base font-bold text-slate-900 truncate">{value}</p>
-          {trend === "up" && <FiTrendingUp className="text-emerald-500 shrink-0" size={14} />}
-          {trend === "down" && <FiTrendingDown className="text-red-500 shrink-0" size={14} />}
+          {trend === "up" && (
+            <FiTrendingUp className="text-emerald-500 shrink-0" size={14} />
+          )}
+          {trend === "down" && (
+            <FiTrendingDown className="text-red-500 shrink-0" size={14} />
+          )}
         </div>
       </div>
     </div>

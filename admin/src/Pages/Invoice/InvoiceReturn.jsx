@@ -10,6 +10,7 @@ import ReturnPreviewModalEye from "./ReturnPreviewModalEye";
 import { buildReturnHTML } from "../../Print/returnTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import Pagination from "../../Components/Pagination";
+import PaymentSplitEditor from "../../Components/PaymentSplitEditor";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -22,6 +23,7 @@ export default function InvoiceReturn() {
   const [reasons, setReasons] = useState({});
   const [toast, setToast] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [refundPayments, setRefundPayments] = useState([{ id: Date.now(), method: "cash", provider: "bKash", bankName: "Dutch-Bangla Bank", amount: "" }]);
 
   const [allReturns, setAllReturns] = useState([]);
   const [returnsLoading, setReturnsLoading] = useState(true);
@@ -63,11 +65,20 @@ export default function InvoiceReturn() {
     if (!invoice) return;
     const items = invoice.items.filter((it) => (returnQtys[it.name] || 0) > 0).map((it) => ({ productId: it.productId, name: it.name, returnedQty: returnQtys[it.name], unitPrice: it.price, reason: reasons[it.name] || "" }));
     if (items.length === 0) { showToast("error", "Enter at least one return quantity."); return; }
+    const refundSum = refundPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    if (Math.abs(refundSum - requiredRefund) > 0.01) {
+      showToast("error", `Refund payments must total ${fmt(requiredRefund)} — the portion of the return not already covered by due.`);
+      return;
+    }
     setSaving(true);
     try {
-      const res = await axios.post("http://localhost:5000/api/returns", { invoiceId: invoice._id, items });
+      const res = await axios.post("http://localhost:5000/api/returns", {
+        invoiceId: invoice._id, items,
+        refundPayments: refundPayments.filter((p) => Number(p.amount) > 0).map((p) => ({ method: p.method, amount: Number(p.amount), provider: p.method === "mobile" ? p.provider : undefined, bankName: p.method === "bank" ? p.bankName : undefined })),
+      });
       setInvoice(res.data.invoice); setReturnQtys({}); setReasons({});
-      showToast("success", "Return processed successfully. Stock updated.");
+      setRefundPayments([{ id: Date.now(), method: "cash", provider: "bKash", bankName: "Dutch-Bangla Bank", amount: "" }]);
+      showToast("success", "Return processed successfully. Stock, due, refund and ledger all updated.");
       fetchAllReturns(1); setReturnsPage(1);
     } catch (err) { showToast("error", err.response?.data?.message || "Failed to process return."); } finally { setSaving(false); }
   };
@@ -96,10 +107,18 @@ export default function InvoiceReturn() {
     };
   }, [allReturns]);
 
-  const invoiceReturnedTotal = useMemo(
+   const invoiceReturnedTotal = useMemo(
     () => (invoice?.returnedItems || []).reduce((s, r) => s + (r.returnAmount || 0), 0),
     [invoice]
   );
+
+  const pendingReturnTotal = useMemo(() => {
+    if (!invoice) return 0;
+    return invoice.items.reduce((s, it) => s + ((returnQtys[it.name] || 0) * it.price), 0);
+  }, [invoice, returnQtys]);
+
+  const autoDueAdjustment = invoice ? Math.min(pendingReturnTotal, invoice.dueAmount || 0) : 0;
+  const requiredRefund = Math.max(0, +(pendingReturnTotal - autoDueAdjustment).toFixed(2));
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
@@ -261,6 +280,25 @@ export default function InvoiceReturn() {
                 <div className="flex justify-between mt-1 font-bold text-sm">
                   <span className="text-slate-500">Net Sale</span>
                   <span className="text-slate-900">{fmt(invoice.netSaleAmount ?? invoice.grandTotal)}</span>
+                </div>
+              </div>
+            )}
+
+            {pendingReturnTotal > 0 && (
+              <div className="px-5 sm:px-6 pb-4">
+                <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 space-y-3">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Return Settlement — {fmt(pendingReturnTotal)} total</p>
+                  {autoDueAdjustment > 0 && (
+                    <div className="flex justify-between text-sm bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                      <span className="text-amber-700 font-semibold">Auto-adjusted against due</span>
+                      <span className="font-bold text-amber-700">-{fmt(autoDueAdjustment)}</span>
+                    </div>
+                  )}
+                  {requiredRefund > 0 ? (
+                    <PaymentSplitEditor rows={refundPayments} onChange={setRefundPayments} maxTotal={requiredRefund} label={`Refund to Customer (${fmt(requiredRefund)})`} />
+                  ) : (
+                    <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">Fully covered by due adjustment — no cash refund needed.</p>
+                  )}
                 </div>
               </div>
             )}

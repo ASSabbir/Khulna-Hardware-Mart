@@ -18,6 +18,7 @@ import {
   FiArrowUpRight,
 } from "react-icons/fi";
 import { MOBILE_PROVIDERS, BANK_OPTIONS } from "../../utils/paymentConstants";
+import PaymentMethodSelect from "../../Components/PaymentMethodSelect";
 
 const API_URL = "http://localhost:5000/api/ledger";
 
@@ -546,58 +547,16 @@ export default function AddMoney() {
               {/* Payment Method */}
               <div className="sm:col-span-2">
                 <label className="block text-sm font-semibold text-[#0F172A] mb-2">
-                  Payment Method Selector
+                  Payment Method
                 </label>
-                <div className="flex gap-2 flex-wrap bg-[#F1F5F9] p-1 rounded-[10px] w-full sm:w-fit">
-                  {["cash", "mobile", "bank"].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setForm((p) => ({ ...p, method: m }))}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-[8px] text-sm font-semibold transition ${
-                        form.method === m
-                          ? "bg-white text-[#0F172A] shadow-[0_2px_6px_rgba(0,0,0,0.08)]"
-                          : "text-[#64748B]"
-                      }`}
-                    >
-                      {m === "mobile"
-                        ? "Mobile Banking"
-                        : m === "bank"
-                          ? "Bank"
-                          : "Cash"}
-                    </button>
-                  ))}
-                </div>
-                {form.method === "mobile" && (
-                  <select
-                    value={form.provider}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, provider: e.target.value }))
-                    }
-                    className="w-full mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
-                  >
-                    {MOBILE_PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {form.method === "bank" && (
-                  <select
-                    value={form.bankName}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, bankName: e.target.value }))
-                    }
-                    className="w-full mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/40 transition"
-                  >
-                    {BANK_OPTIONS.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <PaymentMethodSelect
+                  method={form.method}
+                  provider={form.provider}
+                  bankName={form.bankName}
+                  onChange={({ method, provider, bankName }) =>
+                    setForm((f) => ({ ...f, method, provider, bankName }))
+                  }
+                />
               </div>
 
               {/* Description */}

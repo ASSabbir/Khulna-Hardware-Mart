@@ -58,7 +58,7 @@ router.get("/paid", async (req, res) => {
           address: { $first: "$customer.address" },
           invoiceCount: { $sum: 1 },
           totalPaid: { $sum: "$paidAmount" },
-          lastOrderDate: { $max: "$createdAt" },
+          lastOrderDate: { $max: "$updatedAt" },
         },
       },
       { $sort: { lastOrderDate: -1 } },
@@ -137,21 +137,35 @@ const { withTransaction } = require("../utils/withTransaction");
 router.post("/:id/collect-due", async (req, res) => {
   try {
     const Invoice = require("../models/Invoice");
-    const { amount, method, provider, bankName, accountNumber, mobileNumber, note } = req.body;
+    const { amount, method, provider, bankName, accountNumber, mobileNumber, note, invoiceIds } = req.body;
     const amt = Number(amount);
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new Error("Invalid customer id.");
     if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a valid payment amount.");
 
-    const customerCheck = await Customer.findById(req.params.id).lean();
-    if (customerCheck && amt > (customerCheck.totalDue || 0) + 0.01) {
-      throw new Error(`Payment cannot exceed the customer's total due (৳${(customerCheck.totalDue || 0).toFixed(2)}).`);
+    const customerDoc = await Customer.findById(req.params.id).lean();
+    if (!customerDoc) throw new Error("Customer not found.");
+
+    let candidateInvoices = await Invoice.find({ "customer.name": customerDoc.name, paymentStatus: "due" }).select("_id dueAmount").lean();
+    if (Array.isArray(invoiceIds) && invoiceIds.length > 0) {
+      const validIds = new Set(invoiceIds.filter((id) => mongoose.Types.ObjectId.isValid(id)).map(String));
+      candidateInvoices = candidateInvoices.filter((inv) => validIds.has(String(inv._id)));
+    }
+    const availableDue = +candidateInvoices.reduce((s, inv) => s + (inv.dueAmount || 0), 0).toFixed(2);
+    if (amt > availableDue + 0.01) {
+      throw new Error(`Payment cannot exceed the selected due amount (৳${availableDue.toFixed(2)}).`);
     }
 
     const result = await withTransaction(async (session) => {
       const customer = await Customer.findById(req.params.id).session(session);
       if (!customer) throw new Error("Customer not found.");
 
-      const dueInvoices = await Invoice.find({ "customer.name": customer.name, paymentStatus: "due" }).sort({ createdAt: 1 }).session(session);
+      let dueInvoices = await Invoice.find({ "customer.name": customer.name, paymentStatus: "due" }).sort({ createdAt: 1 }).session(session);
+
+      if (Array.isArray(invoiceIds) && invoiceIds.length > 0) {
+        const validIds = invoiceIds.filter((id) => mongoose.Types.ObjectId.isValid(id)).map(String);
+        const byId = new Map(dueInvoices.map((inv) => [String(inv._id), inv]));
+        dueInvoices = validIds.map((id) => byId.get(id)).filter(Boolean);
+      }
 
       let remaining = amt;
       const EPS = 0.01;

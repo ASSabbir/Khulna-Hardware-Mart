@@ -16,13 +16,25 @@ const returnItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const refundPaymentSchema = new mongoose.Schema(
+  {
+    method: { type: String, enum: ["cash", "mobile", "bank"], required: true },
+    provider: { type: String, enum: ["bKash", "Nagad", "Rocket", "Upay", null], default: null },
+    bankName: { type: String, default: "" },
+    amount: { type: Number, required: true, min: 0.01 },
+  },
+  { _id: false }
+);
+
 const returnSchema = new mongoose.Schema(
   {
     invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: "Invoice", required: true, index: true },
     invoiceNumber: { type: String, required: true },
     items: { type: [returnItemSchema], required: true, validate: v => Array.isArray(v) && v.length > 0 },
     totalReturnAmount: { type: Number, required: true, min: 0 },
-    returnDateBST: { type: Date, required: true }, // stored as the BST wall-clock instant
+    returnDateBST: { type: Date, required: true },
+    refundPayments: { type: [refundPaymentSchema], default: [] },
+    dueAdjustment: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );

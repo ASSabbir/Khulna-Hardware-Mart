@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { FiX, FiPrinter, FiLoader, FiAlertTriangle } from "react-icons/fi";
+import { buildReturnHTML } from "../../Print/returnTemplate";
+import { openPrintWindow } from "../../Print/printUtils";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -16,16 +18,21 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`http://localhost:5000/api/invoices/${invoiceId}`);
+        const res = await axios.get(
+          `http://localhost:5000/api/invoices/${invoiceId}`,
+        );
         if (active) setInvoice(res.data);
       } catch (err) {
-        if (active) setError(err.response?.data?.message || "Failed to load invoice.");
+        if (active)
+          setError(err.response?.data?.message || "Failed to load invoice.");
       } finally {
         if (active) setLoading(false);
       }
     };
     if (invoiceId) load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [invoiceId]);
 
   return (
@@ -42,13 +49,18 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
           <h2 className="text-lg font-bold text-gray-900">Invoice Preview</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.print()}
+              onClick={() => openPrintWindow(buildReturnHTML(invoice))}
               disabled={!invoice}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
             >
               <FiPrinter size={14} /> Print
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><FiX size={18} /></button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <FiX size={18} />
+            </button>
           </div>
         </div>
 
@@ -67,13 +79,21 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
             <>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-xl font-bold text-gray-900">Khulna Hardware Mart</p>
-                  <p className="text-xs text-gray-500">280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    Khulna Hardware Mart
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{invoice.invoiceNumber}</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {invoice.invoiceNumber}
+                  </p>
                   <p className="text-xs text-gray-500">{invoice.invoiceDate}</p>
-                  <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${invoice.paymentStatus === "paid" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  <span
+                    className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${invoice.paymentStatus === "paid" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
                     {invoice.paymentStatus === "paid" ? "PAID" : "DUE"}
                   </span>
                 </div>
@@ -81,8 +101,12 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
 
               <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                 <div>
-                  <p className="text-xs text-gray-400 font-semibold uppercase">Customer</p>
-                  <p className="font-semibold text-gray-800">{invoice.customer?.name || "—"}</p>
+                  <p className="text-xs text-gray-400 font-semibold uppercase">
+                    Customer
+                  </p>
+                  <p className="font-semibold text-gray-800">
+                    {invoice.customer?.name || "—"}
+                  </p>
                   <p className="text-gray-500">{invoice.customer?.phone}</p>
                   <p className="text-gray-500">{invoice.customer?.address}</p>
                 </div>
@@ -101,35 +125,70 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
                   {invoice.items.map((it, i) => (
                     <tr key={i} className="border-b border-gray-100">
                       <td className="px-2 py-2">{it.name}</td>
-                      <td className="px-2 py-2 text-center">{it.qty} <span className="text-gray-400 text-xs">{it.unit || "pcs"}</span></td>
+                      <td className="px-2 py-2 text-center">
+                        {it.qty}{" "}
+                        <span className="text-gray-400 text-xs">
+                          {it.unit || "pcs"}
+                        </span>
+                      </td>
                       <td className="px-2 py-2 text-right">{fmt(it.price)}</td>
-                      <td className="px-2 py-2 text-right font-semibold">{fmt(it.total)}</td>
+                      <td className="px-2 py-2 text-right font-semibold">
+                        {fmt(it.total)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
               <div className="flex flex-col items-end gap-1 text-sm">
-                <div className="flex justify-between w-48"><span>Subtotal</span><span>{fmt(invoice.subtotal)}</span></div>
-                {invoice.discount > 0 && <div className="flex justify-between w-48 text-green-600"><span>Discount</span><span>-{fmt(invoice.discount)}</span></div>}
-                {invoice.vat > 0 && <div className="flex justify-between w-48"><span>VAT</span><span>+{fmt(invoice.vat)}</span></div>}
-                <div className="flex justify-between w-48 font-bold text-base border-t border-gray-300 pt-1">
-                  <span>Grand Total</span><span>{fmt(invoice.grandTotal)}</span>
+                <div className="flex justify-between w-48">
+                  <span>Subtotal</span>
+                  <span>{fmt(invoice.subtotal)}</span>
                 </div>
-                 {invoice.paymentStatus === "due" && (
+                {invoice.discount > 0 && (
+                  <div className="flex justify-between w-48 text-green-600">
+                    <span>Discount</span>
+                    <span>-{fmt(invoice.discount)}</span>
+                  </div>
+                )}
+                {invoice.vat > 0 && (
+                  <div className="flex justify-between w-48">
+                    <span>VAT</span>
+                    <span>+{fmt(invoice.vat)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between w-48 font-bold text-base border-t border-gray-300 pt-1">
+                  <span>Grand Total</span>
+                  <span>{fmt(invoice.grandTotal)}</span>
+                </div>
+                {invoice.paymentStatus === "due" && (
                   <>
-                    <div className="flex justify-between w-48"><span>Paid</span><span>{fmt(invoice.paidAmount)}</span></div>
-                    <div className="flex justify-between w-48 text-red-600 font-semibold"><span>Due</span><span>{fmt(invoice.dueAmount)}</span></div>
+                    <div className="flex justify-between w-48">
+                      <span>Paid</span>
+                      <span>{fmt(invoice.paidAmount)}</span>
+                    </div>
+                    <div className="flex justify-between w-48 text-red-600 font-semibold">
+                      <span>Due</span>
+                      <span>{fmt(invoice.dueAmount)}</span>
+                    </div>
                   </>
                 )}
               </div>
 
               {invoice.payments?.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-gray-200">
-                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">Payment Breakdown</p>
+                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">
+                    Payment Breakdown
+                  </p>
                   {invoice.payments.map((p, i) => (
-                    <div key={i} className="flex justify-between text-sm text-gray-700">
-                      <span>{p.method}{p.provider ? ` (${p.provider})` : ""}</span>
+                    <div
+                      key={i}
+                      className="flex justify-between text-sm text-gray-700"
+                    >
+                      <span>
+                        {p.method}
+                        {p.provider ? ` (${p.provider})` : ""}
+                      </span>
                       <span className="font-semibold">{fmt(p.amount)}</span>
                     </div>
                   ))}
@@ -138,11 +197,22 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
 
               {invoice.collectionHistory?.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">Due Collection History</p>
+                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">
+                    Due Collection History
+                  </p>
                   {invoice.collectionHistory.map((c, i) => (
-                    <div key={i} className="flex justify-between text-sm text-gray-700">
-                      <span>{c.method}{c.provider ? ` (${c.provider})` : ""} — {new Date(c.collectedAtBST).toLocaleString("en-GB")}</span>
-                      <span className="font-semibold text-green-700">{fmt(c.amount)}</span>
+                    <div
+                      key={i}
+                      className="flex justify-between text-sm text-gray-700"
+                    >
+                      <span>
+                        {c.method}
+                        {c.provider ? ` (${c.provider})` : ""} —{" "}
+                        {new Date(c.collectedAtBST).toLocaleString("en-GB")}
+                      </span>
+                      <span className="font-semibold text-green-700">
+                        {fmt(c.amount)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -150,16 +220,25 @@ export default function InvoicePreviewModal({ invoiceId, onClose }) {
 
               {invoice.returnedItems?.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-gray-200">
-                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">Returned Items</p>
+                  <p className="text-xs font-bold text-gray-600 uppercase mb-2">
+                    Returned Items
+                  </p>
                   {invoice.returnedItems.map((r, i) => (
-                    <div key={i} className="flex justify-between text-sm text-red-600">
-                      <span>{r.name} × {r.returnedQty}</span>
+                    <div
+                      key={i}
+                      className="flex justify-between text-sm text-red-600"
+                    >
+                      <span>
+                        {r.name} × {r.returnedQty}
+                      </span>
                       <span>-{fmt(r.returnAmount)}</span>
                     </div>
                   ))}
                   <div className="flex justify-between font-bold mt-1 text-sm">
                     <span>Net Sale</span>
-                    <span>{fmt(invoice.netSaleAmount ?? invoice.grandTotal)}</span>
+                    <span>
+                      {fmt(invoice.netSaleAmount ?? invoice.grandTotal)}
+                    </span>
                   </div>
                 </div>
               )}

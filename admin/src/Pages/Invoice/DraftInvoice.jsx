@@ -1,19 +1,44 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import {
-  FiSearch, FiPlus, FiTrash2, FiPrinter, FiFileText,
-  FiPackage, FiUser, FiPhone, FiHash, FiAlertTriangle,
-  FiCheckCircle, FiX, FiLoader, FiShoppingCart,
-  FiChevronsLeft, FiChevronsRight, FiEdit3,
+  FiSearch,
+  FiPlus,
+  FiTrash2,
+  FiPrinter,
+  FiFileText,
+  FiPackage,
+  FiUser,
+  FiPhone,
+  FiHash,
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiX,
+  FiLoader,
+  FiShoppingCart,
+  FiChevronsLeft,
+  FiChevronsRight,
+  FiEdit3,
 } from "react-icons/fi";
-import { loadAllDrafts, saveAllDrafts, deleteDraftById as sharedDeleteDraft } from "../../utils/draftStorage";
+import {
+  loadAllDrafts,
+  saveAllDrafts,
+  deleteDraftById as sharedDeleteDraft,
+} from "../../utils/draftStorage";
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 const fmt = (n) =>
-  "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  "৳" +
+  Number(n || 0).toLocaleString("en-BD", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-const today = () => new Date().toLocaleDateString("en-BD", { day: "2-digit", month: "short", year: "numeric" });
-
+const today = () =>
+  new Date().toLocaleDateString("en-BD", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
 const draftNo = () => "DRAFT-" + Date.now().toString().slice(-6);
 
@@ -47,7 +72,11 @@ const DraftInvoice = () => {
 
   // Memo (right side)
   const [memoItems, setMemoItems] = useState([]);
-  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
+  const [customer, setCustomer] = useState({
+    name: "",
+    phone: "",
+    address: "",
+  });
   const [draftNum, setDraftNum] = useState(draftNo());
   const [draftDate, setDraftDate] = useState(today());
   const [discount, setDiscount] = useState("");
@@ -65,7 +94,9 @@ const DraftInvoice = () => {
         limit: 30,
         search: debouncedSearch,
       });
-      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const res = await axios.get(
+        `http://localhost:5000/api/products?${params}`,
+      );
       setProducts(res.data.products);
       setTotalProducts(res.data.pagination.total);
     } catch (err) {
@@ -86,7 +117,8 @@ const DraftInvoice = () => {
   /* ── Price selector ─────────────────────────────────────── */
   const getPrice = (p) => {
     const b = parseFloat(p.buyingPrice) || 0;
-    if (priceType === "holcell") return p.holcellPrice || +(b * 1.03).toFixed(2);
+    if (priceType === "holcell")
+      return p.holcellPrice || +(b * 1.03).toFixed(2);
     if (priceType === "retail") return p.retailPrice || +(b * 1.05).toFixed(2);
     return b;
   };
@@ -95,22 +127,25 @@ const DraftInvoice = () => {
   const addToMemo = (p) => {
     // Drafts are informational, so even out-of-stock items can still be quoted —
     // just flag it clearly rather than blocking it like the real sale flow does.
-    setMemoItems(prev => {
-      const exists = prev.find(i => i.productId === p._id);
+    setMemoItems((prev) => {
+      const exists = prev.find((i) => i.productId === p._id);
       if (exists) {
         showToast("info", `${p.name} already in draft — adjust qty below.`);
         return prev;
       }
-      return [...prev, {
-        productId: p._id,
-        id: p._id,
-        name: p.name,
-        company: p.brand || p.company || "—",
-        price: getPrice(p),
-        qty: 1,
-        stock: p.stock,
-        custom: false,
-      }];
+      return [
+        ...prev,
+        {
+          productId: p._id,
+          id: p._id,
+          name: p.name,
+          company: p.brand || p.company || "—",
+          price: getPrice(p),
+          qty: 1,
+          stock: p.stock,
+          custom: false,
+        },
+      ];
     });
     showToast("success", `${p.name} added to draft.`);
   };
@@ -118,37 +153,43 @@ const DraftInvoice = () => {
   /* ── Add a custom (off-catalog) line item ───────────────── */
   const addCustomItem = () => {
     const id = "custom-" + Date.now();
-    setMemoItems(prev => [...prev, {
-      productId: null,
-      id,
-      name: "",
-      company: "",
-      price: 0,
-      qty: 1,
-      stock: null,
-      custom: true,
-    }]);
+    setMemoItems((prev) => [
+      ...prev,
+      {
+        productId: null,
+        id,
+        name: "",
+        company: "",
+        price: 0,
+        qty: 1,
+        stock: null,
+        custom: true,
+      },
+    ]);
   };
 
   /* ── Update memo item ───────────────────────────────────── */
   const updateItem = (id, field, value) => {
-    setMemoItems(prev => prev.map(i => {
-      if (i.id === id) {
-        if (field === "qty" && !i.custom) {
-          const maxQty = i.stock || 999;
-          const newQty = Math.min(parseInt(value) || 1, maxQty);
-          return { ...i, [field]: newQty };
+    setMemoItems((prev) =>
+      prev.map((i) => {
+        if (i.id === id) {
+          if (field === "qty" && !i.custom) {
+            const maxQty = i.stock || 999;
+            const newQty = Math.min(parseInt(value) || 1, maxQty);
+            return { ...i, [field]: newQty };
+          }
+          return { ...i, [field]: value };
         }
-        return { ...i, [field]: value };
-      }
-      return i;
-    }));
+        return i;
+      }),
+    );
   };
 
-  const removeItem = (id) => setMemoItems(prev => prev.filter(i => i.id !== id));
+  const removeItem = (id) =>
+    setMemoItems((prev) => prev.filter((i) => i.id !== id));
 
   /* ── Totals ─────────────────────────────────────────────── */
-  const subtotal = memoItems.reduce((s, i) => s + (i.price * i.qty), 0);
+  const subtotal = memoItems.reduce((s, i) => s + i.price * i.qty, 0);
   const discAmt = Math.min(parseFloat(discount) || 0, subtotal);
   const grandTotal = subtotal - discAmt;
 
@@ -160,7 +201,10 @@ const DraftInvoice = () => {
 
   /* ── Print ──────────────────────────────────────────────── */
   const handlePrint = () => {
-    if (memoItems.length === 0) { showToast("error", "Add at least one product to print."); return; }
+    if (memoItems.length === 0) {
+      showToast("error", "Add at least one product to print.");
+      return;
+    }
     window.print();
   };
 
@@ -173,11 +217,24 @@ const DraftInvoice = () => {
 
   // #31 — save current working draft into the multi-draft list
   const saveCurrentDraft = () => {
-    if (memoItems.length === 0) { showToast("error", "Add at least one product before saving a draft."); return; }
+    if (memoItems.length === 0) {
+      showToast("error", "Add at least one product before saving a draft.");
+      return;
+    }
     const drafts = loadAllDrafts();
-    const payload = { id: draftNum, draftNum, draftDate, memoItems, customer, discount, priceType, savedAt: new Date().toISOString() };
+    const payload = {
+      id: draftNum,
+      draftNum,
+      draftDate,
+      memoItems,
+      customer,
+      discount,
+      priceType,
+      savedAt: new Date().toISOString(),
+    };
     const idx = drafts.findIndex((d) => d.id === draftNum);
-    if (idx >= 0) drafts[idx] = payload; else drafts.unshift(payload);
+    if (idx >= 0) drafts[idx] = payload;
+    else drafts.unshift(payload);
     saveAllDrafts(drafts);
     showToast("success", "Draft saved.");
   };
@@ -202,7 +259,10 @@ const DraftInvoice = () => {
   /* ── Render ─────────────────────────────────────────────── */
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
+        rel="stylesheet"
+      />
 
       {/* Print-only styles */}
       <style>{`
@@ -217,12 +277,20 @@ const DraftInvoice = () => {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 toast-anim flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold font-['Barlow',sans-serif] ${
-          toast.type === "success" ? "bg-green-50 border-green-400 text-green-700" :
-          toast.type === "error"   ? "bg-red-50 border-red-300 text-red-700" :
-                                     "bg-blue-50 border-blue-300 text-blue-700"
-        }`}>
-          {toast.type === "success" ? <FiCheckCircle size={15}/> : <FiAlertTriangle size={15}/>}
+        <div
+          className={`fixed top-4 right-4 z-50 toast-anim flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-semibold font-['Barlow',sans-serif] ${
+            toast.type === "success"
+              ? "bg-green-50 border-green-400 text-green-700"
+              : toast.type === "error"
+                ? "bg-red-50 border-red-300 text-red-700"
+                : "bg-blue-50 border-blue-300 text-blue-700"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <FiCheckCircle size={15} />
+          ) : (
+            <FiAlertTriangle size={15} />
+          )}
           {toast.msg}
         </div>
       )}
@@ -231,11 +299,23 @@ const DraftInvoice = () => {
       {savedDrafts.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4 font-['Barlow',sans-serif]">
           {savedDrafts.map((d) => (
-            <div key={d.id} className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 text-xs">
-              <button onClick={() => restoreDraftToInvoice(d)} className="font-bold text-[#1E3A8A] hover:underline">
-                {d.draftNum} · {d.memoItems.length} items · {d.customer?.name || "No customer"}
+            <div
+              key={d.id}
+              className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 text-xs"
+            >
+              <button
+                onClick={() => restoreDraftToInvoice(d)}
+                className="font-bold text-[#1E3A8A] hover:underline"
+              >
+                {d.draftNum} · {d.memoItems.length} items ·{" "}
+                {d.customer?.name || "No customer"}
               </button>
-              <button onClick={() => deleteSavedDraft(d.id)} className="text-red-400 hover:text-red-600"><FiX size={12}/></button>
+              <button
+                onClick={() => deleteSavedDraft(d.id)}
+                className="text-red-400 hover:text-red-600"
+              >
+                <FiX size={12} />
+              </button>
             </div>
           ))}
         </div>
@@ -243,28 +323,37 @@ const DraftInvoice = () => {
 
       {/* ── MAIN LAYOUT ── */}
       <div className="flex flex-col xl:flex-row gap-5 font-['Barlow',sans-serif] min-h-[calc(100vh-80px)]">
-
         {/* ══════════════════════════════════════
              LEFT — Product Picker
         ══════════════════════════════════════ */}
-        <div className="xl:w-120 shrink-0 flex flex-col gap-4">
-
+        <div className="xl:w-120 shrink-0 flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-32px)]">
           {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-[#1E3A8A] rounded-lg flex items-center justify-center shrink-0">
-                <FiPackage size={16} className="text-white"/>
+                <FiPackage size={16} className="text-white" />
               </div>
               <div>
-                <h2 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-base uppercase tracking-wide leading-tight">Products</h2>
-                <p className="text-[10px] text-slate-400 font-medium">{totalProducts.toLocaleString()} items</p>
+                <h2 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-base uppercase tracking-wide leading-tight">
+                  Products
+                </h2>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {totalProducts.toLocaleString()} items
+                </p>
               </div>
             </div>
             {/* Price type switcher */}
             <div className="flex items-center bg-white border-2 border-slate-200 rounded-lg overflow-hidden text-xs font-bold">
-              {[["retail","Retail"], ["holcell","Wholesale"], ["buying","Buying"]].map(([v, l]) => (
-                <button key={v} onClick={() => setPriceType(v)}
-                  className={`px-3 py-1.5 transition-colors ${priceType === v ? "bg-[#1E3A8A] text-white" : "text-slate-500 hover:text-[#1E3A8A]"}`}>
+              {[
+                ["retail", "Retail"],
+                ["holcell", "Wholesale"],
+                ["buying", "Buying"],
+              ].map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => setPriceType(v)}
+                  className={`px-3 py-1.5 transition-colors ${priceType === v ? "bg-[#1E3A8A] text-white" : "text-slate-500 hover:text-[#1E3A8A]"}`}
+                >
                   {l}
                 </button>
               ))}
@@ -273,63 +362,94 @@ const DraftInvoice = () => {
 
           {/* Search */}
           <div className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 focus-within:border-[#1D4ED8] transition-colors">
-            <FiSearch size={15} className="text-slate-400 shrink-0"/>
+            <FiSearch size={15} className="text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="Search product name, brand, SKU..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               className="flex-1 text-sm outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
             />
-            {search && <button onClick={() => setSearch("")} className="text-slate-300 hover:text-slate-500"><FiX size={13}/></button>}
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-slate-300 hover:text-slate-500"
+              >
+                <FiX size={13} />
+              </button>
+            )}
           </div>
 
           {/* Product list */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 max-h-[calc(100vh-320px)] pr-1">
             {loading && (
               <div className="flex items-center justify-center gap-3 py-16 text-[#1D4ED8]">
-                <FiLoader size={20} className="animate-spin"/> <span className="text-sm font-semibold">Loading products…</span>
+                <FiLoader size={20} className="animate-spin" />{" "}
+                <span className="text-sm font-semibold">Loading products…</span>
               </div>
             )}
             {error && (
               <div className="flex items-center gap-3 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm font-semibold">
-                <FiAlertTriangle size={15}/> {error}
+                <FiAlertTriangle size={15} /> {error}
               </div>
             )}
             {!loading && !error && products.length === 0 && (
-              <div className="text-center py-16 text-slate-400 text-sm font-medium">No products found.</div>
+              <div className="text-center py-16 text-slate-400 text-sm font-medium">
+                No products found.
+              </div>
             )}
-            {!loading && !error && products.map(p => {
-              const price = getPrice(p);
-              const inMemo = memoItems.some(i => i.productId === p._id);
-              const lowStock = p.stock <= 10;
-              return (
-                <div key={p._id}
-                  className={`group flex items-center gap-3 bg-white border-2 rounded-xl px-4 py-3 transition-all duration-150 ${
-                    inMemo ? "border-[#F97316] bg-[#FFF7ED]" : "border-slate-200 hover:border-[#1D4ED8]"
-                  }`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1E293B] truncate">{p.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[10px] font-semibold bg-[#EFF6FF] text-[#1D4ED8] px-1.5 py-0.5 rounded border border-[#BFDBFE]">{p.brand || p.company || "—"}</span>
-                      <span className="text-[10px] font-bold text-[#F97316]">{fmt(price)}</span>
-                      {lowStock && p.stock > 0 && <span className="text-[10px] font-semibold text-yellow-600 bg-yellow-50 border border-yellow-200 px-1.5 py-0.5 rounded">Low: {p.stock}</span>}
-                      {p.stock === 0 && <span className="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">Out</span>}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => addToMemo(p)}
-                    disabled={inMemo}
-                    className={`shrink-0 w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-colors ${
+            {!loading &&
+              !error &&
+              products.map((p) => {
+                const price = getPrice(p);
+                const inMemo = memoItems.some((i) => i.productId === p._id);
+                const lowStock = p.stock <= 10;
+                return (
+                  <div
+                    key={p._id}
+                    className={`group flex items-center gap-3 bg-white border-2 rounded-xl px-4 py-3 transition-all duration-150 ${
                       inMemo
-                        ? "border-[#F97316] bg-[#F97316] text-white cursor-default"
-                        : "border-slate-200 text-slate-400 hover:border-[#1D4ED8] hover:text-[#1D4ED8]"
-                    }`}>
-                    <FiPlus size={14}/>
-                  </button>
-                </div>
-              );
-            })}
+                        ? "border-[#F97316] bg-[#FFF7ED]"
+                        : "border-slate-200 hover:border-[#1D4ED8]"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1E293B] truncate">
+                        {p.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[10px] font-semibold bg-[#EFF6FF] text-[#1D4ED8] px-1.5 py-0.5 rounded border border-[#BFDBFE]">
+                          {p.brand || p.company || "—"}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#F97316]">
+                          {fmt(price)}
+                        </span>
+                        {lowStock && p.stock > 0 && (
+                          <span className="text-[10px] font-semibold text-yellow-600 bg-yellow-50 border border-yellow-200 px-1.5 py-0.5 rounded">
+                            Low: {p.stock}
+                          </span>
+                        )}
+                        {p.stock === 0 && (
+                          <span className="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                            Out
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addToMemo(p)}
+                      disabled={inMemo}
+                      className={`shrink-0 w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-colors ${
+                        inMemo
+                          ? "border-[#F97316] bg-[#F97316] text-white cursor-default"
+                          : "border-slate-200 text-slate-400 hover:border-[#1D4ED8] hover:text-[#1D4ED8]"
+                      }`}
+                    >
+                      <FiPlus size={14} />
+                    </button>
+                  </div>
+                );
+              })}
           </div>
 
           {/* Pagination */}
@@ -343,7 +463,7 @@ const DraftInvoice = () => {
                 <FiChevronsLeft size={14} />
               </button>
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="px-3 py-1 rounded border border-slate-200 text-slate-500 hover:text-[#1E3A8A] disabled:opacity-40"
               >
@@ -353,7 +473,7 @@ const DraftInvoice = () => {
                 Page {page} of {totalPages}
               </span>
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="px-3 py-1 rounded border border-slate-200 text-slate-500 hover:text-[#1E3A8A] disabled:opacity-40"
               >
@@ -373,46 +493,67 @@ const DraftInvoice = () => {
         {/* ══════════════════════════════════════
              RIGHT — Draft Memo
         ══════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col gap-4">
-
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
           {/* Draft header controls */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-slate-500 rounded-lg flex items-center justify-center shrink-0">
-                <FiFileText size={16} className="text-white"/>
+                <FiFileText size={16} className="text-white" />
               </div>
               <div>
-                <h2 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-base uppercase tracking-wide leading-tight">Draft Invoice</h2>
-                <p className="text-[10px] text-slate-400 font-medium">{memoItems.length} item{memoItems.length !== 1 ? "s" : ""} · {fmt(grandTotal)} · not saved</p>
+                <h2 className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] text-base uppercase tracking-wide leading-tight">
+                  Draft Invoice
+                </h2>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {memoItems.length} item{memoItems.length !== 1 ? "s" : ""} ·{" "}
+                  {fmt(grandTotal)} · not saved
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={addCustomItem} className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors">
-                <FiEdit3 size={13}/> Custom Line
+              <button
+                onClick={addCustomItem}
+                className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors"
+              >
+                <FiEdit3 size={13} /> Custom Line
               </button>
-              <button onClick={() => { saveCurrentDraft(); refreshSavedDrafts(); }} className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1D4ED8] rounded-lg text-[#1D4ED8] text-xs font-semibold hover:bg-blue-50 transition-colors">
+              <button
+                onClick={() => {
+                  saveCurrentDraft();
+                  refreshSavedDrafts();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#1D4ED8] rounded-lg text-[#1D4ED8] text-xs font-semibold hover:bg-blue-50 transition-colors"
+              >
                 Save Draft
               </button>
-              <button onClick={clearDraft} className="px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors">
+              <button
+                onClick={clearDraft}
+                className="px-3 py-1.5 border-2 border-slate-200 rounded-lg text-slate-500 text-xs font-semibold hover:border-slate-300 transition-colors"
+              >
                 Clear
               </button>
               <button
                 onClick={handlePrint}
                 className="flex items-center gap-2 px-4 py-1.5 bg-[#1E3A8A] border-2 border-[#1E3A8A] text-white rounded-lg text-xs font-bold hover:bg-[#1D4ED8] hover:border-[#1D4ED8] transition-colors"
               >
-                <FiPrinter size={14}/> Print
+                <FiPrinter size={14} /> Print
               </button>
             </div>
           </div>
 
           {/* Draft-only notice */}
           <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-200 text-amber-700 rounded-xl px-4 py-2.5 text-xs font-semibold">
-            <FiAlertTriangle size={14}/> This is a draft — nothing here is saved, stock isn't affected, and no customer record is created. Use the main Invoice page to complete an actual sale.
+            <FiAlertTriangle size={14} /> This is a draft — nothing here is
+            saved, stock isn't affected, and no customer record is created. Use
+            the main Invoice page to complete an actual sale.
           </div>
 
           {/* ── PRINTABLE MEMO ── */}
-          <div id="print-area" ref={printRef} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex flex-col flex-1">
-
+          <div
+            id="print-area"
+            ref={printRef}
+            className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex flex-col flex-1"
+          >
             {/* Memo top bar */}
             <div className="bg-[#1E3A8A] px-6 py-4 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
@@ -423,18 +564,24 @@ const DraftInvoice = () => {
                   <p className="font-['Barlow_Condensed',sans-serif] font-bold text-white text-sm uppercase tracking-widest leading-tight">
                     Khulna <span className="text-[#F97316]">Hardware</span> Mart
                   </p>
-                  <p className="text-[#93C5FD] text-[10px] font-medium">280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna· 02477-721990 , +880 1931-272839 , +880 1679-123205 </p>
+                  <p className="text-[#93C5FD] text-[10px] font-medium">
+                    280-Khanjahan Ali Road (Rahmania Madrasha Complex), Khulna·
+                    02477-721990 , +880 1931-272839 , +880 1679-123205{" "}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-white text-xs font-bold flex items-center justify-end gap-1.5">
-                  DRAFT <span className="bg-amber-400 text-[#1E3A8A] px-1.5 py-0.5 rounded text-[9px] font-extrabold">NOT A SALE</span>
+                  DRAFT{" "}
+                  <span className="bg-amber-400 text-[#1E3A8A] px-1.5 py-0.5 rounded text-[9px] font-extrabold">
+                    NOT A SALE
+                  </span>
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <FiHash size={10} className="text-[#93C5FD]"/>
+                  <FiHash size={10} className="text-[#93C5FD]" />
                   <input
                     value={draftNum}
-                    onChange={e => setDraftNum(e.target.value)}
+                    onChange={(e) => setDraftNum(e.target.value)}
                     className="bg-transparent text-[#FACC15] text-xs font-bold outline-none w-32 text-right font-['Barlow',sans-serif]"
                   />
                 </div>
@@ -445,16 +592,36 @@ const DraftInvoice = () => {
             {/* Customer info */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 py-4 border-b-2 border-slate-100 bg-slate-50">
               {[
-                { icon: <FiUser size={12}/>, key: "name", placeholder: "Customer Name", label: "Customer" },
-                { icon: <FiPhone size={12}/>, key: "phone", placeholder: "Phone Number", label: "Phone" },
-                { icon: <FiSearch size={12}/>, key: "address", placeholder: "Address (optional)", label: "Address" },
-              ].map(f => (
-                <div key={f.key} className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors">
+                {
+                  icon: <FiUser size={12} />,
+                  key: "name",
+                  placeholder: "Customer Name",
+                  label: "Customer",
+                },
+                {
+                  icon: <FiPhone size={12} />,
+                  key: "phone",
+                  placeholder: "Phone Number",
+                  label: "Phone",
+                },
+                {
+                  icon: <FiSearch size={12} />,
+                  key: "address",
+                  placeholder: "Address (optional)",
+                  label: "Address",
+                },
+              ].map((f) => (
+                <div
+                  key={f.key}
+                  className="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors"
+                >
                   <span className="text-slate-400 shrink-0">{f.icon}</span>
                   <input
                     placeholder={f.placeholder}
                     value={customer[f.key]}
-                    onChange={e => setCustomer(c => ({ ...c, [f.key]: e.target.value }))}
+                    onChange={(e) =>
+                      setCustomer((c) => ({ ...c, [f.key]: e.target.value }))
+                    }
                     className="flex-1 text-xs outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
                   />
                 </div>
@@ -465,9 +632,12 @@ const DraftInvoice = () => {
             <div className="flex-1 overflow-auto">
               {memoItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-300">
-                  <FiShoppingCart size={40}/>
+                  <FiShoppingCart size={40} />
                   <p className="text-sm font-semibold">Draft is empty</p>
-                  <p className="text-xs">Search products on the left and click <strong>+</strong>, or add a custom line</p>
+                  <p className="text-xs">
+                    Search products on the left and click <strong>+</strong>, or
+                    add a custom line
+                  </p>
                 </div>
               ) : (
                 <table className="w-full min-w-[600px] border-collapse text-sm">
@@ -476,29 +646,44 @@ const DraftInvoice = () => {
                       <th className="px-4 py-2.5 text-left w-6">#</th>
                       <th className="px-4 py-2.5 text-left">Product</th>
                       <th className="px-4 py-2.5 text-center w-24">Qty</th>
-                      <th className="px-4 py-2.5 text-right w-32">Unit Price</th>
+                      <th className="px-4 py-2.5 text-right w-32">
+                        Unit Price
+                      </th>
                       <th className="px-4 py-2.5 text-right w-32">Total</th>
                       <th className="px-2 py-2.5 w-8 print:hidden"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {memoItems.map((item, idx) => (
-                      <tr key={item.id} className={`border-b border-slate-100 ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"}`}>
-                        <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">{idx + 1}</td>
+                      <tr
+                        key={item.id}
+                        className={`border-b border-slate-100 ${idx % 2 === 1 ? "bg-slate-50/50" : "bg-white"}`}
+                      >
+                        <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">
+                          {idx + 1}
+                        </td>
                         <td className="px-4 py-2.5">
                           {item.custom ? (
                             <input
                               value={item.name}
-                              onChange={e => updateItem(item.id, "name", e.target.value)}
+                              onChange={(e) =>
+                                updateItem(item.id, "name", e.target.value)
+                              }
                               placeholder="Custom item name"
                               className="w-full text-sm font-semibold text-[#1E293B] outline-none border-b border-dashed border-slate-300 focus:border-[#1D4ED8] bg-transparent font-['Barlow',sans-serif]"
                             />
                           ) : (
                             <>
-                              <p className="font-semibold text-[#1E293B] text-sm leading-tight">{item.name}</p>
-                              <p className="text-[10px] text-slate-400 font-medium">{item.company}</p>
+                              <p className="font-semibold text-[#1E293B] text-sm leading-tight">
+                                {item.name}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                {item.company}
+                              </p>
                               {item.stock != null && (
-                                <p className="text-[10px] text-slate-400 mt-0.5">Stock: {item.stock}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  Stock: {item.stock}
+                                </p>
                               )}
                             </>
                           )}
@@ -509,19 +694,25 @@ const DraftInvoice = () => {
                             min="1"
                             max={item.custom ? 9999 : item.stock}
                             value={item.qty}
-                            onChange={e => updateItem(item.id, "qty", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(item.id, "qty", e.target.value)
+                            }
                             className="w-16 text-center border-2 border-slate-200 rounded-lg py-1 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
                           />
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#1D4ED8] transition-colors">
-                            <span className="px-2 py-1 text-xs text-slate-400 bg-slate-50 border-r border-slate-200">৳</span>
+                            <span className="px-2 py-1 text-xs text-slate-400 bg-slate-50 border-r border-slate-200">
+                              ৳
+                            </span>
                             <input
                               type="number"
                               min="0"
                               step="0.01"
                               value={item.price}
-                              onChange={e => updateItem(item.id, "price", e.target.value)}
+                              onChange={(e) =>
+                                updateItem(item.id, "price", e.target.value)
+                              }
                               className="w-20 px-2 py-1 text-right text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
                             />
                           </div>
@@ -534,7 +725,7 @@ const DraftInvoice = () => {
                             onClick={() => removeItem(item.id)}
                             className="w-6 h-6 flex items-center justify-center rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                           >
-                            <FiTrash2 size={13}/>
+                            <FiTrash2 size={13} />
                           </button>
                         </td>
                       </tr>
@@ -550,16 +741,20 @@ const DraftInvoice = () => {
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   {/* Discount input */}
                   <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">Discount (৳)</label>
+                    <label className="text-xs font-bold text-[#1E3A8A] uppercase tracking-wider whitespace-nowrap">
+                      Discount (৳)
+                    </label>
                     <div className="flex items-center border-2 border-slate-200 rounded-lg overflow-hidden focus-within:border-[#F97316] transition-colors">
-                      <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">৳</span>
+                      <span className="px-2 py-2 text-xs text-slate-400 bg-white border-r border-slate-200">
+                        ৳
+                      </span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         placeholder="0.00"
                         value={discount}
-                        onChange={e => setDiscount(e.target.value)}
+                        onChange={(e) => setDiscount(e.target.value)}
                         className="w-24 px-2 py-2 text-sm font-semibold text-[#1E293B] outline-none bg-white font-['Barlow',sans-serif]"
                       />
                     </div>
@@ -568,7 +763,9 @@ const DraftInvoice = () => {
                   <div className="flex flex-col items-end gap-1 min-w-[200px]">
                     <div className="flex justify-between w-full text-xs text-slate-500 font-medium">
                       <span>Subtotal</span>
-                      <span className="tabular-nums font-semibold text-slate-700">{fmt(subtotal)}</span>
+                      <span className="tabular-nums font-semibold text-slate-700">
+                        {fmt(subtotal)}
+                      </span>
                     </div>
                     {discAmt > 0 && (
                       <div className="flex justify-between w-full text-xs text-green-600 font-semibold">
@@ -577,8 +774,12 @@ const DraftInvoice = () => {
                       </div>
                     )}
                     <div className="flex justify-between w-full pt-1.5 border-t-2 border-[#1E3A8A] mt-1">
-                      <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] uppercase tracking-wide text-sm">Estimated Total</span>
-                      <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#F97316] text-lg tabular-nums leading-tight">{fmt(grandTotal)}</span>
+                      <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#1E3A8A] uppercase tracking-wide text-sm">
+                        Estimated Total
+                      </span>
+                      <span className="font-['Barlow_Condensed',sans-serif] font-bold text-[#F97316] text-lg tabular-nums leading-tight">
+                        {fmt(grandTotal)}
+                      </span>
                     </div>
                   </div>
                 </div>

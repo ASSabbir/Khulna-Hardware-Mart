@@ -11,6 +11,8 @@ import {
 import InvoicePreviewModal from "./InvoicePreviewModal";
 import Pagination from "../../Components/Pagination";
 import { MOBILE_PROVIDERS, BANK_OPTIONS, clampToMax } from "../../utils/paymentConstants";
+import { buildReturnHTML } from "../../Print/returnTemplate";
+import { openPrintWindow } from "../../Print/printUtils";
 
 const PAGE_SIZE = 12;
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
@@ -183,7 +185,8 @@ function Drawer({ c, onClose, onPreview }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-[#0F172A]">{fmt(inv.grandTotal)}</span>
-                      <button onClick={() => onPreview(inv._id)} className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"><FiDownload size={13} /></button>
+                      <button onClick={() => onPreview(inv._id)} title="View invoice" className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"><FiDownload size={13} /></button>
+                      <button onClick={() => openPrintWindow(buildReturnHTML(inv))} title="Print invoice" className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg transition"><FiFileText size={13} /></button>
                     </div>
                   </div>
                 </div>
@@ -215,6 +218,9 @@ export default function DueCustomers() {
   const [payProvider, setPayProvider] = useState("bKash");
   const [payBankName, setPayBankName] = useState(BANK_OPTIONS[0]);
   const [payLoading, setPayLoading] = useState(false);
+  const [payModalInvoices, setPayModalInvoices] = useState([]);
+  const [payModalInvoicesLoading, setPayModalInvoicesLoading] = useState(false);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState([]);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState([]);
 
@@ -227,10 +233,12 @@ export default function DueCustomers() {
       const res = await axios.post(`http://localhost:5000/api/customers/${payModal.customerId}/collect-due`, {
         amount: amt, method: payMethod, provider: payMethod === "mobile" ? payProvider : undefined,
         bankName: payMethod === "bank" ? payBankName : undefined,
+        invoiceIds: selectedInvoiceIds.length > 0 ? selectedInvoiceIds : undefined,
       });
       setToast(res.data.movedToPaid ? "Fully paid — moved to Paid Customers ✅" : "Payment recorded ✅");
       setPayModal(null);
       setPayAmount("");
+      setSelectedInvoiceIds([]);
       fetchData();
     } catch (err) {
       setToast(err.response?.data?.message || "Failed to record payment");
@@ -239,6 +247,22 @@ export default function DueCustomers() {
       setTimeout(() => setToast(""), 3000);
     }
   };
+
+  useEffect(() => {
+    if (!payModal?.name) { setPayModalInvoices([]); setSelectedInvoiceIds([]); return; }
+    setPayModalInvoicesLoading(true);
+    axios.get("http://localhost:5000/api/invoices", { params: { customerName: payModal.name, paymentStatus: "due", limit: 100 } })
+      .then((res) => setPayModalInvoices(res.data.invoices || []))
+      .catch(() => setPayModalInvoices([]))
+      .finally(() => setPayModalInvoicesLoading(false));
+    setSelectedInvoiceIds([]);
+  }, [payModal]);
+
+  const toggleInvoiceSelection = (id) => setSelectedInvoiceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const payCap = selectedInvoiceIds.length > 0
+    ? payModalInvoices.filter((inv) => selectedInvoiceIds.includes(inv._id)).reduce((s, inv) => s + (Number(inv.dueAmount) || 0), 0)
+    : (payModal?.totalDue || 0);
 
   // Phase 10 C3 — search already debounced 350ms below; kept as-is (already correct), no duplicate immediate fetch on mount + search change
   const fetchData = () => {
@@ -298,7 +322,7 @@ export default function DueCustomers() {
 
       {/* ══════════════════ MAIN ══════════════════ */}
       <div className="flex-1 min-w-0">
-      
+
 
         {toast && (
           <div className="fixed top-5 right-5 z-50 bg-white border border-emerald-200 text-[#0F172A] px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2.5 max-w-sm">
@@ -345,10 +369,29 @@ export default function DueCustomers() {
               </div>
 
               <div className="px-6 py-5">
+                {payModalInvoices.length > 0 && (
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-[#94A3B8] uppercase tracking-wide mb-1.5 block">Apply to Invoice(s)</label>
+                    <div className="border border-[#E2E8F0] rounded-xl max-h-36 overflow-y-auto divide-y divide-[#F1F5F9]">
+                      {payModalInvoicesLoading ? (
+                        <p className="text-xs text-[#94A3B8] text-center py-3">Loading invoices…</p>
+                      ) : payModalInvoices.map((inv) => (
+                        <label key={inv._id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-[#F8FAFC]">
+                          <span className="flex items-center gap-2 min-w-0">
+                            <input type="checkbox" checked={selectedInvoiceIds.includes(inv._id)} onChange={() => toggleInvoiceSelection(inv._id)} className="accent-[#16A34A] w-4 h-4 rounded shrink-0" />
+                            <span className="truncate font-semibold text-[#0F172A]">{inv.invoiceNumber}</span>
+                          </span>
+                          <span className="text-red-600 font-bold shrink-0">৳{Number(inv.dueAmount || 0).toLocaleString()}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-[#94A3B8] mt-1">Select specific invoice(s) to pay only those — or leave unchecked to auto-clear the oldest due invoices first (pay full total to clear everything).</p>
+                  </div>
+                )}
                 <label className="text-xs font-bold text-[#94A3B8] uppercase tracking-wide">Payment Amount</label>
                 <input
-                  type="number" min="0" max={payModal.totalDue} value={payAmount}
-                  onChange={(e) => setPayAmount(clampToMax(e.target.value, payModal.totalDue))}
+                  type="number" min="0" max={payCap} value={payAmount}
+                  onChange={(e) => setPayAmount(clampToMax(e.target.value, payCap))}
                   placeholder="Payment"
                   className="w-full border border-[#E2E8F0] rounded-xl px-4 py-3 text-base mt-1.5 mb-4 bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30"
                 />

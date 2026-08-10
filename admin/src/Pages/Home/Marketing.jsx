@@ -2,58 +2,58 @@ import {
   FiMapPin, FiPhone, FiMail, FiClock,
   FiAward, FiPackage, FiUsers, FiStar,
 } from "react-icons/fi";
-import img from '../../../public/Image/banner.jpeg'
- 
+const img = "/Image/banner.jpeg";
+
 const STATS = [
   { value: "1990", label: "Established",        icon: <FiAward size={20}/>   },
   { value: "35+",  label: "Years of Trust",     icon: <FiStar size={20}/>    },
   { value: "20K+", label: "Products in Stock",  icon: <FiPackage size={20}/> },
   { value: "5K+",  label: "Happy Customers",    icon: <FiUsers size={20}/>   },
 ];
- 
+
 const CONTACT = [
   { icon: <FiMapPin size={18}/>,  label: "Address", value: "280 Khanjahan Ali Road, Rahmania Madrasha Complex, Khulna" },
   { icon: <FiPhone size={18}/>,   label: "Phone",   value: "02477-721990  ·  +880 1931-272839  ·  +880 1679-123205"   },
   { icon: <FiMail size={18}/>,    label: "Email",   value: "sislamkhulna1990@gmail.com"                               },
   { icon: <FiClock size={18}/>,   label: "Hours",   value: "Saturday – Thursday  |  8:00 AM – 8:00 PM"               },
 ];
- 
+
 const Marketing = () => {
  return (
     <section className="bg-white py-20 px-5">
       <div className="max-w-6xl mx-auto">
- 
+
         {/* Section label */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-1 bg-blue-600 rounded-full" />
           <span className="text-blue-500 text-sm font-bold uppercase tracking-widest">About Us</span>
         </div>
- 
+
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-start">
- 
+
           {/* ── LEFT — text content ── */}
           <div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6">
               Khulna's Most Trusted<br />
               <span className="text-orange-500">Hardware Store</span>
             </h2>
- 
+
             <p className="text-gray-600 text-lg leading-relaxed mb-5">
               Established in 1990, Khulna Hardware Mart has spent over three decades building a reputation that every contractor, builder, and homeowner in Khulna can rely on. Located at 280 Khanjahan Ali Road inside the Rahmania Madrasha Complex, our showroom carries more than 20,000 products across plumbing, paints, tools, electrical, and more.
             </p>
- 
+
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
               We are not an online store — we believe the best hardware experience happens in person. Walk into our showroom, speak with our expert staff, see the products yourself, and leave with exactly what your project needs.
             </p>
- 
+
             {/* Quote / motto */}
             <div className="border-l-4 border-blue-500 bg-orange-50 rounded-r-2xl px-6 py-5 mb-10">
               <p className="text-blue-500 text-xl font-semibold italic leading-snug">
                 "Quality products. Fair prices. Honest advice — for 35 years."
               </p>
             </div>
- 
+
             {/* Contact info */}
             <div className="space-y-4">
               {CONTACT.map(({ icon, label, value }) => (
@@ -69,10 +69,10 @@ const Marketing = () => {
               ))}
             </div>
           </div>
- 
+
           {/* ── RIGHT — stat cards + visual ── */}
           <div className="flex flex-col gap-6">
- 
+
             {/* Stat grid */}
             <div className="grid grid-cols-2 gap-4">
               {STATS.map(({ value, label, icon }, i) => (
@@ -94,7 +94,7 @@ const Marketing = () => {
                 </div>
               ))}
             </div>
- 
+
             {/* Visit us card */}
             <div className="bg-gradient-to-br from-blue-700 to-blue-900 rounded-2xl p-7 text-white">
               <div className="flex items-center gap-3 mb-4">
@@ -111,12 +111,12 @@ const Marketing = () => {
                 280 Khanjahan Ali Road, Rahmania Madrasha Complex, Khulna
               </div>
             </div>
- 
+
           </div>
         </div>
       </div>
     </section>
   );
 }
- 
+
 export default Marketing;

@@ -137,11 +137,11 @@ function StatCard({ label, value, sub, tone }) {
   );
 }
 
-function KpiCard({ label, value, sub, trend, trendUp, sparkPoints, sparkColor, sparkId, extra }) {
+function KpiCard({ label, value, sub, trend, trendUp, sparkPoints, sparkColor, sparkId, extra, valueClass }) {
   return (
     <div className="bg-white border border-[#E2E8F0] rounded-[12px] p-5 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
       <p className="text-[#64748B] text-sm font-medium">{label}</p>
-      <p className="text-[22px] sm:text-[24px] font-bold text-[#0F172A] mt-1.5 tracking-tight">{value}</p>
+      <p className={`text-[22px] sm:text-[24px] font-bold mt-1.5 tracking-tight ${valueClass || "text-[#0F172A]"}`}>{value}</p>
       {trend && (
         <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${trendUp ? "text-[#10B981]" : "text-[#EF4444]"}`}>
           {trendUp ? <FiArrowUpRight size={12} /> : <FiArrowDownRight size={12} />} {trend}
@@ -386,8 +386,8 @@ export default function AccountsStatus() {
 
         {/* ── KPI: 6 Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6 sm:mb-8">
-          <KpiCard label="Current Balance" value={fmt(balance)} trend="+1.5%" trendUp
-            sparkPoints="0,26 20,20 40,22 60,14 80,16 100,8 120,10" sparkColor="#10B981" sparkId="sparkBal" />
+          <KpiCard label="Current Balance" value={fmt(balance)} trend={balance < 0 ? "Overdrawn" : "+1.5%"} trendUp={balance >= 0} valueClass={balance < 0 ? "text-red-600" : ""}
+            sparkPoints="0,26 20,20 40,22 60,14 80,16 100,8 120,10" sparkColor={balance < 0 ? "#EF4444" : "#10B981"} sparkId="sparkBal" />
           <KpiCard label="Total Income" value={fmt(allIncome)} sub="Lifetime income" trend="+18.7%" trendUp
             sparkPoints="0,28 20,22 40,24 60,16 80,18 100,6 120,8" sparkColor="#10B981" sparkId="sparkInc" />
           <KpiCard label="Total Expense" value={fmt(allExpense)} sub="Lifetime expense" trend="+3.2%" trendUp={false}
@@ -440,7 +440,9 @@ export default function AccountsStatus() {
                       {cfg.label}
                     </span>
                   </div>
-                  <p className="text-2xl font-bold text-[#0F172A]">{fmt(net)}</p>
+                  <p className={`text-2xl font-bold ${net < 0 ? "text-red-600" : "text-[#0F172A]"}`}>
+                    {fmt(net)}{net < 0 && <span className="ml-2 text-[10px] font-bold uppercase bg-red-50 text-red-600 px-2 py-0.5 rounded-full align-middle">Overdrawn</span>}
+                  </p>
                   <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex justify-between text-sm">
                     <span className="text-[#64748B]">In {fmt(m.income)}</span>
                     <span className="text-[#64748B]">Out {fmt(m.expense)}</span>
@@ -459,9 +461,9 @@ export default function AccountsStatus() {
                   const total = Object.values(mobileBreakdown).reduce((s, v) => s + Number(v || 0), 0);
                   const pct = total > 0 ? Math.round((val / total) * 100) : 0;
                   return (
-                    <div key={p} className="bg-purple-50 rounded-xl p-3">
+                    <div key={p} className={`rounded-xl p-3 ${val < 0 ? "bg-red-50" : "bg-purple-50"}`}>
                       <p className="text-[#64748B] text-xs">{p}</p>
-                      <p className="font-bold text-[#8B5CF6] text-base sm:text-lg">{fmt(val)}</p>
+                      <p className={`font-bold text-base sm:text-lg ${val < 0 ? "text-red-600" : "text-[#8B5CF6]"}`}>{fmt(val)}</p>
                       <div className="h-1.5 bg-purple-100 rounded-full overflow-hidden mt-2">
                         <div className="h-full bg-[#8B5CF6] rounded-full" style={{ width: `${pct}%` }} />
                       </div>
@@ -478,9 +480,9 @@ export default function AccountsStatus() {
               <p className="text-[#64748B] text-sm font-semibold mb-4">Bank Breakdown</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {Object.entries(bankBreakdown).map(([bankName, amt]) => (
-                  <div key={bankName} className="bg-blue-50 rounded-xl p-3">
+                  <div key={bankName} className={`rounded-xl p-3 ${amt < 0 ? "bg-red-50" : "bg-blue-50"}`}>
                     <p className="text-[#64748B] text-xs">{bankName}</p>
-                    <p className="font-bold text-[#3B82F6] text-base sm:text-lg">{fmt(amt)}</p>
+                    <p className={`font-bold text-base sm:text-lg ${amt < 0 ? "text-red-600" : "text-[#3B82F6]"}`}>{fmt(amt)}</p>
                   </div>
                 ))}
               </div>

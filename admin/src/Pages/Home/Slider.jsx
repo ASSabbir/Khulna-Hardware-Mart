@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 // Import Swiper React components
 import { Swiper, SwiperSlide } from 'swiper/react';
-import img5 from "/public/Image/img5.png";
-import img6 from "/public/Image/img6.jpg";
-import img7 from "/public/Image/img7.png";
-import img8 from "/public/Image/img8.jpg";
-import img9 from "/public/Image/img9.jfif";
+const img5 = "/Image/img5.png";
+const img6 = "/Image/img6.jpg";
+const img7 = "/Image/img7.png";
+const img8 = "/Image/img8.jpg";
+const img9 = "/Image/img9.jfif";
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/pagination';
