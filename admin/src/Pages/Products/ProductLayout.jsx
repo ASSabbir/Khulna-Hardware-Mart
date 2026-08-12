@@ -46,7 +46,7 @@ const ProductLayout = () => {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed z-50 top-0 left-0 h-full w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
+        className={`fixed md:static z-50 top-0 left-0 h-full md:h-auto w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
