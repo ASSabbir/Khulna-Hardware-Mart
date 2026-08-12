@@ -6,8 +6,9 @@ import {
   FiCalendar, FiFilter, FiDollarSign, FiTrendingUp, FiTrendingDown,
   FiUpload, FiDownload, FiPrinter, FiChevronRight, FiHome, FiGrid,
   FiSearch, FiSliders, FiArrowUp, FiArrowDown, FiActivity, FiAlertTriangle,
-  FiAward, FiZap, FiMoreVertical, FiArrowUpRight, FiArrowDownRight,
+  FiAward, FiZap, FiMoreVertical, FiArrowUpRight, FiArrowDownRight, FiEye,
 } from "react-icons/fi";
+import { openPrintWindow } from "../../Print/printUtils";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -81,8 +82,74 @@ function KpiIcon({ icon: Icon, bg, color }) {
   );
 }
 
+function buildTxnPrintHTML(t) {
+  const methodLabel = t.method === "mobile" ? `Mobile Banking (${t.provider || "—"})` : t.method === "bank" ? `Bank Transfer (${t.bankName || "—"})` : "Cash";
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Transaction — ${t.description || ""}</title>
+  <style>
+    body{font-family:'Segoe UI',Arial,sans-serif;padding:28px;color:#1E293B;}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-weight:800;font-size:12px;text-transform:uppercase;}
+    table{width:100%;border-collapse:collapse;margin-top:16px;}
+    td{padding:8px 6px;border-bottom:1px solid #E2E8F0;font-size:13px;}
+    td:first-child{color:#64748B;font-weight:600;width:40%;}
+    td:last-child{color:#0F172A;font-weight:700;text-align:right;}
+  </style></head><body>
+    <h2 style="color:#1E3A8A;margin-bottom:2px;">Khulna Hardware Mart</h2>
+    <p style="color:#94A3B8;margin-top:0;">Transaction Record</p>
+    <span class="badge" style="background:${t.type === "income" ? "#DCFCE7" : "#FEE2E2"};color:${t.type === "income" ? "#16A34A" : "#EF4444"};">
+      ${t.type === "income" ? "Income" : "Expense"}
+    </span>
+    <table>
+      <tr><td>Category</td><td>${t.category || "—"}</td></tr>
+      <tr><td>Amount</td><td>${fmt(t.amount)}</td></tr>
+      <tr><td>Payment Method</td><td>${methodLabel}</td></tr>
+      <tr><td>Description</td><td>${t.description || "—"}</td></tr>
+      <tr><td>Added By</td><td>${t.addedBy || "—"}</td></tr>
+      <tr><td>Date</td><td>${fmtDate(t.date)}</td></tr>
+      <tr><td>Recorded At</td><td>${t.datetime ? new Date(t.datetime).toLocaleString("en-GB") : "—"}</td></tr>
+    </table>
+  </body></html>`;
+}
+
+function TxnDetailModal({ t, onClose }) {
+  if (!t) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#F1F5F9]">
+          <h2 className="text-lg font-bold text-[#0F172A]">Transaction Details</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={() => openPrintWindow(buildTxnPrintHTML(t))} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] hover:bg-[#16296B] text-white rounded-lg text-xs font-bold"><FiPrinter size={13} /> Print</button>
+            <button onClick={onClose} className="p-2 hover:bg-[#F1F5F9] rounded-lg"><span className="text-[#64748B]">✕</span></button>
+          </div>
+        </div>
+        <div className="p-6 space-y-3 text-sm">
+          {[
+            ["Type", t.type === "income" ? "Income" : "Expense"],
+            ["Category", t.category],
+            ["Amount", fmt(t.amount)],
+            ["Method", t.method === "mobile" ? `Mobile Banking (${t.provider || "—"})` : t.method === "bank" ? `Bank (${t.bankName || "—"})` : "Cash"],
+            ["Description", t.description || "—"],
+            ["Added By", t.addedBy || "—"],
+            ["Date", fmtDate(t.date)],
+            ["Recorded At", t.datetime ? new Date(t.datetime).toLocaleString("en-GB") : "—"],
+          ].map(([label, val]) => (
+            <div key={label} className="flex justify-between gap-3 border-b border-[#F8FAFC] pb-2">
+              <span className="text-[#94A3B8] font-semibold">{label}</span>
+              <span className="text-[#0F172A] font-bold text-right">{val}</span>
+            </div>
+          ))}
+        </div>
+        <div className="px-6 pb-6">
+          <button onClick={onClose} className="w-full bg-[#0F172A] text-white font-bold py-3 rounded-xl">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountsHistory() {
   const [txns, setTxns] = useState([]);
+  const [selectedTxn, setSelectedTxn] = useState(null);
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -405,8 +472,8 @@ export default function AccountsHistory() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <button type="button" className="text-[#94A3B8] hover:text-[#0F172A] transition">
-                            <FiMoreVertical size={15} />
+                          <button type="button" onClick={() => setSelectedTxn(t)} className="text-[#94A3B8] hover:text-[#0F172A] transition" title="View details">
+                            <FiEye size={15} />
                           </button>
                         </td>
                       </tr>
@@ -539,6 +606,7 @@ export default function AccountsHistory() {
           </div>
         </div>
       </div>
+      <TxnDetailModal t={selectedTxn} onClose={() => setSelectedTxn(null)} />
     </div>
   );
 }

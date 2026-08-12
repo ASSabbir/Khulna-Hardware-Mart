@@ -29,6 +29,24 @@ const NAV_ITEMS = [
   { key: "settings", label: "Settings", icon: FiSettings },
 ];
 
+// Hoisted OUTSIDE CustomerModal — defining a component inside another component's render
+// creates a brand-new function identity every re-render, which makes React unmount/remount
+// the <input>, dropping keyboard focus after every single keystroke.
+function CustomerField({ label, fkey, value, error, onChange, type = "text", placeholder, required }) {
+  return (
+    <div>
+      <label className="block text-sm font-bold text-[#334155] mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type} value={value || ""} onChange={onChange} placeholder={placeholder}
+        className={`w-full bg-[#F8FAFC] border ${error ? "border-red-400" : "border-[#E2E8F0]"} rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 transition`}
+      />
+      {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><FiAlertCircle size={13}/>{error}</p>}
+    </div>
+  );
+}
+
 // Add/Edit Modal
 function CustomerModal({ existing, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -50,19 +68,6 @@ function CustomerModal({ existing, onClose, onSave }) {
     onSave(form);
   };
 
-  const Field = ({ label, fkey, type = "text", placeholder, required }) => (
-    <div>
-      <label className="block text-sm font-bold text-[#334155] mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type} value={form[fkey] || ""} onChange={set(fkey)} placeholder={placeholder}
-        className={`w-full bg-[#F8FAFC] border ${errors[fkey] ? "border-red-400" : "border-[#E2E8F0]"} rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 transition`}
-      />
-      {errors[fkey] && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><FiAlertCircle size={13}/>{errors[fkey]}</p>}
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -71,15 +76,15 @@ function CustomerModal({ existing, onClose, onSave }) {
           <button onClick={onClose} className="p-2 hover:bg-[#F1F5F9] rounded-xl transition"><FiX size={20} className="text-[#64748B]"/></button>
         </div>
         <div className="px-7 py-6 flex flex-col gap-4">
-          <Field label="Customer Name" fkey="name" placeholder="e.g. Karim Bhai" required />
-          <Field label="Phone Number" fkey="phone" placeholder="e.g. 01711-000000" />
-          <Field label="Email Address" fkey="email" type="email" placeholder="e.g. customer@email.com" />
+          <CustomerField label="Customer Name" value={form.name} onChange={set("name")} error={errors.name} placeholder="e.g. Karim Bhai" required />
+          <CustomerField label="Phone Number" value={form.phone} onChange={set("phone")} error={errors.phone} placeholder="e.g. 01711-000000" />
+          <CustomerField label="Email Address" value={form.email} onChange={set("email")} error={errors.email} type="email" placeholder="e.g. customer@email.com" />
           <div>
             <label className="block text-sm font-bold text-[#334155] mb-1.5">Address</label>
             <textarea value={form.address || ""} onChange={set("address")} rows={2} placeholder="Customer address"
               className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 transition resize-none"/>
           </div>
-          <Field label="Due Amount (৳)" fkey="totalDue" type="number" placeholder="0" />
+          <CustomerField label="Due Amount (৳)" value={form.totalDue} onChange={set("totalDue")} error={errors.totalDue} type="number" placeholder="0" />
         </div>
         <div className="px-7 pb-6 flex gap-3">
           <button onClick={onClose} className="flex-1 border border-[#E2E8F0] text-[#334155] font-bold py-3.5 rounded-xl text-sm hover:bg-[#F8FAFC] transition">Cancel</button>

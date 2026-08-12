@@ -229,11 +229,13 @@ export default function AddExpense() {
     setErrors((p) => ({ ...p, [k]: "" }));
   };
 
-  const getAvailableBalance = (method, provider) => {
+  const getAvailableBalance = (method, provider, bankName) => {
     const txns = accounts?.transactions || [];
     return txns.reduce((sum, t) => {
       const sameMethod =
-        t.method === method && (method !== "mobile" || t.provider === provider);
+        t.method === method &&
+        (method !== "mobile" || t.provider === provider) &&
+        (method !== "bank" || t.bankName === bankName);
       if (!sameMethod) return sum;
       return sum + (t.type === "income" ? t.amount : -t.amount);
     }, 0);
@@ -246,8 +248,7 @@ export default function AddExpense() {
     if (!form.category) e.category = "Select a category";
     if (!form.description.trim()) e.description = "Description is required";
     if (!form.date) e.date = "Select a date";
-    if (form.category === "Withdraw" && !form.method)
-      e.method = "Select a withdraw method";
+    if (!form.method) e.method = "Select a payment method";
     return e;
   };
 
@@ -266,15 +267,9 @@ export default function AddExpense() {
         description: form.description,
         date: form.date,
         addedBy: form.addedBy || "Admin",
-        method: form.category === "Withdraw" ? form.method : "cash",
-        provider:
-          form.category === "Withdraw" && form.method === "mobile"
-            ? form.provider
-            : null,
-        bankName:
-          form.category === "Withdraw" && form.method === "bank"
-            ? form.bankName
-            : null,
+        method: form.method,
+        provider: form.method === "mobile" ? form.provider : null,
+        bankName: form.method === "bank" ? form.bankName : null,
       });
       const newTx = res.data;
       setAccounts((prev) => ({
@@ -302,10 +297,7 @@ export default function AddExpense() {
     c.toLowerCase().includes(categorySearch.toLowerCase()),
   );
 
-  const withdrawAvailable =
-    form.category === "Withdraw"
-      ? getAvailableBalance(form.method, form.provider)
-      : null;
+  const withdrawAvailable = getAvailableBalance(form.method, form.provider, form.bankName);
 
   const recentExpenses = (accounts?.transactions || [])
     .filter((t) => t.type === "expense")
@@ -563,6 +555,12 @@ export default function AddExpense() {
                     type="number"
                     value={form.amount}
                     onChange={set("amount")}
+                    onBlur={(e) => {
+                      const n = Number(e.target.value);
+                      if (Number.isFinite(n) && n > withdrawAvailable && withdrawAvailable > 0) {
+                        setForm((f) => ({ ...f, amount: String(withdrawAvailable) }));
+                      }
+                    }}
                     placeholder="0.00"
                     className={`w-full bg-[#F8FAFC] border ${
                       errors.amount ? "border-red-400" : "border-[#E2E8F0]"
@@ -672,14 +670,13 @@ export default function AddExpense() {
                 )}
               </div>
 
-              {/* Smart Withdraw Module */}
-              {form.category === "Withdraw" && (
-                <div className="sm:col-span-2 bg-[#FEF2F2] border border-red-100 rounded-[12px] p-4 sm:p-5">
+              {/* Payment Source */}
+              <div className="sm:col-span-2 bg-[#FEF2F2] border border-red-100 rounded-[12px] p-4 sm:p-5">
                   <p className="text-sm font-bold text-[#0F172A] mb-1">
-                    Smart Withdraw Module
+                    Payment Source
                   </p>
                   <p className="text-xs text-[#64748B] mb-3">
-                    Choose the source this withdrawal will be deducted from
+                    Choose which account this expense is deducted from
                   </p>
 
                  <div className="mb-3">
@@ -728,7 +725,6 @@ export default function AddExpense() {
                     figures stay unchanged.
                   </p>
                 </div>
-              )}
 
               {/* Date */}
               <div>

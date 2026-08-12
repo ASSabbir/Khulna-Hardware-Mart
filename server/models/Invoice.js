@@ -28,6 +28,7 @@ const collectionSchema = new mongoose.Schema(
     mobileNumber: { type: String, trim: true, maxlength: 20, default: "" },
     note: { type: String, trim: true, maxlength: 300, default: "" },
     collectedAtBST: { type: Date, required: true },
+    dueAfter: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -51,6 +52,7 @@ const returnedItemSchema = new mongoose.Schema(
     returnAmount: { type: Number, required: true, min: 0 },
     returnDateBST: { type: Date, required: true },
     reason: { type: String, trim: true, maxlength: 300, default: "" },
+    dueAfter: { type: Number, default: null },
   },
   { _id: false }
 );
