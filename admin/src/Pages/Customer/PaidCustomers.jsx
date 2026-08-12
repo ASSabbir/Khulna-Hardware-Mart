@@ -32,7 +32,7 @@ import Pagination from "../../Components/Pagination";
 import { buildReturnHTML } from "../../Print/returnTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
-import { openPrintWindow } from "../../Print/printUtils";
+
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) =>

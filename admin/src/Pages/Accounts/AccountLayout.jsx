@@ -35,7 +35,7 @@ const AccountLayout = () => {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full md:h-auto w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
+        className={`fixed z-50 top-0 left-0 h-full w-60 bg-[#1E3A8A] flex flex-col border-r-4 border-[#F97316] transform transition-transform duration-300 shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -96,7 +96,7 @@ const AccountLayout = () => {
       </aside>
 
       {/* CONTENT */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:ml-60">
         {/* Top Bar */}
         <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
           <button
@@ -117,9 +117,7 @@ const AccountLayout = () => {
         <div className="flex-1 p-4 md:p-6">
           <Outlet />
         </div>
-
       </div>
-
     </div>
   );
 };

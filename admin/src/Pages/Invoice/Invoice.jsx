@@ -35,6 +35,7 @@ import {
   upsertDraft,
 } from "../../utils/draftStorage";
 import { buildChallanHTML } from "../../Print/challanTemplate";
+import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import { clampToMax } from "../../utils/paymentConstants";
 
@@ -191,7 +192,9 @@ const Invoice = () => {
   const [addingCustom, setAddingCustom] = useState(false);
 
   const [customerLookupStatus, setCustomerLookupStatus] = useState("");
-  const debouncedPhone = useDebounce(customer.phone, 500);
+  const [phoneSuggestions, setPhoneSuggestions] = useState([]);
+  const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
+  const debouncedPhone = useDebounce(customer.phone, 350);
   const printRef = useRef(null);
 
   const [savedDrafts, setSavedDrafts] = useState(loadAllDrafts());
@@ -249,8 +252,9 @@ const Invoice = () => {
 
   useEffect(() => {
     const phone = (debouncedPhone || "").trim();
-    if (phone.length < 6) {
+    if (phone.length < 3) {
       setCustomerLookupStatus("");
+      setPhoneSuggestions([]);
       return;
     }
     let cancelled = false;
@@ -260,23 +264,25 @@ const Invoice = () => {
       )
       .then((res) => {
         if (cancelled) return;
-        const match = (res.data.customers || []).find((c) => c.phone === phone);
-        if (match) {
-          setCustomer((c) => ({
-            ...c,
-            name: c.name?.trim() ? c.name : match.name || "",
-            address: c.address?.trim() ? c.address : match.address || "",
-          }));
-          setCustomerLookupStatus("found");
-        } else setCustomerLookupStatus("notfound");
+        const list = res.data.customers || [];
+        setPhoneSuggestions(list.slice(0, 6));
+        const exact = list.find((c) => c.phone === phone);
+        setCustomerLookupStatus(exact ? "found" : "notfound");
       })
       .catch(() => {
-        if (!cancelled) setCustomerLookupStatus("");
+        if (!cancelled) { setCustomerLookupStatus(""); setPhoneSuggestions([]); }
       });
     return () => {
       cancelled = true;
     };
   }, [debouncedPhone]);
+
+  const pickCustomerSuggestion = (c) => {
+    setCustomer({ name: c.name || "", phone: c.phone || "", address: c.address || "" });
+    setCustomerLookupStatus("found");
+    setPhoneSuggestions([]);
+    setShowPhoneSuggestions(false);
+  };
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -324,6 +330,9 @@ const Invoice = () => {
         showToast("info", `${p.name} already in memo — adjust qty below.`);
         return prev;
       }
+      const baseBuying = parseFloat(p.buyingPrice) || 0;
+      const holcellRatio = baseBuying > 0 ? getPriceForType(p, "holcell") / baseBuying : 1.03;
+      const retailRatio = baseBuying > 0 ? getPriceForType(p, "retail") / baseBuying : 1.05;
       return [
         ...prev,
         {
@@ -338,6 +347,8 @@ const Invoice = () => {
               : getPriceForType(p, "retail"),
           retailPriceValue: getPriceForType(p, "retail"),
           holcellPriceValue: getPriceForType(p, "holcell"),
+          holcellRatio,
+          retailRatio,
           qty: 1,
           stock: p.stock,
           suppliers: p.suppliers || [],
@@ -424,14 +435,23 @@ const Invoice = () => {
         return { ...i, price: newPrice };
       }),
     );
-  }, [customerType]); // eslint-disable-line
+  }, [customerType]);
 
   const updateItem = (id, field, value) => {
     setMemoItems((prev) =>
       prev.map((i) => {
         if (i.id !== id) return i;
         if (field === "preferredSupplierId") {
-          const updated = { ...i, preferredSupplierId: value };
+          let updated = { ...i, preferredSupplierId: value };
+          if (value && !i.custom) {
+            const sup = (i.suppliers || []).find((s) => s.supplierId === value);
+            if (sup && Number.isFinite(Number(sup.buyingPrice))) {
+              const ratio = customerType === "wholesale" ? (i.holcellRatio || 1.03) : (i.retailRatio || 1.05);
+              updated.price = +(Number(sup.buyingPrice) * ratio).toFixed(2);
+            }
+          } else if (!i.custom) {
+            updated.price = customerType === "wholesale" ? (i.holcellPriceValue ?? i.price) : (i.retailPriceValue ?? i.price);
+          }
           const max = getMaxQtyForItem(updated, prev);
           return { ...updated, qty: max > 0 ? Math.min(i.qty, max) : 0 };
         }
@@ -500,22 +520,16 @@ const Invoice = () => {
     : 0;
   const grandTotal = +(subtotal - discAmt + vatAmt + transportAmt).toFixed(2);
 
-  const splitCap =
-    paymentStatus === "due"
-      ? Math.max(0, Math.min(parseFloat(paidNowAmount) || 0, grandTotal))
-      : grandTotal;
+  // Split total drives paidNowAmount (when due) — never the other way around,
+  // or typing into a split row gets clamped to 0 before the user finishes typing.
   const splitTotalRaw = splitRows.reduce(
     (s, r) => s + (parseFloat(r.amount) || 0),
     0,
   );
-  const splitTotal = +Math.min(splitTotalRaw, splitCap).toFixed(2);
+  const splitTotal = +Math.min(splitTotalRaw, grandTotal).toFixed(2);
 
-  // #B — Paying Now auto-syncs from split total when split payment is used on a due invoice
-  useEffect(() => {
-    if (paymentStatus === "due" && splitPayment)
-      setPaidNowAmount(String(splitTotal));
-  }, [splitTotal, splitPayment, paymentStatus]);
-
+  // Paying Now is now the user-set target for split payment too — no auto-sync from split total,
+  // which was collapsing "remaining" to 0 every time (target === entered amount by definition).
   const expectedPaidAmount =
     paymentStatus === "due"
       ? Math.min(Math.max(parseFloat(paidNowAmount) || 0, 0), grandTotal)
@@ -530,15 +544,11 @@ const Invoice = () => {
       prev.length > 1 ? prev.filter((r) => r.id !== id) : prev,
     );
   const updateSplitRow = (id, field, value) => {
+    // No live clamping while typing — it fights the keystroke. Cap only against
+    // the invoice grand total (a hard ceiling), validated fully at submit time.
     if (field === "amount") {
-      const others = splitRows
-        .filter((r) => r.id !== id)
-        .reduce((s, r) => s + (Number(r.amount) || 0), 0);
-      const cap = paymentStatus === "due" ? expectedPaidAmount : grandTotal;
-      const maxForRow = Math.max(0, +(cap - others).toFixed(2));
       const n = Number(value);
-      if (Number.isFinite(n) && n > maxForRow)
-        value = maxForRow > 0 ? String(maxForRow) : "";
+      if (Number.isFinite(n) && n > grandTotal) value = String(grandTotal);
     }
     setSplitRows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
@@ -704,7 +714,14 @@ const Invoice = () => {
       showToast("error", "Add at least one product to print.");
       return;
     }
-    window.print();
+    const previewInvoice = {
+      invoiceNumber: invoiceNum, invoiceDate, customer,
+      items: memoItems.map((i) => ({ name: i.name, company: i.company, unit: i.unit, price: i.price, qty: i.qty, total: i.price * i.qty })),
+      subtotal, discount: discAmt, vat: vatAmt, transportCost: transportAmt, grandTotal,
+      priceType, preparedBy: isPreparedByOther ? customPreparedBy.trim() : preparedBy,
+      paymentStatus, paidAmount: expectedPaidAmount, dueAmount: dueBalance, payments: buildPayments(),
+    };
+    openPrintWindow(buildInvoiceReceiptHTML(previewInvoice));
   };
   const printChallan = () => {
     if (memoItems.length === 0) {
@@ -1137,26 +1154,44 @@ const Invoice = () => {
                   placeholder: "Address (optional)",
                 },
               ].map((f) => (
-                <div
-                  key={f.key}
-                  className={`flex items-center gap-2 bg-white border-2 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors ${f.key === "phone" && customerLookupStatus === "found" ? "border-green-400" : "border-slate-200"}`}
-                >
-                  <span className="text-slate-400 shrink-0">{f.icon}</span>
-                  <input
-                    placeholder={f.placeholder}
-                    value={customer[f.key]}
-                    onChange={(e) => {
-                      setCustomer((c) => ({ ...c, [f.key]: e.target.value }));
-                      if (f.key === "phone") setCustomerLookupStatus("");
-                    }}
-                    className="flex-1 text-xs outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
-                  />
-                  {f.key === "phone" && customerLookupStatus === "found" && (
-                    <FiCheckCircle
-                      size={13}
-                      className="text-green-500 shrink-0"
-                      title="Existing customer found"
+                <div key={f.key} className="relative">
+                  <div
+                    className={`flex items-center gap-2 bg-white border-2 rounded-lg px-3 py-2 focus-within:border-[#1D4ED8] transition-colors ${f.key === "phone" && customerLookupStatus === "found" ? "border-green-400" : "border-slate-200"}`}
+                  >
+                    <span className="text-slate-400 shrink-0">{f.icon}</span>
+                    <input
+                      placeholder={f.placeholder}
+                      value={customer[f.key]}
+                      onChange={(e) => {
+                        setCustomer((c) => ({ ...c, [f.key]: e.target.value }));
+                        if (f.key === "phone") { setCustomerLookupStatus(""); setShowPhoneSuggestions(true); }
+                      }}
+                      onFocus={() => { if (f.key === "phone") setShowPhoneSuggestions(true); }}
+                      onBlur={() => { if (f.key === "phone") setTimeout(() => setShowPhoneSuggestions(false), 150); }}
+                      className="flex-1 text-xs outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
                     />
+                    {f.key === "phone" && customerLookupStatus === "found" && (
+                      <FiCheckCircle
+                        size={13}
+                        className="text-green-500 shrink-0"
+                        title="Existing customer found"
+                      />
+                    )}
+                  </div>
+                  {f.key === "phone" && showPhoneSuggestions && phoneSuggestions.length > 0 && (
+                    <div className="absolute z-30 mt-1 w-full bg-white border-2 border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {phoneSuggestions.map((c) => (
+                        <button
+                          key={c._id}
+                          type="button"
+                          onMouseDown={() => pickCustomerSuggestion(c)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                        >
+                          <p className="font-bold text-[#1E293B]">{c.name}</p>
+                          <p className="text-slate-400">{c.phone} {c.address ? `· ${c.address}` : ""}</p>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
@@ -1518,9 +1553,8 @@ const Invoice = () => {
                             clampToMax(e.target.value, grandTotal),
                           )
                         }
-                        disabled={splitPayment}
                         placeholder="0.00"
-                        className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif] disabled:bg-red-100"
+                        className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif]"
                       />
                       <span className="text-xs font-bold text-red-600 whitespace-nowrap">
                         Due: ৳{dueBalance.toFixed(2)}
@@ -1529,7 +1563,7 @@ const Invoice = () => {
                   )}
                   {splitPayment && paymentStatus === "due" && (
                     <p className="text-[10px] text-slate-400 mt-1">
-                      Auto-filled from split payment total below.
+                      Enter how much is being paid now above, then split it across methods below.
                     </p>
                   )}
                 </div>

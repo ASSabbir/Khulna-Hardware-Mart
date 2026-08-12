@@ -161,8 +161,9 @@ router.post("/", async (req, res) => {
     if (!["income", "expense"].includes(type)) {
       return res.status(400).json({ message: "Type must be 'income' or 'expense'." });
     }
-    if (!CATEGORIES[type].includes(category)) {
-      return res.status(400).json({ message: "Invalid category for this type." });
+    const categoryTrimmed = String(category || "").trim();
+    if (!categoryTrimmed || categoryTrimmed.length > 100) {
+      return res.status(400).json({ message: "A valid category is required." });
     }
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt <= 0) {
@@ -188,7 +189,7 @@ router.post("/", async (req, res) => {
     // negative balance is expected and must remain visible, never blocked.
     const entry = await Ledger.create({
       type,
-      category,
+      category: categoryTrimmed,
       amount: amt,
       description: String(description).trim().slice(0, 500),
       date,
@@ -213,6 +214,34 @@ router.delete("/:id", async (req, res) => {
     const deleted = await Ledger.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Entry not found." });
     res.json({ message: "Entry deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/ledger/balances — available balance per payment method/provider/bank
+router.get("/balances", async (req, res) => {
+  try {
+    const entries = await Ledger.find().lean();
+    const derivedTxns = await buildDerivedTransactions();
+    const allTxns = [...entries.map(toClientShape), ...derivedTxns];
+
+    let cash = 0;
+    const mobile = { bKash: 0, Nagad: 0, Rocket: 0, Upay: 0 };
+    const bank = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+
+    allTxns.forEach((t) => {
+      const sign = t.type === "income" ? 1 : -1;
+      if (t.method === "cash") cash += sign * t.amount;
+      else if (t.method === "mobile" && mobile[t.provider] !== undefined) mobile[t.provider] += sign * t.amount;
+      else if (t.method === "bank" && bank[t.bankName] !== undefined) bank[t.bankName] += sign * t.amount;
+    });
+
+    res.json({
+      cash: +cash.toFixed(2),
+      mobile: Object.fromEntries(Object.entries(mobile).map(([k, v]) => [k, +v.toFixed(2)])),
+      bank: Object.fromEntries(Object.entries(bank).map(([k, v]) => [k, +v.toFixed(2)])),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

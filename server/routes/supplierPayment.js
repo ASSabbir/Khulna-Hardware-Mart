@@ -80,7 +80,7 @@ router.get("/:supplierId", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { supplierId, amount, method, provider, note, date } = req.body;
+    const { supplierId, amount, method, provider, bankName, note, date } = req.body;
     if (!mongoose.Types.ObjectId.isValid(supplierId)) return res.status(400).json({ message: "Invalid supplier id." });
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: "Enter a valid payment amount." });
@@ -88,7 +88,18 @@ router.post("/", async (req, res) => {
     if (method === "mobile" && !["bKash", "Nagad", "Rocket", "Upay"].includes(provider)) {
       return res.status(400).json({ message: "Select a valid mobile banking provider." });
     }
+    const supplier = await Supplier.findById(supplierId).lean();
     await SupplierPayment.create({ supplierId, type: "payable", amount: amt, method: method || "cash", provider: method === "mobile" ? provider : null, note: String(note || "").slice(0, 300), date });
+
+    // Mirror this payment into Accounts so the supplier due-clear is reflected in cash/bank/mobile balances.
+    const Ledger = require("./ledger").LedgerModel || require("../models/Ledger");
+    await Ledger.create({
+      type: "expense", category: "Purchase", amount: amt,
+      description: `Supplier due payment — ${supplier?.companyName || supplier?.name || "Supplier"}`,
+      date, method: method || "cash", provider: method === "mobile" ? provider : null,
+      bankName: method === "bank" ? String(bankName || "") : "", addedBy: "System",
+    });
+
     const after = await computeSupplierBalance(supplierId);
     res.status(201).json({ balance: after });
   } catch (error) {

@@ -194,6 +194,7 @@ export default function AccountsStatus() {
   const [txnSearch, setTxnSearch] = useState("");
   const [txnFilterOpen, setTxnFilterOpen] = useState(false);
   const [txnTypeFilter, setTxnTypeFilter] = useState("");
+  const [breakdownTab, setBreakdownTab] = useState("bank");
 
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate,  setSelectedDate]  = useState(todayStr);
@@ -452,40 +453,62 @@ export default function AccountsStatus() {
             })}
           </div>
 
-          {mobileBreakdown && (
+          {(mobileBreakdown || bankBreakdown) && (
             <div className="mt-4 bg-white border border-[#E2E8F0] rounded-[16px] p-5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
-              <p className="text-[#64748B] text-sm font-semibold mb-4">Mobile Banking Breakdown</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {["bKash", "Nagad", "Rocket", "Upay"].map((p) => {
-                  const val = mobileBreakdown[p] || 0;
-                  const total = Object.values(mobileBreakdown).reduce((s, v) => s + Number(v || 0), 0);
-                  const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-                  return (
-                    <div key={p} className={`rounded-xl p-3 ${val < 0 ? "bg-red-50" : "bg-purple-50"}`}>
-                      <p className="text-[#64748B] text-xs">{p}</p>
-                      <p className={`font-bold text-base sm:text-lg ${val < 0 ? "text-red-600" : "text-[#8B5CF6]"}`}>{fmt(val)}</p>
-                      <div className="h-1.5 bg-purple-100 rounded-full overflow-hidden mt-2">
-                        <div className="h-full bg-[#8B5CF6] rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="text-[10px] text-[#94A3B8] mt-1">{pct}% allocation</p>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <p className="text-[#64748B] text-sm font-semibold">
+                  {breakdownTab === "bank" ? "Bank Breakdown" : "Mobile Banking Breakdown"}
+                </p>
+                <div className="flex items-center gap-1 bg-[#F1F5F9] rounded-lg p-1 w-fit">
+                  <button type="button" onClick={() => setBreakdownTab("bank")}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                      breakdownTab === "bank" ? "bg-white text-[#0F172A] shadow-sm" : "text-[#64748B] hover:text-[#0F172A]"
+                    }`}>
+                    Bank
+                  </button>
+                  <button type="button" onClick={() => setBreakdownTab("mobile")}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                      breakdownTab === "mobile" ? "bg-white text-[#0F172A] shadow-sm" : "text-[#64748B] hover:text-[#0F172A]"
+                    }`}>
+                    Mobile Banking
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
 
-          {bankBreakdown && (
-            <div className="mt-4 bg-white border border-[#E2E8F0] rounded-[16px] p-5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
-              <p className="text-[#64748B] text-sm font-semibold mb-4">Bank Breakdown</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {Object.entries(bankBreakdown).map(([bankName, amt]) => (
-                  <div key={bankName} className={`rounded-xl p-3 ${amt < 0 ? "bg-red-50" : "bg-blue-50"}`}>
-                    <p className="text-[#64748B] text-xs">{bankName}</p>
-                    <p className={`font-bold text-base sm:text-lg ${amt < 0 ? "text-red-600" : "text-[#3B82F6]"}`}>{fmt(amt)}</p>
+              {breakdownTab === "bank" ? (
+                bankBreakdown ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {Object.entries(bankBreakdown).map(([bankName, amt]) => (
+                      <div key={bankName} className={`rounded-xl p-3 ${amt < 0 ? "bg-red-50" : "bg-blue-50"}`}>
+                        <p className="text-[#64748B] text-xs">{bankName}</p>
+                        <p className={`font-bold text-base sm:text-lg ${amt < 0 ? "text-red-600" : "text-[#3B82F6]"}`}>{fmt(amt)}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <p className="text-[#94A3B8] text-sm text-center py-6">No bank data available</p>
+                )
+              ) : mobileBreakdown ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {["bKash", "Nagad", "Rocket", "Upay"].map((p) => {
+                    const val = mobileBreakdown[p] || 0;
+                    const total = Object.values(mobileBreakdown).reduce((s, v) => s + Number(v || 0), 0);
+                    const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                    return (
+                      <div key={p} className={`rounded-xl p-3 ${val < 0 ? "bg-red-50" : "bg-purple-50"}`}>
+                        <p className="text-[#64748B] text-xs">{p}</p>
+                        <p className={`font-bold text-base sm:text-lg ${val < 0 ? "text-red-600" : "text-[#8B5CF6]"}`}>{fmt(val)}</p>
+                        <div className="h-1.5 bg-purple-100 rounded-full overflow-hidden mt-2">
+                          <div className="h-full bg-[#8B5CF6] rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="text-[10px] text-[#94A3B8] mt-1">{pct}% allocation</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[#94A3B8] text-sm text-center py-6">No mobile banking data available</p>
+              )}
             </div>
           )}
         </div>

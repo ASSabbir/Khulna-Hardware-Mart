@@ -238,7 +238,7 @@ router.post("/:id/collect-due", async (req, res) => {
           mobileNumber: p.method === "mobile" ? String(p.mobileNumber || "").slice(0, 20) : "",
         };
         invoice.payments.push(paymentEntry);
-        invoice.collectionHistory.push({ ...paymentEntry, note: String(note || "").slice(0, 300), collectedAtBST: nowBST });
+        invoice.collectionHistory.push({ ...paymentEntry, note: String(note || "").slice(0, 300), collectedAtBST: nowBST, dueAfter: invoice.dueAmount });
       }
       if (invoice.dueAmount <= EPS) { invoice.dueAmount = 0; invoice.paymentStatus = "paid"; }
       await invoice.save({ session });

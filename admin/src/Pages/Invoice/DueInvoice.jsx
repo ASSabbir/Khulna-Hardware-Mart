@@ -119,23 +119,31 @@ function PayNowModal({ invoice, onClose, onDone }) {
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const remaining = Math.max(0, (invoice.dueAmount || 0) - total);
 
-  const addRow = (method = "cash", provider = "bKash") =>
+  const usedKeys = (excludeId) =>
+    rows.filter((r) => r.id !== excludeId).map((r) => (r.method === "mobile" ? `mobile:${r.provider}` : r.method));
+
+  const addRow = (method = "cash", provider = "bKash") => {
+    const key = method === "mobile" ? `mobile:${provider}` : method;
+    if (usedKeys(null).includes(key)) return; // already used — must edit that row's amount instead
     setRows((p) => [...p, emptySplit(method, provider)]);
+  };
   const removeRow = (id) =>
     setRows((p) => (p.length > 1 ? p.filter((r) => r.id !== id) : p));
   const updateRow = (id, field, value) => {
+    if (field === "method" || field === "provider") {
+      const nextMethod = field === "method" ? value : rows.find((r) => r.id === id)?.method;
+      const nextProvider = field === "provider" ? value : rows.find((r) => r.id === id)?.provider;
+      const key = nextMethod === "mobile" ? `mobile:${nextProvider}` : nextMethod;
+      if (usedKeys(id).includes(key)) return; // block switching to an already-used method
+    }
+    // No live per-row clamp — only cap against the invoice's full due as a hard
+    // ceiling so typing isn't fought mid-keystroke. Exact split validated on submit.
     if (field === "amount") {
-      const others = rows
-        .filter((r) => r.id !== id)
-        .reduce((s, r) => s + (Number(r.amount) || 0), 0);
-      const maxForThisRow = Math.max(0, (invoice.dueAmount || 0) - others);
       const n = Number(value);
-      if (Number.isFinite(n) && n > maxForThisRow)
-        value = String(maxForThisRow);
+      if (Number.isFinite(n) && n > (invoice.dueAmount || 0)) value = String(invoice.dueAmount || 0);
     }
     setRows((p) => p.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
-
   const submit = async () => {
     setError("");
     if (total <= 0) {
@@ -229,19 +237,28 @@ function PayNowModal({ invoice, onClose, onDone }) {
                   Payment Method
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  {PAYMENT_CHIPS.map((c) => (
-                    <button
-                      key={c.label}
-                      type="button"
-                      onClick={() => addRow(c.method, c.provider)}
-                      className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition"
-                    >
-                      <c.icon size={16} />
-                      <span className="text-[11px] font-semibold">
-                        {c.label}
-                      </span>
-                    </button>
-                  ))}
+                  {PAYMENT_CHIPS.map((c) => {
+                    const key = c.method === "mobile" ? `mobile:${c.provider}` : c.method;
+                    const disabled = usedKeys(null).includes(key);
+                    return (
+                      <button
+                        key={c.label}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => addRow(c.method, c.provider)}
+                        className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl border transition ${
+                          disabled
+                            ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
+                            : "border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                        }`}
+                      >
+                        <c.icon size={16} />
+                        <span className="text-[11px] font-semibold">
+                          {c.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -269,9 +286,9 @@ function PayNowModal({ invoice, onClose, onDone }) {
                       }
                       className="text-xs font-semibold border border-gray-200 rounded-lg px-2 py-1.5 outline-none bg-white"
                     >
-                      <option value="cash">Cash</option>
-                      <option value="mobile">Mobile Banking</option>
-                      <option value="bank">Bank</option>
+                      <option value="cash" disabled={r.method !== "cash" && usedKeys(r.id).includes("cash")}>Cash</option>
+                      <option value="mobile" disabled={r.method !== "mobile" && MOBILE_PROVIDERS.every((p) => usedKeys(r.id).includes(`mobile:${p}`))}>Mobile Banking</option>
+                      <option value="bank" disabled={r.method !== "bank" && usedKeys(r.id).includes("bank")}>Bank</option>
                     </select>
                     {r.method === "mobile" && (
                       <select

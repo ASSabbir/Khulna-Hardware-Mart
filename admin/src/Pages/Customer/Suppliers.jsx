@@ -10,6 +10,7 @@ import {
 import Pagination from "../../Components/Pagination";
 import { buildSupplierHistoryHTML } from "../../Print/supplierHistoryTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
+import PaymentMethodSelect from "../../Components/PaymentMethodSelect";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -31,13 +32,42 @@ function Sparkline({ color = "#1E3A8A", seed = 1 }) {
 function SupplierPaymentHistoryModal({ supplierId, companyName, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payProvider, setPayProvider] = useState("bKash");
+  const [payBankName, setPayBankName] = useState("Dutch-Bangla Bank");
+  const [paying, setPaying] = useState(false);
+  const [payErr, setPayErr] = useState("");
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     axios.get(`http://localhost:5000/api/supplier-payments/${supplierId}`)
       .then((res) => setData(res.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [supplierId]);
+  };
+  useEffect(() => { load(); }, [supplierId]);
+
+  const submitPayment = async () => {
+    setPayErr("");
+    const amt = Number(payAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { setPayErr("Enter a valid amount."); return; }
+    setPaying(true);
+    try {
+      await axios.post("http://localhost:5000/api/supplier-payments", {
+        supplierId, amount: amt, method: payMethod,
+        provider: payMethod === "mobile" ? payProvider : undefined,
+        bankName: payMethod === "bank" ? payBankName : undefined,
+        date: new Date().toISOString().slice(0, 10), note: "Manual due payment",
+      });
+      setPayAmount("");
+      load();
+    } catch (err) {
+      setPayErr(err.response?.data?.message || "Failed to record payment.");
+    } finally {
+      setPaying(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-[#1E3A8A]/30 backdrop-blur-sm flex items-center justify-center px-4">
@@ -62,6 +92,29 @@ function SupplierPaymentHistoryModal({ supplierId, companyName, onClose }) {
                 <div className="bg-red-50 rounded-xl p-4 border border-red-100"><p className="text-xs text-[#EF4444] font-semibold">Payable (we owe)</p><p className="text-xl font-bold text-[#EF4444]">{fmt(data.balance.payableAmount)}</p></div>
                 <div className="bg-green-50 rounded-xl p-4 border border-green-100"><p className="text-xs text-[#22C55E] font-semibold">Receivable (owed to us)</p><p className="text-xl font-bold text-[#16A34A]">{fmt(data.balance.receivableAmount)}</p></div>
               </div>
+
+              {data.balance.payableAmount > 0 && (
+                <div className="bg-white border-2 border-red-200 rounded-xl p-4 mb-5">
+                  <p className="text-sm font-bold text-[#0F172A] mb-3">Pay Due</p>
+                  {payErr && <p className="text-red-600 text-xs mb-2">{payErr}</p>}
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white w-fit">
+                      <span className="px-2 text-xs text-slate-400">৳</span>
+                      <input type="number" min="0" max={data.balance.payableAmount} step="0.01" value={payAmount}
+                        onChange={(e) => setPayAmount(e.target.value)}
+                        onBlur={(e) => { if (Number(e.target.value) > data.balance.payableAmount) setPayAmount(String(data.balance.payableAmount)); }}
+                        placeholder="0.00" className="w-28 px-1 py-2 text-sm font-semibold outline-none" />
+                    </div>
+                    <PaymentMethodSelect
+                      method={payMethod} provider={payProvider} bankName={payBankName}
+                      onChange={({ method, provider, bankName }) => { setPayMethod(method); setPayProvider(provider); setPayBankName(bankName); }}
+                    />
+                    <button onClick={submitPayment} disabled={paying} className="px-4 py-2 bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold rounded-lg disabled:opacity-50 self-start">
+                      {paying ? "Paying..." : "Confirm Payment"}
+                    </button>
+                  </div>
+                </div>
+              )}
               <p className="text-xs font-bold text-gray-500 uppercase mb-2">Purchase History</p>
               <div className="space-y-1.5 mb-5">
                 {(data.purchases || []).slice(0, 20).map((p) => (

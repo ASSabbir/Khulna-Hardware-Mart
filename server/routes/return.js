@@ -1,4 +1,4 @@
-// FILE: server/routes/return.js (FULL REPLACEMENT)
+// FILE: server/routes/return.js (FULL REPLACEMENT) — proportional VAT/discount handling + guaranteed non-negative netSaleAmount
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
@@ -27,104 +27,155 @@ router.post("/", async (req, res) => {
       : [];
 
     const result = await withTransaction(async (session) => {
-    const invoice = await Invoice.findById(invoiceId).session(session);
-    if (!invoice) throw new Error("Invoice not found.");
+      const invoice = await Invoice.findById(invoiceId).session(session);
+      if (!invoice) throw new Error("Invoice not found.");
 
-    const returnRecordItems = [];
-    let totalReturnAmount = 0;
-    const nowBST = Return.nowBST();
+      const nowBST = Return.nowBST();
 
-    for (const reqItem of items) {
-      const qty = Number(reqItem.returnedQty);
-      if (!Number.isFinite(qty) || qty <= 0) throw new Error(`Invalid return quantity for ${reqItem.name}.`);
+      // Pass 1: validate quantities and compute RAW (unscaled) return amount per line,
+      // update returnedQty on invoice items and restore stock.
+      const rawLines = [];
+      let rawTotal = 0;
+      for (const reqItem of items) {
+        const qty = Number(reqItem.returnedQty);
+        if (!Number.isFinite(qty) || qty <= 0) throw new Error(`Invalid return quantity for ${reqItem.name}.`);
 
-      const invoiceItem = invoice.items.find(
-        (it) => (reqItem.productId && String(it.productId) === String(reqItem.productId)) || it.name === reqItem.name
+        const invoiceItem = invoice.items.find(
+          (it) => (reqItem.productId && String(it.productId) === String(reqItem.productId)) || it.name === reqItem.name
+        );
+        if (!invoiceItem) throw new Error(`Item "${reqItem.name}" not found on this invoice.`);
+
+        const alreadyReturned = invoiceItem.returnedQty || 0;
+        const availableToReturn = invoiceItem.qty - alreadyReturned;
+        if (qty > availableToReturn) {
+          throw new Error(`Cannot return ${qty} of "${invoiceItem.name}" — only ${availableToReturn} available to return.`);
+        }
+
+        const unitPrice = invoiceItem.price;
+        const rawAmount = +(unitPrice * qty).toFixed(2);
+        rawTotal += rawAmount;
+
+        invoiceItem.returnedQty = alreadyReturned + qty;
+
+        rawLines.push({
+          productId: invoiceItem.productId || null,
+          name: invoiceItem.name,
+          returnedQty: qty,
+          rawAmount,
+          reason: String(reqItem.reason || "").slice(0, 300),
+        });
+
+        if (invoiceItem.productId) {
+          await restoreStockFIFO(invoiceItem.productId, qty, session, invoiceItem.soldBatches || [], invoiceItem.qty);
+        }
+      }
+      rawTotal = +rawTotal.toFixed(2);
+
+      // Is the ENTIRE invoice now fully returned across every line (this batch + any earlier ones)?
+      const allItemsFullyReturned = invoice.items.every((it) => (it.returnedQty || 0) >= it.qty);
+
+      // Determine the scaling factor so the customer's refund correctly reflects discount/VAT already
+      // baked into the invoice, without ever exceeding what's actually left of the grand total.
+      let scaledTotal;
+      if (allItemsFullyReturned) {
+        // Full-invoice return (this call finishes it off): refund exactly whatever of the
+        // grand total hasn't already been refunded, regardless of rounding on individual lines.
+        scaledTotal = +(invoice.grandTotal - (invoice.totalReturnedAmount || 0)).toFixed(2);
+      } else {
+        // Partial return: scale by (subtotal - discount + vat) / subtotal so returns carry their
+        // fair share of any invoice-level discount/VAT. Transport cost is a flat delivery fee and
+        // is intentionally NOT refunded on a partial return.
+        const netOfDiscountVat = invoice.subtotal - (invoice.discount || 0) + (invoice.vat || 0);
+        const ratio = invoice.subtotal > 0 ? netOfDiscountVat / invoice.subtotal : 1;
+        scaledTotal = +(rawTotal * ratio).toFixed(2);
+      }
+      scaledTotal = Math.max(0, scaledTotal);
+
+      // Distribute scaledTotal across the lines proportionally to their raw share, fixing any
+      // rounding drift onto the last line so the parts always sum exactly to scaledTotal.
+      const returnRecordItems = [];
+      let allocated = 0;
+      rawLines.forEach((line, idx) => {
+        const isLast = idx === rawLines.length - 1;
+        let lineAmount;
+        if (isLast) {
+          lineAmount = +(scaledTotal - allocated).toFixed(2);
+        } else {
+          const share = rawTotal > 0 ? line.rawAmount / rawTotal : 0;
+          lineAmount = +(scaledTotal * share).toFixed(2);
+        }
+        lineAmount = Math.max(0, lineAmount);
+        allocated = +(allocated + lineAmount).toFixed(2);
+
+        invoice.returnedItems.push({
+          productId: line.productId,
+          name: line.name,
+          returnedQty: line.returnedQty,
+          returnAmount: lineAmount,
+          returnDateBST: nowBST,
+          reason: line.reason,
+        });
+        returnRecordItems.push({
+          productId: line.productId,
+          name: line.name,
+          originalQty: invoice.items.find((it) => it.name === line.name)?.qty || line.returnedQty,
+          returnedQty: line.returnedQty,
+          unitPrice: rawTotal > 0 ? +(line.rawAmount / line.returnedQty).toFixed(2) : 0,
+          returnAmount: lineAmount,
+          reason: line.reason,
+        });
+      });
+
+      const totalReturnAmount = scaledTotal;
+      invoice.totalReturnedAmount = Math.max(0, +((invoice.totalReturnedAmount || 0) + totalReturnAmount).toFixed(2));
+      invoice.netSaleAmount = Math.max(0, +(invoice.grandTotal - invoice.totalReturnedAmount).toFixed(2));
+
+      // Auto best-logic split: waive as much as possible against outstanding due first, the rest
+      // must be physically refunded to the customer via the chosen method(s).
+      const autoDueAdjustment = Math.min(totalReturnAmount, invoice.dueAmount || 0);
+      const requiredRefund = Math.max(0, +(totalReturnAmount - autoDueAdjustment).toFixed(2));
+
+      const refundSum = +normalizedRefunds.reduce((s, p) => s + p.amount, 0).toFixed(2);
+      if (Math.abs(refundSum - requiredRefund) > EPS_RETURN) {
+        throw new Error(`Refund payments (৳${refundSum}) must total ৳${requiredRefund} — the returned amount not already covered by due.`);
+      }
+
+      if (autoDueAdjustment > 0) {
+        invoice.dueAmount = Math.max(0, +((invoice.dueAmount || 0) - autoDueAdjustment).toFixed(2));
+        if (invoice.dueAmount <= EPS_RETURN) {
+          invoice.dueAmount = 0;
+          invoice.paymentStatus = "paid";
+        }
+      }
+
+      // Record a due-balance snapshot on each returned line so the invoice print can show a
+      // running due balance in chronological order alongside due-collection events.
+      const dueAfterThisReturn = invoice.dueAmount;
+      invoice.returnedItems.slice(-returnRecordItems.length).forEach((it) => { it.dueAfter = dueAfterThisReturn; });
+
+      await invoice.save({ session });
+
+      const today = new Date().toISOString().slice(0, 10);
+      for (const p of normalizedRefunds) {
+        await Ledger.create([{
+          type: "expense", category: "Return", amount: p.amount,
+          description: `Refund — ${invoice.invoiceNumber}`, date: today,
+          method: p.method, provider: p.provider, bankName: p.bankName, addedBy: "System",
+        }], { session });
+      }
+
+      if (autoDueAdjustment > 0 && invoice.customer?.name) {
+        const customer = await Customer.findOne({ name: invoice.customer.name }).session(session);
+        if (customer) {
+          customer.totalDue = Math.max(0, +((customer.totalDue || 0) - autoDueAdjustment).toFixed(2));
+          await customer.save({ session });
+        }
+      }
+
+      const returnRecord = await Return.create(
+        [{ invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, items: returnRecordItems, totalReturnAmount, returnDateBST: nowBST, refundPayments: normalizedRefunds, dueAdjustment: autoDueAdjustment }],
+        { session }
       );
-      if (!invoiceItem) throw new Error(`Item "${reqItem.name}" not found on this invoice.`);
-
-      const alreadyReturned = invoiceItem.returnedQty || 0;
-      const availableToReturn = invoiceItem.qty - alreadyReturned;
-      if (qty > availableToReturn) {
-        throw new Error(`Cannot return ${qty} of "${invoiceItem.name}" — only ${availableToReturn} available to return.`);
-      }
-
-      const unitPrice = invoiceItem.price;
-      const returnAmount = +(unitPrice * qty).toFixed(2);
-      totalReturnAmount += returnAmount;
-
-      invoiceItem.returnedQty = alreadyReturned + qty;
-
-      invoice.returnedItems.push({
-        productId: invoiceItem.productId || null,
-        name: invoiceItem.name,
-        returnedQty: qty,
-        returnAmount,
-        returnDateBST: nowBST,
-        reason: String(reqItem.reason || "").slice(0, 300),
-      });
-
-      returnRecordItems.push({
-        productId: invoiceItem.productId || null,
-        name: invoiceItem.name,
-        originalQty: invoiceItem.qty,
-        returnedQty: qty,
-        unitPrice,
-        returnAmount,
-        reason: String(reqItem.reason || "").slice(0, 300),
-      });
-
-      if (invoiceItem.productId) {
-        await restoreStockFIFO(invoiceItem.productId, qty, session, invoiceItem.soldBatches || [], invoiceItem.qty);
-      }
-    }
-
-    totalReturnAmount = +totalReturnAmount.toFixed(2);
-    invoice.totalReturnedAmount = +((invoice.totalReturnedAmount || 0) + totalReturnAmount).toFixed(2);
-    invoice.netSaleAmount = +(invoice.grandTotal - invoice.totalReturnedAmount).toFixed(2);
-
-    // Auto best-logic split: first waive as much of the return value as possible
-    // against any outstanding due on this invoice, then whatever's left over must
-    // be physically refunded to the customer via the chosen method(s).
-    const autoDueAdjustment = Math.min(totalReturnAmount, invoice.dueAmount || 0);
-    const requiredRefund = +(totalReturnAmount - autoDueAdjustment).toFixed(2);
-
-    const refundSum = +normalizedRefunds.reduce((s, p) => s + p.amount, 0).toFixed(2);
-    if (Math.abs(refundSum - requiredRefund) > EPS_RETURN) {
-      throw new Error(`Refund payments (৳${refundSum}) must total ৳${requiredRefund} — the returned amount not already covered by due.`);
-    }
-
-    if (autoDueAdjustment > 0) {
-      invoice.dueAmount = Math.max(0, +((invoice.dueAmount || 0) - autoDueAdjustment).toFixed(2));
-      if (invoice.dueAmount <= EPS_RETURN) {
-        invoice.dueAmount = 0;
-        invoice.paymentStatus = "paid";
-      }
-    }
-
-    await invoice.save({ session });
-
-    const today = new Date().toISOString().slice(0, 10);
-    for (const p of normalizedRefunds) {
-      await Ledger.create([{
-        type: "expense", category: "Return", amount: p.amount,
-        description: `Refund — ${invoice.invoiceNumber}`, date: today,
-        method: p.method, provider: p.provider, bankName: p.bankName, addedBy: "System",
-      }], { session });
-    }
-
-    if (autoDueAdjustment > 0 && invoice.customer?.name) {
-      const customer = await Customer.findOne({ name: invoice.customer.name }).session(session);
-      if (customer) {
-        customer.totalDue = Math.max(0, +((customer.totalDue || 0) - autoDueAdjustment).toFixed(2));
-        await customer.save({ session });
-      }
-    }
-
-    const returnRecord = await Return.create(
-      [{ invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, items: returnRecordItems, totalReturnAmount, returnDateBST: nowBST, refundPayments: normalizedRefunds, dueAdjustment: autoDueAdjustment }],
-      { session }
-    );
       return { invoice, returnRecord: returnRecord[0] };
     });
 
