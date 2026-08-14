@@ -53,6 +53,8 @@ const SupplierPurchaseOrder = lazy(() => import("./Pages/Products/SupplierPurcha
 const DueInvoicePaymentHistory = lazy(
   () => import("./Pages/Invoice/DueInvoicePaymentHistory"),
 );
+const BackupCenter = lazy(() => import("./Pages/Dashboard/BackupCenter"));
+const RestoreCenter = lazy(() => import("./Pages/Dashboard/RestoreCenter"));
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -93,6 +95,8 @@ const Route = createBrowserRouter([
           { path: "admin", element: withSuspense(<AdminDeshboard />) },
           { path: "revenue", element: withSuspense(<Revenue />) },
           { path: "book", element: withSuspense(<BookDeveloper />) },
+          { path: "backup", element: withSuspense(<BackupCenter />) },
+          { path: "restore", element: withSuspense(<RestoreCenter />) },
         ],
       },
 
@@ -117,7 +121,7 @@ const Route = createBrowserRouter([
           <ProtectedRoute>{withSuspense(<AccountLayout />)}</ProtectedRoute>
         ),
         children: [
-          { index: true, element: <Navigate to="add-money" replace /> },
+          { index: true, element: <Navigate to="status" replace /> },
 
           { path: "add-money", element: withSuspense(<AddMoney />) },
           { path: "add-expense", element: withSuspense(<AddExpense />) },

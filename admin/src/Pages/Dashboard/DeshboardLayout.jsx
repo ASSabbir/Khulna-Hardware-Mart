@@ -8,6 +8,8 @@ import {
   FiMenu,
   FiX,
   FiTool,
+  FiDatabase,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { useState } from "react";
 
@@ -16,6 +18,8 @@ const NAV_ITEMS = [
   { to: "admin", label: "Admin", icon: <FiUsers size={16} /> },
   { to: "revenue", label: "Revenue", icon: <FiCheckCircle size={16} /> },
   { to: "book", label: "Book for a bug", icon: <FiAlertCircle size={16} /> },
+  { to: "backup", label: "Backup Center", icon: <FiDatabase size={16} /> },
+  { to: "restore", label: "Restore Center", icon: <FiRefreshCw size={16} /> },
 ];
 
 const DeshboardLayout = () => {
@@ -40,9 +44,7 @@ const DeshboardLayout = () => {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-2 border-[#1D4ED8]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#F97316] rounded-lg flex items-center justify-center">
-              <FiTool size={18} className="text-white" />
-            </div>
+            <img src="/Image/logo.png" alt="Khulna Hardware Mart" className="w-9 h-9 rounded-lg object-contain bg-white p-0.5" />
             <div className="flex flex-col">
               <span className="font-['Barlow_Condensed',sans-serif] font-bold text-white text-sm uppercase tracking-wide">
                 Deshboard
@@ -88,7 +90,7 @@ const DeshboardLayout = () => {
             Khulna Hardware Mart
           </p>
           <p className="text-[#93C5FD] text-[10px] mt-0.5">
-            Centenary · Est. 1924
+            Centenary · Est. 1976
           </p>
         </div>
       </aside>

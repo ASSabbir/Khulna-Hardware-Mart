@@ -5,7 +5,6 @@ import {
   FiTool,
   FiMenu,
   FiX,
-  FiSettings,
   FiTruck,
 } from "react-icons/fi";
 import { useState } from "react";
@@ -28,7 +27,7 @@ const NAV_ITEMS = [
     label: "Supplier Purchase Order",
     icon: <FiTruck size={16} />,
   },
-  { to: "settings", label: "Settings", icon: <FiSettings size={16} /> },
+
 ];
 
 const ProductLayout = () => {

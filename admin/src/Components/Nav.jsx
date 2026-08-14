@@ -264,7 +264,7 @@ const Nav = () => {
     { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
     { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
     { to: "/products", label: "Inventory", icon: <FiPackage /> },
-    { to: "/invoice/return", label: "Product Return", icon: <FiRotateCcw /> },
+    
   ];
 
   const userLinks = [

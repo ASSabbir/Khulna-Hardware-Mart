@@ -9,6 +9,8 @@ import {
   FiAward, FiZap, FiMoreVertical, FiArrowUpRight, FiArrowDownRight, FiEye,
 } from "react-icons/fi";
 import { openPrintWindow } from "../../Print/printUtils";
+import { buildHistoryReportData } from "../../Print/history/buildHistoryReportData";
+import { generateHistoryReportHTML } from "../../Print/history/historyReportTemplate";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -220,7 +222,10 @@ export default function AccountsHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const printHistory = () => window.print();
+  const printHistory = () => {
+    const data = buildHistoryReportData({ txns: filteredSorted, from, to });
+    openPrintWindow(generateHistoryReportHTML(data));
+  };
 
   const topCategory = useMemo(() => {
     const m = {};

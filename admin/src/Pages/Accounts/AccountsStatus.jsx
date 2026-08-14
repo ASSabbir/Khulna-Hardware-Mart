@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { openPrintWindow } from "../../Print/printUtils";
+import { generateReportHTML } from "../../Print/reportTemplate";
+import { buildReportData } from "../../Print/buildReportData";
 import {
   FiTrendingUp, FiTrendingDown, FiDollarSign,
   FiArrowUpRight, FiArrowDownRight, FiActivity,
@@ -320,11 +323,25 @@ export default function AccountsStatus() {
     URL.revokeObjectURL(url);
   };
 
-  const downloadPDF = () => window.print();
+  const downloadPDF = () => {
+    const data = buildReportData({
+      reportPeriodLabel: rangeLabel,
+      accounts,
+      byMethod,
+      bankBreakdown,
+      mobileBreakdown,
+      monthStats,
+      topIncome,
+      topExpense,
+      txns,
+      selectedMonth,
+    });
+    openPrintWindow(generateReportHTML(data));
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-400mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
         {/* ── Hero Header ── */}
         <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-6 sm:mb-8">
