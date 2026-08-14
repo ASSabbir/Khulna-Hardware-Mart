@@ -276,12 +276,15 @@ const DeshboardOverview = () => {
           {/* ── QUICK INFO ROW + clickable navigation cards (#28) ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { label: "All Invoices", icon: "🧾", to: "/invoice/invoice" },
-              { label: "All Customers", icon: "👥", to: "/customer/all" },
-              { label: "All Suppliers", icon: "🚚", to: "/customer/suppliers" },
+              { label: "All Invoices", icon: "", to: "/invoice/invoice" },
+              { label: "All Customers", icon: "", to: "/customer/all" },
+              { label: "All Suppliers", icon: "", to: "/customer/suppliers" },
             ].map(({ label, icon, to }) => (
-              <div key={label} onClick={() => navigate(to)}
-                className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <div
+                key={label}
+                onClick={() => navigate(to)}
+                className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+              >
                 <span className="text-2xl">{icon}</span>
                 <span className="text-gray-800 font-semibold">{label}</span>
               </div>
@@ -297,7 +300,7 @@ const DeshboardOverview = () => {
                 </h2>
                 <p className="text-gray-400 text-sm mt-0.5">
                   {targetProgress >= 100
-                    ? "Target achieved! 🎉"
+                    ? "Target achieved!  "
                     : `You're ${targetProgress.toFixed(0)}% there — push it, boss!`}
                 </p>
               </div>
