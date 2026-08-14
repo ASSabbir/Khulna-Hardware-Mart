@@ -33,7 +33,6 @@ import { buildReturnHTML } from "../../Print/returnTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
 
-
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 const fmtDate = (d) =>
   d
@@ -247,7 +246,7 @@ function Drawer({ c, onClose, onPreview }) {
               Payment Status
             </div>
             <div className="text-emerald-500 text-[11px] mt-2 font-medium flex items-center gap-1">
-              All cleared — great customer! 👍
+              All cleared — great customer!
             </div>
           </div>
         </div>
@@ -296,8 +295,20 @@ function Drawer({ c, onClose, onPreview }) {
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => onPreview(inv._id)} className="text-[11px] font-bold text-blue-600 hover:underline">View</button>
-                          <button onClick={() => openPrintWindow(buildReturnHTML(inv))} className="text-[11px] font-bold text-[#64748B] hover:underline">Print</button>
+                          <button
+                            onClick={() => onPreview(inv._id)}
+                            className="text-[11px] font-bold text-blue-600 hover:underline"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() =>
+                              openPrintWindow(buildReturnHTML(inv))
+                            }
+                            className="text-[11px] font-bold text-[#64748B] hover:underline"
+                          >
+                            Print
+                          </button>
                         </div>
                       </td>
                     </tr>
