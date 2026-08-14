@@ -57,13 +57,19 @@ export default function InvoiceReturn() {
     } catch (err) { showToast("error", err.response?.data?.message || "Failed to search invoice."); } finally { setLoading(false); }
   };
 
-  const setQty = (itemName, val, max) => { const n = Math.max(0, Math.min(parseInt(val) || 0, max)); setReturnQtys((p) => ({ ...p, [itemName]: n })); };
+  // Keyed by line INDEX, not product name — two invoice lines can share the same product
+  // name (e.g. same product bought from two different suppliers on one sale), and keying
+  // by name made both lines silently share the same quantity/reason state.
+  const setQty = (idx, val, max) => { const n = Math.max(0, Math.min(parseInt(val) || 0, max)); setReturnQtys((p) => ({ ...p, [idx]: n })); };
 
   const printInvoiceWithReturns = () => { if (invoice) openPrintWindow(buildReturnHTML(invoice)); };
 
   const handleSubmitReturn = async () => {
     if (!invoice) return;
-    const items = invoice.items.filter((it) => (returnQtys[it.name] || 0) > 0).map((it) => ({ productId: it.productId, name: it.name, returnedQty: returnQtys[it.name], unitPrice: it.price, reason: reasons[it.name] || "" }));
+    const items = invoice.items
+      .map((it, idx) => ({ it, idx }))
+      .filter(({ idx }) => (returnQtys[idx] || 0) > 0)
+      .map(({ it, idx }) => ({ lineIndex: idx, productId: it.productId, name: it.name, returnedQty: returnQtys[idx], unitPrice: it.price, reason: reasons[idx] || "" }));
     if (items.length === 0) { showToast("error", "Enter at least one return quantity."); return; }
     const refundSum = refundPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     if (Math.abs(refundSum - requiredRefund) > 0.01) {
@@ -112,13 +118,36 @@ export default function InvoiceReturn() {
     [invoice]
   );
 
+  // Mirrors server/routes/return.js EXACTLY (full-invoice vs partial, discount/VAT scaling) —
+  // otherwise the client shows one "must total" number while the server computes another,
+  // which is exactly what was causing the "Refund payments must total ৳X" mismatch.
   const pendingReturnTotal = useMemo(() => {
     if (!invoice) return 0;
-    return invoice.items.reduce((s, it) => s + ((returnQtys[it.name] || 0) * it.price), 0);
+    const rawTotal = invoice.items.reduce((s, it, idx) => s + ((returnQtys[idx] || 0) * it.price), 0);
+    if (rawTotal <= 0) return 0;
+    const allFullyReturned = invoice.items.every((it, idx) => {
+      const already = it.returnedQty || 0;
+      const returningNow = returnQtys[idx] || 0;
+      return (already + returningNow) >= it.qty;
+    });
+    if (allFullyReturned) {
+      return Math.max(0, +(invoice.grandTotal - (invoice.totalReturnedAmount || 0)).toFixed(2));
+    }
+    const netOfDiscountVat = invoice.subtotal - (invoice.discount || 0) + (invoice.vat || 0);
+    const ratio = invoice.subtotal > 0 ? netOfDiscountVat / invoice.subtotal : 1;
+    return +(rawTotal * ratio).toFixed(2);
   }, [invoice, returnQtys]);
 
   const autoDueAdjustment = invoice ? Math.min(pendingReturnTotal, invoice.dueAmount || 0) : 0;
   const requiredRefund = Math.max(0, +(pendingReturnTotal - autoDueAdjustment).toFixed(2));
+
+  // Auto-fill the refund amount so the user only picks a method — no manual typing needed
+  // for the single-method case. Multiple methods still cap via PaymentSplitEditor's maxTotal.
+  useEffect(() => {
+    if (refundPayments.length === 1 && requiredRefund >= 0) {
+      setRefundPayments((rows) => rows[0].amount === String(requiredRefund) ? rows : [{ ...rows[0], amount: requiredRefund > 0 ? String(requiredRefund) : "" }]);
+    }
+  }, [requiredRefund]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
@@ -215,18 +244,22 @@ export default function InvoiceReturn() {
             </div>
 
             <div className="p-5 sm:p-6 space-y-3">
-              {invoice.items.map((item) => {
+              {invoice.items.map((item, idx) => {
                 const alreadyReturned = item.returnedQty || 0;
                 const maxReturnable = item.qty - alreadyReturned;
+                const supplierTag = item.preferredSupplierId ? item.supplierName || item.company : null;
                 return (
-                  <div key={item.name} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40">
+                  <div key={`${item.name}-${item.productId || ""}-${idx}`} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40">
                     <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500">
                           <FiPackage size={15} />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 truncate">{item.name}</p>
+                          <p className="font-semibold text-slate-900 truncate">
+                            {item.name}
+                            {supplierTag && <span className="ml-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">{supplierTag}</span>}
+                          </p>
                           <p className="text-xs text-slate-500">
                             Sold: {item.qty} {item.unit || "pcs"} · Already returned: {alreadyReturned} · Unit Price: {fmt(item.price)}
                           </p>
@@ -241,18 +274,18 @@ export default function InvoiceReturn() {
                             type="number"
                             min="0"
                             max={maxReturnable}
-                            value={returnQtys[item.name] || ""}
-                            onChange={(e) => setQty(item.name, e.target.value, maxReturnable)}
+                            value={returnQtys[idx] || ""}
+                            onChange={(e) => setQty(idx, e.target.value, maxReturnable)}
                             className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-center font-semibold focus:outline-none focus:ring-2 focus:ring-amber-600 bg-white"
                           />
                         </div>
                       )}
                     </div>
-                    {maxReturnable > 0 && (returnQtys[item.name] || 0) > 0 && (
+                    {maxReturnable > 0 && (returnQtys[idx] || 0) > 0 && (
                       <input
                         type="text"
-                        value={reasons[item.name] || ""}
-                        onChange={(e) => setReasons((p) => ({ ...p, [item.name]: e.target.value }))}
+                        value={reasons[idx] || ""}
+                        onChange={(e) => setReasons((p) => ({ ...p, [idx]: e.target.value }))}
                         placeholder="Return reason (optional)"
                         className="w-full mt-2 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-600 bg-white"
                       />
@@ -321,7 +354,7 @@ export default function InvoiceReturn() {
           </div>
         )}
 
-        {/* Recent returns workflow */}
+       {/* Recent returns workflow */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
           <div className="px-5 sm:px-6 py-4 border-b border-slate-100">
             <h2 className="text-lg font-bold text-slate-900">Recent Returns Workflow</h2>

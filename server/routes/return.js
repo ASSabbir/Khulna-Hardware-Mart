@@ -36,13 +36,25 @@ router.post("/", async (req, res) => {
       // update returnedQty on invoice items and restore stock.
       const rawLines = [];
       let rawTotal = 0;
+      const usedIndexes = new Set();
       for (const reqItem of items) {
         const qty = Number(reqItem.returnedQty);
         if (!Number.isFinite(qty) || qty <= 0) throw new Error(`Invalid return quantity for ${reqItem.name}.`);
 
-        const invoiceItem = invoice.items.find(
-          (it) => (reqItem.productId && String(it.productId) === String(reqItem.productId)) || it.name === reqItem.name
-        );
+        // Prefer the exact line index from the client — this is required whenever two lines
+        // share the same product name/id (same product bought from two different suppliers
+        // in one sale). Falling back to name/productId match only for old callers that don't
+        // send lineIndex yet.
+        let invoiceItem = null;
+        if (Number.isInteger(reqItem.lineIndex) && invoice.items[reqItem.lineIndex] && !usedIndexes.has(reqItem.lineIndex)) {
+          invoiceItem = invoice.items[reqItem.lineIndex];
+          usedIndexes.add(reqItem.lineIndex);
+        } else {
+          invoiceItem = invoice.items.find(
+            (it, idx) => !usedIndexes.has(idx) && ((reqItem.productId && String(it.productId) === String(reqItem.productId)) || it.name === reqItem.name)
+          );
+          if (invoiceItem) usedIndexes.add(invoice.items.indexOf(invoiceItem));
+        }
         if (!invoiceItem) throw new Error(`Item "${reqItem.name}" not found on this invoice.`);
 
         const alreadyReturned = invoiceItem.returnedQty || 0;

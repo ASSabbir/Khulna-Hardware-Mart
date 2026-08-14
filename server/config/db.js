@@ -15,7 +15,7 @@ const connectDB = async () => {
   }
 
   try {
-    const str ='mongodb+srv://atiksabbir1125_db_user:e5G1iQQTNN9QMLQt@cluster0.u5ofti2.mongodb.net/?appName=Cluster0'
+    const str ='mongodb+srv://codecrafters1125_db_user:4rS8BO1tA3wwai8W@cluster0.irdmd2y.mongodb.net/?appName=Cluster0'
     const conn = await mongoose.connect(str, {
       serverSelectionTimeoutMS: 5000, // Timeout for server selection
       socketTimeoutMS: 45000, // Socket timeout

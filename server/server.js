@@ -57,6 +57,7 @@ app.use("/api/options", require("./routes/dynamicOption"));
 app.use("/api/supplier-payments", require("./routes/supplierPayment"));
 app.use("/api/custom-product-sources", require("./routes/customProductSource"));
 app.use("/api/supplier-purchase-orders", require("./routes/supplierPurchaseOrder"));
+app.use("/api/backup", require("./routes/backup"));
 
 // Test Route
 app.get("/", (req, res) => {
