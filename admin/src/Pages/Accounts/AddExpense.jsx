@@ -297,7 +297,11 @@ export default function AddExpense() {
     c.toLowerCase().includes(categorySearch.toLowerCase()),
   );
 
-  const withdrawAvailable = getAvailableBalance(form.method, form.provider, form.bankName);
+  const withdrawAvailable = getAvailableBalance(
+    form.method,
+    form.provider,
+    form.bankName,
+  );
 
   const recentExpenses = (accounts?.transactions || [])
     .filter((t) => t.type === "expense")
@@ -557,8 +561,15 @@ export default function AddExpense() {
                     onChange={set("amount")}
                     onBlur={(e) => {
                       const n = Number(e.target.value);
-                      if (Number.isFinite(n) && n > withdrawAvailable && withdrawAvailable > 0) {
-                        setForm((f) => ({ ...f, amount: String(withdrawAvailable) }));
+                      if (
+                        Number.isFinite(n) &&
+                        n > withdrawAvailable &&
+                        withdrawAvailable > 0
+                      ) {
+                        setForm((f) => ({
+                          ...f,
+                          amount: String(withdrawAvailable),
+                        }));
                       }
                     }}
                     placeholder="0.00"
@@ -672,59 +683,61 @@ export default function AddExpense() {
 
               {/* Payment Source */}
               <div className="sm:col-span-2 bg-[#FEF2F2] border border-red-100 rounded-[12px] p-4 sm:p-5">
-                  <p className="text-sm font-bold text-[#0F172A] mb-1">
-                    Payment Source
-                  </p>
-                  <p className="text-xs text-[#64748B] mb-3">
-                    Choose which account this expense is deducted from
-                  </p>
+                <p className="text-sm font-bold text-[#0F172A] mb-1">
+                  Payment Source
+                </p>
+                <p className="text-xs text-[#64748B] mb-3">
+                  Choose which account this expense is deducted from
+                </p>
 
-                 <div className="mb-3">
-                    <PaymentMethodSelect
-                      method={form.method}
-                      provider={form.provider}
-                      bankName={form.bankName}
-                      onChange={({ method, provider, bankName }) => setForm((f) => ({ ...f, method, provider, bankName }))}
-                    />
-                  </div>
-
-                  {errors.method && (
-                    <p className="text-red-500 text-xs mb-2 flex items-center gap-1">
-                      <FiAlertCircle size={12} />
-                      {errors.method}
-                    </p>
-                  )}
-
-                  {form.method && (
-                    <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-3.5 flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <p className="text-[11px] text-[#64748B] font-medium">
-                          Available balance
-                        </p>
-                        <p
-                          className={`text-sm font-bold ${withdrawAvailable < 0 ? "text-red-600" : "text-[#10B981]"}`}
-                        >
-                          {fmt(withdrawAvailable)}
-                        </p>
-                      </div>
-                      <div className="w-px h-8 bg-[#E2E8F0] hidden sm:block" />
-                      <div>
-                        <p className="text-[11px] text-[#64748B] font-medium">
-                          Remaining after this
-                        </p>
-                        <p
-                          className={`text-sm font-bold ${withdrawAvailable - (Number(form.amount) || 0) < 0 ? "text-red-600" : "text-[#0F172A]"}`}
-                        >
-                          {fmt(withdrawAvailable - (Number(form.amount) || 0))}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-[11px] text-[#94A3B8] mt-2">
-                    This amount only reduces your Accounts balance — total sales
-                    figures stay unchanged.
-                  </p>
+                <div className="mb-3">
+                  <PaymentMethodSelect
+                    method={form.method}
+                    provider={form.provider}
+                    bankName={form.bankName}
+                    onChange={({ method, provider, bankName }) =>
+                      setForm((f) => ({ ...f, method, provider, bankName }))
+                    }
+                  />
                 </div>
+
+                {errors.method && (
+                  <p className="text-red-500 text-xs mb-2 flex items-center gap-1">
+                    <FiAlertCircle size={12} />
+                    {errors.method}
+                  </p>
+                )}
+
+                {form.method && (
+                  <div className="bg-white border border-[#E2E8F0] rounded-[10px] p-3.5 flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="text-[11px] text-[#64748B] font-medium">
+                        Available balance
+                      </p>
+                      <p
+                        className={`text-sm font-bold ${withdrawAvailable < 0 ? "text-red-600" : "text-[#10B981]"}`}
+                      >
+                        {fmt(withdrawAvailable)}
+                      </p>
+                    </div>
+                    <div className="w-px h-8 bg-[#E2E8F0] hidden sm:block" />
+                    <div>
+                      <p className="text-[11px] text-[#64748B] font-medium">
+                        Remaining after this
+                      </p>
+                      <p
+                        className={`text-sm font-bold ${withdrawAvailable - (Number(form.amount) || 0) < 0 ? "text-red-600" : "text-[#0F172A]"}`}
+                      >
+                        {fmt(withdrawAvailable - (Number(form.amount) || 0))}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-[#94A3B8] mt-2">
+                  This amount only reduces your Accounts balance — total sales
+                  figures stay unchanged.
+                </p>
+              </div>
 
               {/* Date */}
               <div>
@@ -1029,7 +1042,7 @@ export default function AddExpense() {
             </div>
 
             {/* Smart Recommendations */}
-            <div className="bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-[12px] p-5 flex items-start gap-3">
+            <div className="bg-linear-to-br from-red-50 to-white border border-red-100 rounded-[12px] p-5 flex items-start gap-3">
               <span className="w-9 h-9 rounded-xl bg-white border border-red-100 flex items-center justify-center flex-shrink-0 shadow-sm">
                 <FiZap size={16} className="text-[#EF4444]" />
               </span>

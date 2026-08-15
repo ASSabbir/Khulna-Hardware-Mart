@@ -303,7 +303,7 @@ export default function AddMoney() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
           {/* Current Balance */}
-          <div className="rounded-[16px] p-5 sm:p-6 bg-gradient-to-br from-emerald-50 via-white to-white border border-[#E2E8F0] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] backdrop-blur-sm relative overflow-hidden">
+          <div className="rounded-[16px] p-5 sm:p-6 bg-linear-to-br from-emerald-50 via-white to-white border border-[#E2E8F0] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] backdrop-blur-sm relative overflow-hidden">
             <div className="flex items-center justify-between">
               <p className="text-[#64748B] text-sm font-medium">
                 Current Balance
@@ -777,7 +777,7 @@ export default function AddMoney() {
             </div>
 
             {/* Smart Financial Insights */}
-            <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-[16px] p-5 flex items-start gap-3">
+            <div className="bg-linear-to-br from-emerald-50 to-white border border-emerald-100 rounded-[16px] p-5 flex items-start gap-3">
               <span className="w-9 h-9 rounded-xl bg-white border border-emerald-100 flex items-center justify-center flex-shrink-0 shadow-sm">
                 <FiZap size={16} className="text-[#10B981]" />
               </span>

@@ -408,7 +408,7 @@ export default function PaidInvoice() {
                 and financial reporting.
               </p>
             </div>
-            <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
+            <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-linear-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
               <div className="relative z-10 space-y-1">
                 <p className="text-white/80 text-xs font-semibold">
                   Financial Overview
@@ -641,18 +641,34 @@ export default function PaidInvoice() {
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 pt-3 mb-3">
-                      <span className="text-xs text-slate-400 font-semibold">{inv.totalReturnedAmount > 0 ? "Original Total" : "Grand Total"}</span>
-                      <span className={`font-bold text-lg ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-900"}`}>{fmt(inv.grandTotal)}</span>
+                      <span className="text-xs text-slate-400 font-semibold">
+                        {inv.totalReturnedAmount > 0
+                          ? "Original Total"
+                          : "Grand Total"}
+                      </span>
+                      <span
+                        className={`font-bold text-lg ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-900"}`}
+                      >
+                        {fmt(inv.grandTotal)}
+                      </span>
                     </div>
                     {inv.totalReturnedAmount > 0 && (
                       <>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-rose-500 font-semibold">Returned</span>
-                          <span className="font-bold text-rose-600 text-sm">-{fmt(inv.totalReturnedAmount)}</span>
+                          <span className="text-xs text-rose-500 font-semibold">
+                            Returned
+                          </span>
+                          <span className="font-bold text-rose-600 text-sm">
+                            -{fmt(inv.totalReturnedAmount)}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs text-emerald-600 font-semibold">Net Amount</span>
-                          <span className="font-bold text-emerald-700 text-lg">{fmt(inv.netSaleAmount ?? inv.grandTotal)}</span>
+                          <span className="text-xs text-emerald-600 font-semibold">
+                            Net Amount
+                          </span>
+                          <span className="font-bold text-emerald-700 text-lg">
+                            {fmt(inv.netSaleAmount ?? inv.grandTotal)}
+                          </span>
                         </div>
                       </>
                     )}

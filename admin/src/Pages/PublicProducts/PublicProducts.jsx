@@ -2,9 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
-  FiSearch, FiShoppingCart, FiPackage, FiGrid, FiList,
-  FiChevronLeft, FiChevronRight, FiStar, FiFilter,
-  FiX, FiPhone, FiMapPin
+  FiSearch,
+  FiShoppingCart,
+  FiPackage,
+  FiGrid,
+  FiList,
+  FiChevronLeft,
+  FiChevronRight,
+  FiStar,
+  FiFilter,
+  FiX,
+  FiPhone,
+  FiMapPin,
 } from "react-icons/fi";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
@@ -12,7 +21,6 @@ const fmt = (n) => "৳" + Number(n || 0).toLocaleString();
 function ProductCard({ product, onViewDetails }) {
   const [imageError, setImageError] = useState(false);
   // console.log(product.images[0]);
-
 
   const price = product.retailPrice || product.buyingPrice * 1.05 || 0;
 
@@ -28,7 +36,7 @@ function ProductCard({ product, onViewDetails }) {
             className="w-full h-full object-cover  transition-transform duration-300 hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-100 to-gray-200">
             <FiPackage size={48} className="text-gray-300" />
           </div>
         )}
@@ -46,8 +54,12 @@ function ProductCard({ product, onViewDetails }) {
 
       {/* Content */}
       <div className="p-4">
-        <div className="text-xs text-gray-500 mb-1">{product.brand || product.company || "—"}</div>
-        <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+        <div className="text-xs text-gray-500 mb-1">
+          {product.brand || product.company || "—"}
+        </div>
+        <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
+          {product.name}
+        </h3>
 
         {/* Rating */}
         <div className="flex items-center gap-1 mb-3">
@@ -55,7 +67,9 @@ function ProductCard({ product, onViewDetails }) {
             <FiStar
               key={star}
               size={14}
-              className={star <= 4 ? "text-amber-400 fill-amber-400" : "text-gray-300"}
+              className={
+                star <= 4 ? "text-amber-400 fill-amber-400" : "text-gray-300"
+              }
             />
           ))}
           <span className="text-xs text-gray-400 ml-1">(0)</span>
@@ -69,7 +83,9 @@ function ProductCard({ product, onViewDetails }) {
               <span className="text-xs text-gray-400 line-through ml-2">{fmt(product.buyingPrice)}</span>
             )}
           </div> */}
-          <div className="text-xs text-gray-500">{product.stock || 0} in stock</div>
+          <div className="text-xs text-gray-500">
+            {product.stock || 0} in stock
+          </div>
         </div>
 
         {/* Actions */}
@@ -80,7 +96,6 @@ function ProductCard({ product, onViewDetails }) {
           >
             View Details
           </button>
-          
         </div>
       </div>
     </div>
@@ -100,7 +115,11 @@ const ImageSlider = ({ images, name }) => {
   if (total === 1)
     return (
       <div className="h-90 bg-gray-100">
-        <img src={images[0]} alt={name} className="w-full h-full object-cover" />
+        <img
+          src={images[0]}
+          alt={name}
+          className="w-full h-full object-cover"
+        />
       </div>
     );
 
@@ -175,13 +194,21 @@ function ProductModal({ product, onClose }) {
         </div>
 
         <div className="p-6">
-          <div className="text-sm text-gray-500 mb-1">{product.brand || product.company}</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h2>
+          <div className="text-sm text-gray-500 mb-1">
+            {product.brand || product.company}
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            {product.name}
+          </h2>
 
           {/* Rating */}
           <div className="flex items-center gap-1 mb-6">
             {[1, 2, 3, 4, 5].map((star) => (
-              <FiStar key={star} size={18} className="text-amber-400 fill-amber-400" />
+              <FiStar
+                key={star}
+                size={18}
+                className="text-amber-400 fill-amber-400"
+              />
             ))}
             <span className="text-sm text-gray-400 ml-2">(0 reviews)</span>
           </div>
@@ -190,19 +217,27 @@ function ProductModal({ product, onClose }) {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">Brand</div>
-              <div className="font-semibold text-gray-900">{product.brand || product.company || "—"}</div>
+              <div className="font-semibold text-gray-900">
+                {product.brand || product.company || "—"}
+              </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">SKU</div>
-              <div className="font-semibold text-gray-900">{product.sku || "—"}</div>
+              <div className="font-semibold text-gray-900">
+                {product.sku || "—"}
+              </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">Category</div>
-              <div className="font-semibold text-gray-900">{product.category || "—"}</div>
+              <div className="font-semibold text-gray-900">
+                {product.category || "—"}
+              </div>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">Availability</div>
-              <div className={`font-semibold ${product.stock === 0 ? "text-red-600" : "text-green-600"}`}>
+              <div
+                className={`font-semibold ${product.stock === 0 ? "text-red-600" : "text-green-600"}`}
+              >
                 {product.stock === 0 ? "Out of Stock" : "Available"}
               </div>
             </div>
@@ -223,7 +258,8 @@ function ProductModal({ product, onClose }) {
                 Currently Out of Stock
               </div>
               <p className="text-gray-600 text-sm mb-4">
-                দুঃখিত, এই মুহূর্তে পণ্যটি স্টকে নেই। নতুন স্টক সম্পর্কে জানতে আমাদের সাথে যোগাযোগ করুন।
+                দুঃখিত, এই মুহূর্তে পণ্যটি স্টকে নেই। নতুন স্টক সম্পর্কে জানতে
+                আমাদের সাথে যোগাযোগ করুন।
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <span className="flex items-center gap-2 text-blue-700 font-semibold">
@@ -235,7 +271,7 @@ function ProductModal({ product, onClose }) {
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-orange-50 to-blue-50 border border-orange-100 rounded-2xl p-6 text-center">
+            <div className="bg-linear-to-br from-orange-50 to-blue-50 border border-orange-100 rounded-2xl p-6 text-center">
               <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 Available at Our Store
@@ -244,7 +280,8 @@ function ProductModal({ product, onClose }) {
                 এই পণ্যটি আমাদের কাছে এভেলেবেল রয়েছে!
               </h3>
               <p className="text-gray-600 text-sm mb-4">
-                পণ্যটি কিনতে হলে আমাদের ফিজিক্যাল শপে চলে আসুন অথবা নিচের নম্বরে কল করে অর্ডার নিশ্চিত করুন।
+                পণ্যটি কিনতে হলে আমাদের ফিজিক্যাল শপে চলে আসুন অথবা নিচের নম্বরে
+                কল করে অর্ডার নিশ্চিত করুন।
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
                 <span className="flex items-center gap-2 text-blue-700 font-semibold">
@@ -289,7 +326,7 @@ export default function PublicProducts() {
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState("grid");
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
+
   const debouncedSearch = useDebounce(search, 300);
 
   const fetchProducts = useCallback(async () => {
@@ -303,7 +340,9 @@ export default function PublicProducts() {
       if (category !== "all") params.append("category", category);
       if (sortBy) params.append("sort", sortBy);
 
-      const res = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const res = await axios.get(
+        `http://localhost:5000/api/products?${params}`,
+      );
       setProducts(res.data.products);
       setTotalProducts(res.data.pagination.total);
     } catch (err) {
@@ -323,7 +362,15 @@ export default function PublicProducts() {
 
   const totalPages = Math.ceil(totalProducts / 12);
 
-  const categories = ["all", "Tools", "Plumbing", "Electrical", "Paints", "Safety", "Adhesives"];
+  const categories = [
+    "all",
+    "Tools",
+    "Plumbing",
+    "Electrical",
+    "Paints",
+    "Safety",
+    "Adhesives",
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -332,10 +379,14 @@ export default function PublicProducts() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <FiPackage size={32} />
-            <span className="text-blue-200 font-semibold">Khulna Hardware Mart</span>
+            <span className="text-blue-200 font-semibold">
+              Khulna Hardware Mart
+            </span>
           </div>
           <h1 className="text-4xl font-bold mb-2">Our Products</h1>
-          <p className="text-blue-200 text-lg">Browse our complete catalog of hardware items</p>
+          <p className="text-blue-200 text-lg">
+            Browse our complete catalog of hardware items
+          </p>
         </div>
       </div>
 
@@ -350,7 +401,10 @@ export default function PublicProducts() {
         <div className="bg-white rounded-2xl p-4 mb-6 flex flex-wrap gap-4 items-center">
           {/* Search */}
           <div className="flex-1 min-w-[200px] relative">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <FiSearch
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
             <input
               type="text"
               placeholder="Search products..."
@@ -414,7 +468,8 @@ export default function PublicProducts() {
         {/* Results Info */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-gray-500">
-            Showing {((page - 1) * 12) + 1}-{Math.min(page * 12, totalProducts)} of {totalProducts} products
+            Showing {(page - 1) * 12 + 1}-{Math.min(page * 12, totalProducts)}{" "}
+            of {totalProducts} products
           </p>
         </div>
 
@@ -429,18 +484,23 @@ export default function PublicProducts() {
         {!loading && products.length === 0 && (
           <div className="text-center py-20">
             <FiPackage size={64} className="text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No products found</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              No products found
+            </h3>
             <p className="text-gray-500">Try adjusting your search or filter</p>
           </div>
         )}
 
         {/* Products Grid */}
         {!loading && products.length > 0 && (
-          <div className={viewMode === "grid"
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-            : "space-y-4"
-          }>
-            {products.map((product) => (
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                : "space-y-4"
+            }
+          >
+            {products.map((product) =>
               viewMode === "grid" ? (
                 <ProductCard
                   key={product._id}
@@ -454,19 +514,29 @@ export default function PublicProducts() {
                 >
                   <div className="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
                     {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-xl" />
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
                     ) : (
                       <FiPackage size={32} className="text-gray-300" />
                     )}
                   </div>
                   <div className="flex-1">
-                    <div className="text-xs text-gray-500">{product.brand || product.company}</div>
-                    <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
+                    <div className="text-xs text-gray-500">
+                      {product.brand || product.company}
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-1">
+                      {product.name}
+                    </h3>
                     <div className="flex items-center gap-2 mb-2">
                       {/* <span className="text-lg font-bold text-orange-600">
                         {fmt(product.retailPrice || product.buyingPrice * 1.05)}
                       </span> */}
-                      <span className="text-sm text-gray-400">{product.stock || 0} in stock</span>
+                      <span className="text-sm text-gray-400">
+                        {product.stock || 0} in stock
+                      </span>
                     </div>
                   </div>
                   <button
@@ -476,8 +546,8 @@ export default function PublicProducts() {
                     View
                   </button>
                 </div>
-              )
-            ))}
+              ),
+            )}
           </div>
         )}
 
@@ -485,7 +555,7 @@ export default function PublicProducts() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-8">
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="p-3 border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
@@ -519,7 +589,7 @@ export default function PublicProducts() {
             })}
 
             <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="p-3 border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
@@ -530,8 +600,12 @@ export default function PublicProducts() {
 
         {/* Contact Info */}
         <div className="mt-12 bg-blue-50 rounded-2xl p-6 text-center">
-          <h3 className="font-bold text-blue-900 mb-2">Can't find what you're looking for?</h3>
-          <p className="text-blue-700 mb-4">Contact us for custom orders and bulk purchases</p>
+          <h3 className="font-bold text-blue-900 mb-2">
+            Can't find what you're looking for?
+          </h3>
+          <p className="text-blue-700 mb-4">
+            Contact us for custom orders and bulk purchases
+          </p>
           <div className="flex flex-wrap justify-center gap-4">
             <span className="flex items-center gap-2 text-blue-700">
               <FiPhone size={16} /> 02477-721990

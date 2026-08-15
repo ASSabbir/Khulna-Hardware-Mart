@@ -3,11 +3,31 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import {
-  FiShoppingBag, FiCalendar, FiSearch, FiLoader, FiChevronLeft, FiChevronRight,
-  FiDownload, FiX, FiHome, FiPackage, FiDollarSign, FiTrendingUp, FiAlertCircle,
-  FiHash, FiMapPin,
+  FiShoppingBag,
+  FiCalendar,
+  FiSearch,
+  FiLoader,
+  FiChevronLeft,
+  FiChevronRight,
+  FiDownload,
+  FiX,
+  FiHome,
+  FiPackage,
+  FiDollarSign,
+  FiTrendingUp,
+  FiAlertCircle,
+  FiHash,
+  FiMapPin,
 } from "react-icons/fi";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import Pagination from "../../Components/Pagination";
 
 const API_BASE = "http://localhost:5000/api/custom-product-sources";
@@ -19,11 +39,23 @@ const QUICK_FILTERS = [
   { key: "month", label: "This Month" },
 ];
 
-const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { maximumFractionDigits: 2 });
-const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-const daysAgo = (d) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
+const fmt = (n) =>
+  "৳" + Number(n || 0).toLocaleString("en-BD", { maximumFractionDigits: 2 });
+const fmtDate = (d) =>
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+const daysAgo = (d) =>
+  Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
 const initials = (name = "") =>
-  name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("") || "?";
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("") || "?";
 
 const deriveStatus = (record) => {
   const age = daysAgo(record.date);
@@ -54,7 +86,9 @@ export default function ShopSourceHistory() {
 
   useEffect(() => {
     if (!selectedRecord) return;
-    const onKeyDown = (e) => { if (e.key === "Escape") setSelectedRecord(null); };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setSelectedRecord(null);
+    };
     document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -78,7 +112,11 @@ export default function ShopSourceHistory() {
       });
       setRecords(Array.isArray(res.data?.records) ? res.data.records : []);
       setTotalPages(Number(res.data?.pagination?.totalPages) || 1);
-      setTotalCount(Number(res.data?.pagination?.totalRecords) || res.data?.records?.length || 0);
+      setTotalCount(
+        Number(res.data?.pagination?.totalRecords) ||
+          res.data?.records?.length ||
+          0,
+      );
     } catch (err) {
       if (axios.isCancel(err) || err.code === "ERR_CANCELED") return;
       setRecords([]);
@@ -96,10 +134,12 @@ export default function ShopSourceHistory() {
   const applyQuickFilter = (key) => {
     const now = new Date();
     let from = null;
-    if (key === "today") from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (key === "today")
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     else if (key === "7d") from = new Date(Date.now() - 7 * 86400000);
     else if (key === "30d") from = new Date(Date.now() - 30 * 86400000);
-    else if (key === "month") from = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if (key === "month")
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
 
     if (activeQuick === key) {
       setActiveQuick("");
@@ -143,11 +183,19 @@ export default function ShopSourceHistory() {
       if (r.productName) products.add(r.productName);
       totalAmount += Number(r.totalAmount || 0);
       const d = new Date(r.date);
-      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+      if (
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      ) {
         thisMonth += Number(r.totalAmount || 0);
       }
     });
-    return { totalShops: shops.size, totalProducts: products.size, totalAmount, thisMonth };
+    return {
+      totalShops: shops.size,
+      totalProducts: products.size,
+      totalAmount,
+      thisMonth,
+    };
   }, [filtered]);
 
   const topShops = useMemo(() => {
@@ -158,7 +206,11 @@ export default function ShopSourceHistory() {
     });
     const list = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
     const max = list[0]?.[1] || 1;
-    return list.map(([name, count]) => ({ name, count, pct: Math.round((count / max) * 100) }));
+    return list.map(([name, count]) => ({
+      name,
+      count,
+      pct: Math.round((count / max) * 100),
+    }));
   }, [filtered]);
 
   const spendingBreakdown = useMemo(() => {
@@ -179,12 +231,29 @@ export default function ShopSourceHistory() {
   }, [filtered]);
 
   const handleExportCsv = () => {
-    const headers = ["Shop", "Product", "Quantity", "Unit Price", "Total", "Date"];
+    const headers = [
+      "Shop",
+      "Product",
+      "Quantity",
+      "Unit Price",
+      "Total",
+      "Date",
+    ];
     const rows = filtered.map((r) => [
-      r.shopName, r.productName, r.quantity, r.unitPrice, r.totalAmount, fmtDate(r.date),
+      r.shopName,
+      r.productName,
+      r.quantity,
+      r.unitPrice,
+      r.totalAmount,
+      fmtDate(r.date),
     ]);
     const csv = [headers, ...rows]
-      .map((row) => row.map(sanitizeCsvCell).map((c) => `"${c}"`).join(","))
+      .map((row) =>
+        row
+          .map(sanitizeCsvCell)
+          .map((c) => `"${c}"`)
+          .join(","),
+      )
       .join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -225,29 +294,60 @@ export default function ShopSourceHistory() {
                 Track which shop supplied which custom products
               </p>
             </div>
-            <div className="relative w-full sm:w-[320px] shrink-0 rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-[#F59E0B] to-[#F97316] text-white shadow-lg">
+            <div className="relative w-full sm:w-[320px] shrink-0 rounded-2xl p-5 overflow-hidden bg-linear-to-br from-[#F59E0B] to-[#F97316] text-white shadow-lg">
               <div className="relative z-10">
                 <p className="font-bold text-base">Sourcing Audit Log</p>
                 <p className="text-white/85 text-xs mt-1 max-w-[200px]">
                   Detailed record of shop-to-shop inventory transfers.
                 </p>
               </div>
-              <FiShoppingBag className="absolute -right-2 -bottom-2 text-white/25" size={90} />
+              <FiShoppingBag
+                className="absolute -right-2 -bottom-2 text-white/25"
+                size={90}
+              />
             </div>
           </div>
 
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard icon={<FiHome size={18} />} iconBg="bg-slate-100 text-slate-600" label="Total Shops" value={stats.totalShops} trend="up" />
-            <KpiCard icon={<FiPackage size={18} />} iconBg="bg-blue-50 text-blue-600" label="Total Products" value={stats.totalProducts} trend="flat" />
-            <KpiCard icon={<FiDollarSign size={18} />} iconBg="bg-amber-50 text-amber-600" label="Total Purchase Amount" value={fmt(stats.totalAmount)} trend="up" valueClass="text-[#F59E0B]" />
-            <KpiCard icon={<FiCalendar size={18} />} iconBg="bg-blue-50 text-blue-600" label="This Month Purchases" value={fmt(stats.thisMonth)} tag="New metric" />
+            <KpiCard
+              icon={<FiHome size={18} />}
+              iconBg="bg-slate-100 text-slate-600"
+              label="Total Shops"
+              value={stats.totalShops}
+              trend="up"
+            />
+            <KpiCard
+              icon={<FiPackage size={18} />}
+              iconBg="bg-blue-50 text-blue-600"
+              label="Total Products"
+              value={stats.totalProducts}
+              trend="flat"
+            />
+            <KpiCard
+              icon={<FiDollarSign size={18} />}
+              iconBg="bg-amber-50 text-amber-600"
+              label="Total Purchase Amount"
+              value={fmt(stats.totalAmount)}
+              trend="up"
+              valueClass="text-[#F59E0B]"
+            />
+            <KpiCard
+              icon={<FiCalendar size={18} />}
+              iconBg="bg-blue-50 text-blue-600"
+              label="This Month Purchases"
+              value={fmt(stats.thisMonth)}
+              tag="New metric"
+            />
           </div>
 
           {/* Filter panel */}
           <div className="bg-white/80 backdrop-blur border border-gray-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <FiSearch
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 value={shopFilter}
                 maxLength={100}
@@ -263,7 +363,10 @@ export default function ShopSourceHistory() {
                 type="date"
                 value={dateFrom}
                 max={dateTo || undefined}
-                onChange={(e) => { setDateFrom(e.target.value); setActiveQuick(""); }}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setActiveQuick("");
+                }}
                 className="text-sm outline-none bg-transparent"
               />
               <span className="text-gray-300">–</span>
@@ -271,7 +374,10 @@ export default function ShopSourceHistory() {
                 type="date"
                 value={dateTo}
                 min={dateFrom || undefined}
-                onChange={(e) => { setDateTo(e.target.value); setActiveQuick(""); }}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setActiveQuick("");
+                }}
                 className="text-sm outline-none bg-transparent"
               />
             </div>
@@ -283,7 +389,9 @@ export default function ShopSourceHistory() {
                   type="button"
                   onClick={() => applyQuickFilter(f.key)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                    activeQuick === f.key ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    activeQuick === f.key
+                      ? "bg-amber-500 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   {f.label}
@@ -323,20 +431,29 @@ export default function ShopSourceHistory() {
                 <FiLoader className="animate-spin" /> Loading...
               </div>
             ) : filtered.length === 0 ? (
-              <div className="col-span-full text-center py-20 text-gray-400">No records found.</div>
+              <div className="col-span-full text-center py-20 text-gray-400">
+                No records found.
+              </div>
             ) : (
               filtered.map((r) => {
                 const status = deriveStatus(r);
                 return (
-                  <div key={r._id} className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition">
+                  <div
+                    key={r._id}
+                    className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+                  >
                     <div className="flex items-center justify-between mb-3 gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-9 h-9 shrink-0 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
                           {initials(r.shopName)}
                         </div>
-                        <span className="font-semibold text-gray-900 truncate">{r.shopName}</span>
+                        <span className="font-semibold text-gray-900 truncate">
+                          {r.shopName}
+                        </span>
                       </div>
-                      <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${status.cls}`}>
+                      <span
+                        className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${status.cls}`}
+                      >
                         {status.label}
                       </span>
                     </div>
@@ -347,9 +464,14 @@ export default function ShopSourceHistory() {
                           <FiPackage size={16} />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm truncate">{r.productName} (Custom)</p>
+                          <p className="font-semibold text-gray-900 text-sm truncate">
+                            {r.productName} (Custom)
+                          </p>
                           <p className="text-xs text-gray-400">
-                            SKU: {String(r._id || "").slice(-4).padStart(3, "0") || "N/A"}
+                            SKU:{" "}
+                            {String(r._id || "")
+                              .slice(-4)
+                              .padStart(3, "0") || "N/A"}
                           </p>
                         </div>
                       </div>
@@ -361,15 +483,21 @@ export default function ShopSourceHistory() {
                     <div className="grid grid-cols-3 gap-2 mb-4 text-sm">
                       <div>
                         <p className="text-gray-400 text-xs">Unit Price</p>
-                        <p className="font-semibold text-gray-800">{fmt(r.unitPrice)}</p>
+                        <p className="font-semibold text-gray-800">
+                          {fmt(r.unitPrice)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-400 text-xs">Total Amount</p>
-                        <p className="font-bold text-amber-600">{fmt(r.totalAmount)}</p>
+                        <p className="font-bold text-amber-600">
+                          {fmt(r.totalAmount)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-400 text-xs">Purchase Date</p>
-                        <p className="font-semibold text-gray-800">{fmtDate(r.date)}</p>
+                        <p className="font-semibold text-gray-800">
+                          {fmtDate(r.date)}
+                        </p>
                       </div>
                     </div>
 
@@ -396,7 +524,12 @@ export default function ShopSourceHistory() {
                 : `Showing ${(page - 1) * PAGE_LIMIT + 1}-${(page - 1) * PAGE_LIMIT + filtered.length} of ${totalCount} transfers`}
             </p>
             <div className="order-1 sm:order-2">
-              <Pagination page={page} totalPages={totalPages} onChange={goToPage} accent="#2563EB" />
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onChange={goToPage}
+                accent="#2563EB"
+              />
             </div>
             <button
               type="button"
@@ -413,8 +546,12 @@ export default function ShopSourceHistory() {
         <div className="lg:col-span-1 space-y-6 min-w-0">
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 text-sm">Top Supplier Shops</h3>
-              <span className="text-xs text-blue-600 font-semibold cursor-default">List view</span>
+              <h3 className="font-bold text-gray-900 text-sm">
+                Top Supplier Shops
+              </h3>
+              <span className="text-xs text-blue-600 font-semibold cursor-default">
+                List view
+              </span>
             </div>
             <div className="space-y-3">
               {topShops.length === 0 ? (
@@ -426,8 +563,12 @@ export default function ShopSourceHistory() {
                       {initials(s.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                      <p className="text-xs text-gray-400">{s.count} transaction{s.count !== 1 ? "s" : ""}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {s.name}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {s.count} transaction{s.count !== 1 ? "s" : ""}
+                      </p>
                     </div>
                     <RingBadge pct={s.pct} />
                   </div>
@@ -437,29 +578,62 @@ export default function ShopSourceHistory() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
-            <h3 className="font-bold text-gray-900 text-sm">Spending Breakdown</h3>
-            <p className="text-xs text-gray-400 mb-3">Clean spend over the last month</p>
+            <h3 className="font-bold text-gray-900 text-sm">
+              Spending Breakdown
+            </h3>
+            <p className="text-xs text-gray-400 mb-3">
+              Clean spend over the last month
+            </p>
             <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={spendingBreakdown} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={spendingBreakdown}
+                  margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
+                      <stop
+                        offset="0%"
+                        stopColor="#3B82F6"
+                        stopOpacity={0.35}
+                      />
                       <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `৳${v}`} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#F1F5F9"
+                  />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: "#94A3B8" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#94A3B8" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `৳${v}`}
+                  />
                   <Tooltip formatter={(v) => fmt(v)} />
-                  <Area type="monotone" dataKey="amount" stroke="#3B82F6" strokeWidth={2} fill="url(#spendFill)" />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    fill="url(#spendFill)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
-            <h3 className="font-bold text-gray-900 text-sm mb-4">Recent Activity Timeline</h3>
+            <h3 className="font-bold text-gray-900 text-sm mb-4">
+              Recent Activity Timeline
+            </h3>
             <div className="space-y-4">
               {recentActivity.length === 0 ? (
                 <p className="text-xs text-gray-400">No recent activity.</p>
@@ -469,16 +643,27 @@ export default function ShopSourceHistory() {
                     <div className="flex flex-col items-center">
                       <span
                         className={`w-2.5 h-2.5 rounded-full ${
-                          r.status.label === "Completed" ? "bg-emerald-500" : r.status.label === "Processing" ? "bg-blue-500" : "bg-amber-500"
+                          r.status.label === "Completed"
+                            ? "bg-emerald-500"
+                            : r.status.label === "Processing"
+                              ? "bg-blue-500"
+                              : "bg-amber-500"
                         }`}
                       />
-                      {i !== recentActivity.length - 1 && <span className="w-px flex-1 bg-gray-200 mt-1" />}
+                      {i !== recentActivity.length - 1 && (
+                        <span className="w-px flex-1 bg-gray-200 mt-1" />
+                      )}
                     </div>
                     <div className="pb-1">
                       <p className="text-sm text-gray-800 leading-snug">
-                        {r.productName} (Custom) <span className="text-gray-500">{r.status.label.toLowerCase()}</span>
+                        {r.productName} (Custom){" "}
+                        <span className="text-gray-500">
+                          {r.status.label.toLowerCase()}
+                        </span>
                       </p>
-                      <p className="text-xs text-gray-400">{daysAgo(r.date)} days ago</p>
+                      <p className="text-xs text-gray-400">
+                        {daysAgo(r.date)} days ago
+                      </p>
                     </div>
                   </div>
                 ))
@@ -489,7 +674,10 @@ export default function ShopSourceHistory() {
       </div>
 
       {selectedRecord && (
-        <DetailsModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+        <DetailsModal
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+        />
       )}
     </div>
   );
@@ -497,7 +685,10 @@ export default function ShopSourceHistory() {
 
 function DetailsModal({ record, onClose }) {
   const status = deriveStatus(record);
-  const sku = String(record._id || "").slice(-4).padStart(3, "0") || "N/A";
+  const sku =
+    String(record._id || "")
+      .slice(-4)
+      .padStart(3, "0") || "N/A";
 
   return (
     <div
@@ -505,11 +696,16 @@ function DetailsModal({ record, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="details-modal-title"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl sm:rounded-t-2xl">
-          <h2 id="details-modal-title" className="font-bold text-gray-900 text-base">
+          <h2
+            id="details-modal-title"
+            className="font-bold text-gray-900 text-base"
+          >
             Purchase Details
           </h2>
           <button
@@ -529,13 +725,17 @@ function DetailsModal({ record, onClose }) {
                 {initials(record.shopName)}
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{record.shopName || "Unknown Shop"}</p>
+                <p className="font-semibold text-gray-900 truncate">
+                  {record.shopName || "Unknown Shop"}
+                </p>
                 <p className="text-xs text-gray-400 flex items-center gap-1">
                   <FiMapPin size={11} /> Supplier Shop
                 </p>
               </div>
             </div>
-            <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${status.cls}`}>
+            <span
+              className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${status.cls}`}
+            >
               {status.label}
             </span>
           </div>
@@ -559,21 +759,32 @@ function DetailsModal({ record, onClose }) {
 
           <div className="grid grid-cols-2 gap-3">
             <DetailStat label="Unit Price" value={fmt(record.unitPrice)} />
-            <DetailStat label="Total Amount" value={fmt(record.totalAmount)} accent />
-            <DetailStat label="Quantity" value={`${record.quantity ?? 0} units`} />
+            <DetailStat
+              label="Total Amount"
+              value={fmt(record.totalAmount)}
+              accent
+            />
+            <DetailStat
+              label="Quantity"
+              value={`${record.quantity ?? 0} units`}
+            />
             <DetailStat label="Purchase Date" value={fmtDate(record.date)} />
           </div>
 
           {record.note && (
             <div>
               <p className="text-xs text-gray-400 mb-1">Note</p>
-              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 break-words">{record.note}</p>
+              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 break-words">
+                {record.note}
+              </p>
             </div>
           )}
 
           <div>
             <p className="text-xs text-gray-400 mb-1">Record ID</p>
-            <p className="text-xs font-mono text-gray-500 break-all">{record._id || "N/A"}</p>
+            <p className="text-xs font-mono text-gray-500 break-all">
+              {record._id || "N/A"}
+            </p>
           </div>
         </div>
 
@@ -595,20 +806,40 @@ function DetailStat({ label, value, accent = false }) {
   return (
     <div className="bg-gray-50 rounded-xl p-3">
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-      <p className={`text-sm font-bold truncate ${accent ? "text-amber-600" : "text-gray-800"}`}>{value}</p>
+      <p
+        className={`text-sm font-bold truncate ${accent ? "text-amber-600" : "text-gray-800"}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
 
-function KpiCard({ icon, iconBg, label, value, trend, tag, valueClass = "text-gray-900" }) {
+function KpiCard({
+  icon,
+  iconBg,
+  label,
+  value,
+  trend,
+  tag,
+  valueClass = "text-gray-900",
+}) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</div>
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
+      >
+        {icon}
+      </div>
       <div className="min-w-0">
         <p className="text-xs text-gray-400 font-medium truncate">{label}</p>
         <div className="flex items-center gap-1.5">
-          <p className={`text-base font-bold truncate ${valueClass}`}>{value}</p>
-          {trend === "up" && <FiTrendingUp className="text-emerald-500 shrink-0" size={14} />}
+          <p className={`text-base font-bold truncate ${valueClass}`}>
+            {value}
+          </p>
+          {trend === "up" && (
+            <FiTrendingUp className="text-emerald-500 shrink-0" size={14} />
+          )}
           {tag && (
             <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full font-semibold shrink-0">
               {tag}
@@ -626,7 +857,14 @@ function RingBadge({ pct }) {
   const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
   return (
     <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
-      <circle cx="17" cy="17" r={r} fill="none" stroke="#F1F5F9" strokeWidth="4" />
+      <circle
+        cx="17"
+        cy="17"
+        r={r}
+        fill="none"
+        stroke="#F1F5F9"
+        strokeWidth="4"
+      />
       <circle
         cx="17"
         cy="17"
