@@ -1,15 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from "react";
 // Import Swiper React components
-import { Swiper, SwiperSlide } from 'swiper/react';
+import { Swiper, SwiperSlide } from "swiper/react";
 
 // Import Swiper styles
-import 'swiper/css';
-import 'swiper/css/pagination';
-import 'swiper/css/navigation';
-
+import "swiper/css";
+import "swiper/css/pagination";
+import "swiper/css/navigation";
 
 // import required modules
-import { Autoplay, Pagination, Navigation } from 'swiper/modules';
+import { Autoplay, Pagination, Navigation } from "swiper/modules";
 
 // ── 12 real customer reviews ─────────────────────────────────────────
 const REVIEWS = [
@@ -96,45 +95,46 @@ const SLIDES = [
 ];
 
 const Reviews = () => {
-    return (
-        <>
-            <Swiper
-                spaceBetween={10}
-                centeredSlides={true}
-                autoplay={{
-                    delay: 2500,
-                    disableOnInteraction: false,
-                }}
-                pagination={{
-                    clickable: true,
-                }}
-
-                modules={[Autoplay, Pagination]}
-                className="mySwiper"
-            >
-                {SLIDES.map((slide, slideIndex) => (
-                    <SwiperSlide key={slideIndex}>
-                        <div className='grid grid-cols-3 gap-5 '>
-                            {slide.map((review, i) => (
-                                <div key={i} className='bg-white p-8 '>
-                                    <h1 className='text-sm italic mb-10'>{review.text}</h1>
-                                    <div className='flex items-center gap-2'>
-                                        <div className='h-12 w-12 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0'>
-                                            <span className='text-white font-bold text-lg'>{review.avatar}</span>
-                                        </div>
-                                        <div>
-                                            <h1 className='font-semibold'>{review.name}</h1>
-                                            <h1>{review.role}</h1>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </SwiperSlide>
-                ))}
-            </Swiper>
-        </>
-    );
-}
+  return (
+    <>
+      <Swiper
+        spaceBetween={10}
+        centeredSlides={true}
+        autoplay={{
+          delay: 2500,
+          disableOnInteraction: false,
+        }}
+        pagination={{
+          clickable: true,
+        }}
+        modules={[Autoplay, Pagination]}
+        className="mySwiper"
+      >
+        {SLIDES.map((slide, slideIndex) => (
+          <SwiperSlide key={slideIndex}>
+            <div className="grid grid-cols-3 gap-5 ">
+              {slide.map((review, i) => (
+                <div key={i} className="bg-white p-8 ">
+                  <h1 className="text-sm italic mb-10">{review.text}</h1>
+                  <div className="flex items-center gap-2">
+                    <div className="h-12 w-12 rounded-full bg-green-700 flex items-center justify-center shrink-0">
+                      <span className="text-white font-bold text-lg">
+                        {review.avatar}
+                      </span>
+                    </div>
+                    <div>
+                      <h1 className="font-semibold">{review.name}</h1>
+                      <h1>{review.role}</h1>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </>
+  );
+};
 
 export default Reviews;

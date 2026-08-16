@@ -718,7 +718,7 @@ export default function DueInvoice() {
         </div>
       )}
 
-      <div className="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-375 mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 xl:col-span-9 space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
@@ -1103,7 +1103,7 @@ export default function DueInvoice() {
             <p className="text-xs text-slate-400 mb-3">
               Based on invoices currently loaded
             </p>
-            <div className="h-[180px] w-full">
+            <div className="h-45 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={trendData}

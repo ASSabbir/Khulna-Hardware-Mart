@@ -88,7 +88,7 @@ function SectionTitle({ icon, title, subtitle, color = "text-green-600" }) {
   return (
     <div className="flex items-start gap-4 mb-7">
       <div
-        className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${color === "text-green-600" ? "bg-green-100" : color === "text-blue-600" ? "bg-blue-100" : color === "text-purple-600" ? "bg-purple-100" : "bg-orange-100"}`}
+        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${color === "text-green-600" ? "bg-green-100" : color === "text-blue-600" ? "bg-blue-100" : color === "text-purple-600" ? "bg-purple-100" : "bg-orange-100"}`}
       >
         <span className={color}>{icon}</span>
       </div>
@@ -163,7 +163,7 @@ function StrengthBar({ password }) {
     /[^A-Za-z0-9]/.test(password),
   ];
   const score = checks.filter(Boolean).length;
-  const labels = ["", "Weak 😬", "Okay 🤔", "Good 👍", "Strong 💪"];
+  const labels = ["", "Weak", "Okay", "Good ", "Strong"];
   const colors = [
     "bg-gray-200",
     "bg-red-400",
@@ -263,7 +263,7 @@ const AdminDeshboard = () => {
     };
     setAdmins([...admins, newAdmin]);
     setNaForm({ name: "", email: "", password: "" });
-    showToast(`Welcome ${naForm.name} to the team! 🎉`, "success");
+    showToast(`Welcome ${naForm.name} to the team!  `, "success");
   };
 
   const handleDelete = (id) => {
@@ -532,7 +532,7 @@ const AdminDeshboard = () => {
               >
                 {/* Avatar */}
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0 text-white
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0 text-white
                   ${admin.role === "Super Admin" ? "bg-linear-to-br from-purple-500 to-indigo-600" : "bg-linear-to-br from-blue-400 to-blue-600"}`}
                 >
                   {admin.name[0]}
@@ -626,7 +626,7 @@ const AdminDeshboard = () => {
           <div className="mt-6 bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-3">
             <FiAlertTriangle
               size={20}
-              className="text-orange-500 flex-shrink-0 mt-0.5"
+              className="text-orange-500 shrink-0 mt-0.5"
             />
             <p className="text-orange-800 text-base">
               <strong>Heads up!</strong> Only Super Admins can add or remove

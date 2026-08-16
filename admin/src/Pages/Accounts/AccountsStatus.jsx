@@ -327,10 +327,7 @@ function CircularGauge({
   const c = 2 * Math.PI * r;
   const offset = c - (clamped / 100) * c;
   return (
-    <div
-      className="relative flex-shrink-0"
-      style={{ width: size, height: size }}
-    >
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -1531,7 +1528,7 @@ export default function AccountsStatus() {
               style={{ borderColor: `${riskColor}33` }}
             >
               <span
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${riskColor}1A` }}
               >
                 <FiAlertTriangle size={16} style={{ color: riskColor }} />
@@ -1554,7 +1551,7 @@ export default function AccountsStatus() {
 
             {/* Top Performing Income Source */}
             <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex items-start gap-3">
-              <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <span className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                 <FiAward size={16} className="text-[#10B981]" />
               </span>
               <div>
@@ -1580,7 +1577,7 @@ export default function AccountsStatus() {
 
             {/* Largest Expense Category */}
             <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex items-start gap-3">
-              <span className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+              <span className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
                 <FiTarget size={16} className="text-[#EF4444]" />
               </span>
               <div>
@@ -1644,19 +1641,13 @@ export default function AccountsStatus() {
               </div>
               <ul className="space-y-2 text-xs text-[#475569] leading-relaxed">
                 <li className="flex gap-2">
-                  <FiZap
-                    size={12}
-                    className="text-[#3B82F6] mt-0.5 flex-shrink-0"
-                  />
+                  <FiZap size={12} className="text-[#3B82F6] mt-0.5 shrink-0" />
                   {expenseRatio >= 55
                     ? `Expenses are consuming ${expenseRatio}% of income — consider reviewing ${topExpense[0]?.[0] || "top categories"}.`
                     : "Spending is well within income — good balance maintained this month."}
                 </li>
                 <li className="flex gap-2">
-                  <FiZap
-                    size={12}
-                    className="text-[#3B82F6] mt-0.5 flex-shrink-0"
-                  />
+                  <FiZap size={12} className="text-[#3B82F6] mt-0.5 shrink-0" />
                   {growthRate >= 0
                     ? `Income grew ${growthRate}% vs last month — momentum is positive.`
                     : `Income dropped ${Math.abs(growthRate)}% vs last month — worth investigating.`}

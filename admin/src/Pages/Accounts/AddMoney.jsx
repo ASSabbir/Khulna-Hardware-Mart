@@ -268,7 +268,7 @@ export default function AddMoney() {
     <div className="min-h-screen bg-[#F8FAFC] font-sans">
       {toast && (
         <div className="fixed top-4 right-4 left-4 sm:left-auto z-50 bg-white border border-[#E2E8F0] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.15)] rounded-2xl px-4 py-3 sm:px-5 flex items-center gap-3 animate-[fadeIn_0.2s_ease]">
-          <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
             <FiCheckCircle className="text-[#10B981]" size={16} />
           </span>
           <div>
@@ -700,7 +700,7 @@ export default function AddMoney() {
                       key={t.id}
                       className="px-5 py-3.5 flex items-start gap-3"
                     >
-                      <span className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
                         <FiArrowUpRight size={14} className="text-[#10B981]" />
                       </span>
                       <div className="flex-1 min-w-0">
@@ -751,7 +751,7 @@ export default function AddMoney() {
                 {recentIncome.slice(0, 3).map((t, i) => (
                   <div key={t.id} className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                      <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
                         <FiArrowUpRight size={12} className="text-[#10B981]" />
                       </span>
                       {i < Math.min(recentIncome.length, 3) - 1 && (
@@ -778,7 +778,7 @@ export default function AddMoney() {
 
             {/* Smart Financial Insights */}
             <div className="bg-linear-to-br from-emerald-50 to-white border border-emerald-100 rounded-[16px] p-5 flex items-start gap-3">
-              <span className="w-9 h-9 rounded-xl bg-white border border-emerald-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <span className="w-9 h-9 rounded-xl bg-white border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm">
                 <FiZap size={16} className="text-[#10B981]" />
               </span>
               <div>

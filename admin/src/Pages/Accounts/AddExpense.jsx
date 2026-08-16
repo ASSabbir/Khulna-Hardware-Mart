@@ -107,10 +107,7 @@ function CircularProgress({
   const c = 2 * Math.PI * r;
   const offset = c - (clamped / 100) * c;
   return (
-    <div
-      className="relative flex-shrink-0"
-      style={{ width: size, height: size }}
-    >
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -384,7 +381,7 @@ export default function AddExpense() {
     <div className="min-h-screen bg-[#F8FAFC] font-sans">
       {toast && (
         <div className="fixed top-4 right-4 left-4 sm:left-auto z-50 bg-white border border-[#E2E8F0] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.15)] rounded-2xl px-4 py-3 sm:px-5 flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+          <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
             <FiCheckCircle className="text-[#EF4444]" size={16} />
           </span>
           <div>
@@ -962,7 +959,7 @@ export default function AddExpense() {
                       key={t.id}
                       className="px-5 py-3.5 flex items-start gap-3"
                     >
-                      <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
                         <FiArrowDownRight
                           size={14}
                           className="text-[#EF4444]"
@@ -1043,7 +1040,7 @@ export default function AddExpense() {
 
             {/* Smart Recommendations */}
             <div className="bg-linear-to-br from-red-50 to-white border border-red-100 rounded-[12px] p-5 flex items-start gap-3">
-              <span className="w-9 h-9 rounded-xl bg-white border border-red-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <span className="w-9 h-9 rounded-xl bg-white border border-red-100 flex items-center justify-center shrink-0 shadow-sm">
                 <FiZap size={16} className="text-[#EF4444]" />
               </span>
               <div>

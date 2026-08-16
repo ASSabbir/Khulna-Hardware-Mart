@@ -270,7 +270,10 @@ const Invoice = () => {
         setCustomerLookupStatus(exact ? "found" : "notfound");
       })
       .catch(() => {
-        if (!cancelled) { setCustomerLookupStatus(""); setPhoneSuggestions([]); }
+        if (!cancelled) {
+          setCustomerLookupStatus("");
+          setPhoneSuggestions([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -278,7 +281,11 @@ const Invoice = () => {
   }, [debouncedPhone]);
 
   const pickCustomerSuggestion = (c) => {
-    setCustomer({ name: c.name || "", phone: c.phone || "", address: c.address || "" });
+    setCustomer({
+      name: c.name || "",
+      phone: c.phone || "",
+      address: c.address || "",
+    });
     setCustomerLookupStatus("found");
     setPhoneSuggestions([]);
     setShowPhoneSuggestions(false);
@@ -331,8 +338,10 @@ const Invoice = () => {
         return prev;
       }
       const baseBuying = parseFloat(p.buyingPrice) || 0;
-      const holcellRatio = baseBuying > 0 ? getPriceForType(p, "holcell") / baseBuying : 1.03;
-      const retailRatio = baseBuying > 0 ? getPriceForType(p, "retail") / baseBuying : 1.05;
+      const holcellRatio =
+        baseBuying > 0 ? getPriceForType(p, "holcell") / baseBuying : 1.03;
+      const retailRatio =
+        baseBuying > 0 ? getPriceForType(p, "retail") / baseBuying : 1.05;
       return [
         ...prev,
         {
@@ -446,11 +455,17 @@ const Invoice = () => {
           if (value && !i.custom) {
             const sup = (i.suppliers || []).find((s) => s.supplierId === value);
             if (sup && Number.isFinite(Number(sup.buyingPrice))) {
-              const ratio = customerType === "wholesale" ? (i.holcellRatio || 1.03) : (i.retailRatio || 1.05);
+              const ratio =
+                customerType === "wholesale"
+                  ? i.holcellRatio || 1.03
+                  : i.retailRatio || 1.05;
               updated.price = +(Number(sup.buyingPrice) * ratio).toFixed(2);
             }
           } else if (!i.custom) {
-            updated.price = customerType === "wholesale" ? (i.holcellPriceValue ?? i.price) : (i.retailPriceValue ?? i.price);
+            updated.price =
+              customerType === "wholesale"
+                ? (i.holcellPriceValue ?? i.price)
+                : (i.retailPriceValue ?? i.price);
           }
           const max = getMaxQtyForItem(updated, prev);
           return { ...updated, qty: max > 0 ? Math.min(i.qty, max) : 0 };
@@ -563,12 +578,27 @@ const Invoice = () => {
   const buildPayments = () => {
     if (expectedPaidAmount <= 0.01) return [];
     if (splitPayment) {
-      return splitRows.filter((r) => (parseFloat(r.amount) || 0) > 0).map((r) => ({
-        method: r.method, amount: +parseFloat(r.amount).toFixed(2), provider: r.method === "mobile" ? r.provider : null,
-        accountNumber: r.method === "bank" ? r.accountNumber : "", bankName: r.method === "bank" ? r.bankName : "", mobileNumber: r.method === "mobile" ? r.mobileNumber : "",
-      }));
+      return splitRows
+        .filter((r) => (parseFloat(r.amount) || 0) > 0)
+        .map((r) => ({
+          method: r.method,
+          amount: +parseFloat(r.amount).toFixed(2),
+          provider: r.method === "mobile" ? r.provider : null,
+          accountNumber: r.method === "bank" ? r.accountNumber : "",
+          bankName: r.method === "bank" ? r.bankName : "",
+          mobileNumber: r.method === "mobile" ? r.mobileNumber : "",
+        }));
     }
-    return [{ method: paymentMethod, amount: +expectedPaidAmount.toFixed(2), provider: paymentMethod === "mobile" ? mobileProvider : null, accountNumber: paymentMethod === "bank" ? bankAccountNumber : "", bankName: paymentMethod === "bank" ? bankName : "", mobileNumber: paymentMethod === "mobile" ? mobileNumber : "" }];
+    return [
+      {
+        method: paymentMethod,
+        amount: +expectedPaidAmount.toFixed(2),
+        provider: paymentMethod === "mobile" ? mobileProvider : null,
+        accountNumber: paymentMethod === "bank" ? bankAccountNumber : "",
+        bankName: paymentMethod === "bank" ? bankName : "",
+        mobileNumber: paymentMethod === "mobile" ? mobileNumber : "",
+      },
+    ];
   };
 
   const handleCompleteSale = async () => {
@@ -600,10 +630,22 @@ const Invoice = () => {
       showToast("info", "Amount covers full total — switched to Paid.");
       return;
     }
-    if (splitPayment && expectedPaidAmount > 0.01 && splitMismatch) { showToast("error", `Split payment total (৳${splitTotal}) must equal ৳${expectedPaidAmount.toFixed(2)}.`); return; }
+    if (splitPayment && expectedPaidAmount > 0.01 && splitMismatch) {
+      showToast(
+        "error",
+        `Split payment total (৳${splitTotal}) must equal ৳${expectedPaidAmount.toFixed(2)}.`,
+      );
+      return;
+    }
     if (!splitPayment && expectedPaidAmount > 0.01) {
-      if (paymentMethod === "mobile" && !mobileNumber.trim()) { showToast("error", "Enter the mobile banking number."); return; }
-      if (paymentMethod === "bank" && !bankAccountNumber.trim()) { showToast("error", "Enter the bank account number."); return; }
+      if (paymentMethod === "mobile" && !mobileNumber.trim()) {
+        showToast("error", "Enter the mobile banking number.");
+        return;
+      }
+      if (paymentMethod === "bank" && !bankAccountNumber.trim()) {
+        showToast("error", "Enter the bank account number.");
+        return;
+      }
     }
 
     setSaving(true);
@@ -715,11 +757,28 @@ const Invoice = () => {
       return;
     }
     const previewInvoice = {
-      invoiceNumber: invoiceNum, invoiceDate, customer,
-      items: memoItems.map((i) => ({ name: i.name, company: i.company, unit: i.unit, price: i.price, qty: i.qty, total: i.price * i.qty })),
-      subtotal, discount: discAmt, vat: vatAmt, transportCost: transportAmt, grandTotal,
-      priceType, preparedBy: isPreparedByOther ? customPreparedBy.trim() : preparedBy,
-      paymentStatus, paidAmount: expectedPaidAmount, dueAmount: dueBalance, payments: buildPayments(),
+      invoiceNumber: invoiceNum,
+      invoiceDate,
+      customer,
+      items: memoItems.map((i) => ({
+        name: i.name,
+        company: i.company,
+        unit: i.unit,
+        price: i.price,
+        qty: i.qty,
+        total: i.price * i.qty,
+      })),
+      subtotal,
+      discount: discAmt,
+      vat: vatAmt,
+      transportCost: transportAmt,
+      grandTotal,
+      priceType,
+      preparedBy: isPreparedByOther ? customPreparedBy.trim() : preparedBy,
+      paymentStatus,
+      paidAmount: expectedPaidAmount,
+      dueAmount: dueBalance,
+      payments: buildPayments(),
     };
     openPrintWindow(buildInvoiceReceiptHTML(previewInvoice));
   };
@@ -1164,10 +1223,18 @@ const Invoice = () => {
                       value={customer[f.key]}
                       onChange={(e) => {
                         setCustomer((c) => ({ ...c, [f.key]: e.target.value }));
-                        if (f.key === "phone") { setCustomerLookupStatus(""); setShowPhoneSuggestions(true); }
+                        if (f.key === "phone") {
+                          setCustomerLookupStatus("");
+                          setShowPhoneSuggestions(true);
+                        }
                       }}
-                      onFocus={() => { if (f.key === "phone") setShowPhoneSuggestions(true); }}
-                      onBlur={() => { if (f.key === "phone") setTimeout(() => setShowPhoneSuggestions(false), 150); }}
+                      onFocus={() => {
+                        if (f.key === "phone") setShowPhoneSuggestions(true);
+                      }}
+                      onBlur={() => {
+                        if (f.key === "phone")
+                          setTimeout(() => setShowPhoneSuggestions(false), 150);
+                      }}
                       className="flex-1 text-xs outline-none text-[#1E293B] placeholder-slate-400 bg-transparent font-['Barlow',sans-serif]"
                     />
                     {f.key === "phone" && customerLookupStatus === "found" && (
@@ -1178,21 +1245,25 @@ const Invoice = () => {
                       />
                     )}
                   </div>
-                  {f.key === "phone" && showPhoneSuggestions && phoneSuggestions.length > 0 && (
-                    <div className="absolute z-30 mt-1 w-full bg-white border-2 border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                      {phoneSuggestions.map((c) => (
-                        <button
-                          key={c._id}
-                          type="button"
-                          onMouseDown={() => pickCustomerSuggestion(c)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0"
-                        >
-                          <p className="font-bold text-[#1E293B]">{c.name}</p>
-                          <p className="text-slate-400">{c.phone} {c.address ? `· ${c.address}` : ""}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {f.key === "phone" &&
+                    showPhoneSuggestions &&
+                    phoneSuggestions.length > 0 && (
+                      <div className="absolute z-30 mt-1 w-full bg-white border-2 border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                        {phoneSuggestions.map((c) => (
+                          <button
+                            key={c._id}
+                            type="button"
+                            onMouseDown={() => pickCustomerSuggestion(c)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                          >
+                            <p className="font-bold text-[#1E293B]">{c.name}</p>
+                            <p className="text-slate-400">
+                              {c.phone} {c.address ? `· ${c.address}` : ""}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
@@ -1274,7 +1345,7 @@ const Invoice = () => {
                   </p>
                 </div>
               ) : (
-                <table className="w-full min-w-[600px] border-collapse text-sm">
+                <table className="w-full min-w-150 border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b-2 border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-bold">
                       <th className="px-4 py-2.5 text-left w-6">#</th>
@@ -1320,7 +1391,7 @@ const Invoice = () => {
                                       e.target.value,
                                     )
                                   }
-                                  className="text-[10px] font-semibold border border-slate-200 rounded px-1.5 py-1 outline-none bg-slate-50 focus:border-[#1D4ED8] max-w-[180px] font-['Barlow',sans-serif]"
+                                  className="text-[10px] font-semibold border border-slate-200 rounded px-1.5 py-1 outline-none bg-slate-50 focus:border-[#1D4ED8] max-w-45 font-['Barlow',sans-serif]"
                                 >
                                   <option value="">Auto (FIFO)</option>
                                   {item.suppliers.map((s) => {
@@ -1477,7 +1548,7 @@ const Invoice = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 min-w-[200px]">
+                  <div className="flex flex-col items-end gap-1 min-w-50">
                     <div className="flex justify-between w-full text-xs text-slate-500 font-medium">
                       <span>Subtotal</span>
                       <span className="tabular-nums font-semibold text-slate-700">
@@ -1563,7 +1634,8 @@ const Invoice = () => {
                   )}
                   {splitPayment && paymentStatus === "due" && (
                     <p className="text-[10px] text-slate-400 mt-1">
-                      Enter how much is being paid now above, then split it across methods below.
+                      Enter how much is being paid now above, then split it
+                      across methods below.
                     </p>
                   )}
                 </div>
@@ -1626,7 +1698,7 @@ const Invoice = () => {
                             value={mobileNumber}
                             onChange={(e) => setMobileNumber(e.target.value)}
                             placeholder="Payment number e.g. 01711-000000"
-                            className="flex-1 min-w-[180px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]"
+                            className="flex-1 min-w-45 text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]"
                           />
                         </div>
                       )}
@@ -1650,7 +1722,7 @@ const Invoice = () => {
                               setBankAccountNumber(e.target.value)
                             }
                             placeholder="Bank account number"
-                            className="flex-1 min-w-[180px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]"
+                            className="flex-1 min-w-45 text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]"
                           />
                         </div>
                       )}
@@ -1719,7 +1791,7 @@ const Invoice = () => {
                                   )
                                 }
                                 placeholder="Mobile number"
-                                className="flex-1 min-w-[120px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
+                                className="flex-1 min-w-30 text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
                               />
                             </>
                           )}
@@ -1753,7 +1825,7 @@ const Invoice = () => {
                                   )
                                 }
                                 placeholder="Account number"
-                                className="flex-1 min-w-[120px] text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
+                                className="flex-1 min-w-30 text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
                               />
                             </>
                           )}

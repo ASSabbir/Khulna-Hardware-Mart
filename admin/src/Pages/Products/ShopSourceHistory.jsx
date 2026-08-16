@@ -297,7 +297,7 @@ export default function ShopSourceHistory() {
             <div className="relative w-full sm:w-[320px] shrink-0 rounded-2xl p-5 overflow-hidden bg-linear-to-br from-[#F59E0B] to-[#F97316] text-white shadow-lg">
               <div className="relative z-10">
                 <p className="font-bold text-base">Sourcing Audit Log</p>
-                <p className="text-white/85 text-xs mt-1 max-w-[200px]">
+                <p className="text-white/85 text-xs mt-1 max-w-50">
                   Detailed record of shop-to-shop inventory transfers.
                 </p>
               </div>
@@ -343,7 +343,7 @@ export default function ShopSourceHistory() {
 
           {/* Filter panel */}
           <div className="bg-white/80 backdrop-blur border border-gray-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative flex-1 min-w-50">
               <FiSearch
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                 size={16}
@@ -584,7 +584,7 @@ export default function ShopSourceHistory() {
             <p className="text-xs text-gray-400 mb-3">
               Clean spend over the last month
             </p>
-            <div className="h-[180px] w-full">
+            <div className="h-45 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={spendingBreakdown}
@@ -774,7 +774,7 @@ function DetailsModal({ record, onClose }) {
           {record.note && (
             <div>
               <p className="text-xs text-gray-400 mb-1">Note</p>
-              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 break-words">
+              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 wrap-break-word">
                 {record.note}
               </p>
             </div>

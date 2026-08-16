@@ -264,7 +264,7 @@ const Nav = () => {
     { to: "/accounts", label: "Accounts", icon: <FiDollarSign /> },
     { to: "/invoice", label: "Invoice", icon: <FiFileText /> },
     { to: "/products", label: "Inventory", icon: <FiPackage /> },
-    
+
   ];
 
   const userLinks = [
@@ -317,12 +317,12 @@ const Nav = () => {
 
       {/* ── MAIN NAV ── */}
       <nav className="bg-white border-b-[3px] border-orange-500 sticky top-0 z-50 font-primary">
-        <div className=" mx-auto px-3 sm:px-4 md:px-6 h-16 md:h-[72px] flex items-center justify-between gap-2 sm:gap-4">
+        <div className=" mx-auto px-3 sm:px-4 md:px-6 h-16 md:h-18 flex items-center justify-between gap-2 sm:gap-4">
 
           {/* BRAND */}
           <NavLink to="/" className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
             <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white shrink-0">
-              <FiTool size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5" />
+              <FiTool size={16} className="sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
             </div>
             <div className="flex flex-col leading-tight min-w-0">
               <span className="font-condensed text-[10px] sm:text-xs md:text-sm lg:text-[15px] font-bold uppercase tracking-wide text-blue-900 truncate">

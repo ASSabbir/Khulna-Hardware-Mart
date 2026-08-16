@@ -95,7 +95,7 @@ const SectionCard = ({ title, icon, children, className = "" }) => (
       <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-100">
         {icon && (
           <span
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: "#EFF3FF" }}
           >
             {React.cloneElement ? icon : icon}
@@ -348,10 +348,17 @@ export default function SupplierPurchaseOrder() {
 
   const printOrder = () => {
     if (!lastResult) return;
-    openPrintWindow(buildOrderHTML({
-      supplierName: lastResult.supplierName, items: lastResult.purchasedItems, totalCost: lastResult.totalCost,
-      credit: lastResult.credit, paidSum: lastResult.paidSum, dueRemaining: lastResult.dueRemaining, payments: lastResult.paymentsUsed || [],
-    }));
+    openPrintWindow(
+      buildOrderHTML({
+        supplierName: lastResult.supplierName,
+        items: lastResult.purchasedItems,
+        totalCost: lastResult.totalCost,
+        credit: lastResult.credit,
+        paidSum: lastResult.paidSum,
+        dueRemaining: lastResult.dueRemaining,
+        payments: lastResult.paymentsUsed || [],
+      }),
+    );
   };
 
   return (
@@ -408,7 +415,7 @@ export default function SupplierPurchaseOrder() {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
               style={{ background: NAVY }}
             >
               <FiTruck size={26} className="text-white" />
@@ -470,7 +477,7 @@ export default function SupplierPurchaseOrder() {
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-lg flex-shrink-0"
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shrink-0"
                         style={{ background: NAVY }}
                       >
                         {(selectedSupplier.companyName || "S")
@@ -610,7 +617,7 @@ export default function SupplierPurchaseOrder() {
                         type="button"
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#EFF3FF] text-left border-b border-slate-50 last:border-0"
                       >
-                        <div className="w-9 h-9 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-lg bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
                           {p.images?.[0] ? (
                             <img
                               src={p.images[0]}
@@ -639,7 +646,7 @@ export default function SupplierPurchaseOrder() {
                           </div>
                         </div>
                         <span
-                          className="text-xs font-extrabold flex-shrink-0"
+                          className="text-xs font-extrabold shrink-0"
                           style={{ color: ORANGE }}
                         >
                           {fmt(p.buyingPrice)}
@@ -1032,7 +1039,7 @@ export default function SupplierPurchaseOrder() {
                   {recentActivity.map((a) => (
                     <div key={a.id} className="flex items-start gap-3">
                       <span
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
                         style={{ background: "#EFF3FF" }}
                       >
                         <FiShield size={12} color={NAVY} />

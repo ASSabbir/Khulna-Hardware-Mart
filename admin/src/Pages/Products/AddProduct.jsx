@@ -45,7 +45,7 @@ const Card = ({ title, icon, children, right }) => (
       <div className="flex items-center gap-2.5">
         {icon && (
           <span
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: "#EFF3FF" }}
           >
             {React.cloneElement(icon, { size: 15, color: NAVY })}
@@ -90,12 +90,12 @@ const Input = ({
     className={`flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/10 transition-all ${disabled ? "bg-slate-50" : ""} ${className}`}
   >
     {icon && (
-      <span className="pl-3 text-slate-400 flex-shrink-0">
+      <span className="pl-3 text-slate-400 shrink-0">
         {React.cloneElement(icon, { size: 14 })}
       </span>
     )}
     {prefix && (
-      <span className="px-3 py-2.5 text-slate-400 text-sm font-medium flex-shrink-0">
+      <span className="px-3 py-2.5 text-slate-400 text-sm font-medium shrink-0">
         {prefix}
       </span>
     )}
@@ -109,7 +109,7 @@ const Input = ({
       {...rest}
     />
     {suffix && (
-      <span className="px-3 py-2.5 text-slate-400 text-xs font-semibold flex-shrink-0 border-l border-slate-100 bg-slate-50">
+      <span className="px-3 py-2.5 text-slate-400 text-xs font-semibold shrink-0 border-l border-slate-100 bg-slate-50">
         {suffix}
       </span>
     )}
@@ -119,7 +119,7 @@ const Input = ({
 const Select = ({ value, onChange, icon, children }) => (
   <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/10 transition-all">
     {icon && (
-      <span className="pl-3 text-slate-400 flex-shrink-0">
+      <span className="pl-3 text-slate-400 shrink-0">
         {React.cloneElement(icon, { size: 14 })}
       </span>
     )}
@@ -185,7 +185,15 @@ const DEFAULT_UNITS = [
   ["pair", "Pair"],
 ];
 
-const emptyPayment = () => ({ id: Date.now() + Math.random(), method: "cash", amount: "", provider: "bKash", bankName: "Dutch-Bangla Bank", accountNumber: "", mobileNumber: "" });
+const emptyPayment = () => ({
+  id: Date.now() + Math.random(),
+  method: "cash",
+  amount: "",
+  provider: "bKash",
+  bankName: "Dutch-Bangla Bank",
+  accountNumber: "",
+  mobileNumber: "",
+});
 const emptySupplierRow = (buyingPrice = "") => ({
   id: Date.now() + Math.random(),
   supplierId: "",
@@ -407,7 +415,10 @@ const AddProduct = () => {
       prev.map((r) => (r.id === id ? { ...r, applyCredit: checked } : r)),
     );
 
-  const setRowPayments = (rowId, newPayments) => setSupplierRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, payments: newPayments } : r)));
+  const setRowPayments = (rowId, newPayments) =>
+    setSupplierRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, payments: newPayments } : r)),
+    );
 
   const rowTotalCost = (row, idx) => {
     const price = idx === 0 ? buying : parseFloat(row.buyingPrice) || 0;
@@ -593,7 +604,7 @@ const AddProduct = () => {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
               style={{ background: "#EFF3FF" }}
             >
               <FiPackage size={22} color={NAVY} />
@@ -898,7 +909,7 @@ const AddProduct = () => {
                     <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
                       <FiAlertTriangle
                         size={14}
-                        className="text-red-500 flex-shrink-0"
+                        className="text-red-500 shrink-0"
                       />
                       <span className="text-xs font-semibold text-red-600">
                         No stock yet — add supplier purchase quantities below
@@ -908,7 +919,7 @@ const AddProduct = () => {
                     <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2.5">
                       <FiAlertTriangle
                         size={14}
-                        className="text-yellow-600 flex-shrink-0"
+                        className="text-yellow-600 shrink-0"
                       />
                       <span className="text-xs font-semibold text-yellow-700">
                         Low opening stock — consider ordering more soon
@@ -918,7 +929,7 @@ const AddProduct = () => {
                     <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
                       <FiCheckCircle
                         size={14}
-                        className="text-green-600 flex-shrink-0"
+                        className="text-green-600 shrink-0"
                       />
                       <span className="text-xs font-semibold text-green-700">
                         Stock level looks good
@@ -1080,7 +1091,7 @@ const AddProduct = () => {
                           type="button"
                           onClick={() => removeSupplierRow(row.id)}
                           disabled={supplierRows.length === 1}
-                          className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="w-8 h-8 flex items-center justify-center shrink-0 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <FiTrash2 size={14} />
                         </button>
@@ -1193,11 +1204,34 @@ const AddProduct = () => {
                       </div>
 
                       <div className="bg-white border border-slate-200 rounded-lg p-3">
-                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-2"><span>Total Cost</span><span>৳{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-2">
+                          <span>Total Cost</span>
+                          <span>
+                            ৳
+                            {totalCost.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
                         {appliedCredit > 0 && (
-                          <div className="flex justify-between text-[11px] font-semibold text-green-700 mb-2"><span>Credit Applied</span><span>-৳{appliedCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                          <div className="flex justify-between text-[11px] font-semibold text-green-700 mb-2">
+                            <span>Credit Applied</span>
+                            <span>
+                              -৳
+                              {appliedCredit.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
                         )}
-                        <PaymentSplitEditor rows={row.payments} onChange={(newRows) => setRowPayments(row.id, newRows)} maxTotal={costAfterCredit} label="Payment Method(s)" />
+                        <PaymentSplitEditor
+                          rows={row.payments}
+                          onChange={(newRows) =>
+                            setRowPayments(row.id, newRows)
+                          }
+                          maxTotal={costAfterCredit}
+                          label="Payment Method(s)"
+                        />
                         <div className="grid grid-cols-2 gap-2 mt-2.5">
                           <div
                             className="rounded-lg px-2.5 py-2 text-center"

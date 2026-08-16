@@ -97,7 +97,7 @@ const CustomerLayout = () => {
       {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
+        <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 shrink-0">
           <button
             className="md:hidden text-[#1E3A8A]"
             onClick={() => setOpen(true)}

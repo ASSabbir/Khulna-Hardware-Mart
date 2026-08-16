@@ -89,7 +89,7 @@ const Marketing = () => {
             <div className="space-y-4">
               {CONTACT.map(({ icon, label, value }) => (
                 <div key={label} className="flex items-start gap-4">
-                  <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center text-orange-700 flex-shrink-0 mt-0.5">
+                  <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center text-orange-700 shrink-0 mt-0.5">
                     {icon}
                   </div>
                   <div>

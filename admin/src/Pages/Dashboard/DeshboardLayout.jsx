@@ -44,7 +44,11 @@ const DeshboardLayout = () => {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-2 border-[#1D4ED8]">
           <div className="flex items-center gap-3">
-            <img src="/Image/logo.png" alt="Khulna Hardware Mart" className="w-9 h-9 rounded-lg object-contain bg-white p-0.5" />
+            <img
+              src="/Image/logo.png"
+              alt="Khulna Hardware Mart"
+              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5"
+            />
             <div className="flex flex-col">
               <span className="font-['Barlow_Condensed',sans-serif] font-bold text-white text-sm uppercase tracking-wide">
                 Deshboard
@@ -98,7 +102,7 @@ const DeshboardLayout = () => {
       {/* CONTENT */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 flex-shrink-0">
+        <div className="h-12 bg-white flex items-center px-4 md:px-6 gap-3 shrink-0">
           <button
             className="md:hidden text-[#1E3A8A]"
             onClick={() => setOpen(true)}
