@@ -396,7 +396,7 @@ export default function PaidInvoice() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
-      <div className="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-375 mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 xl:col-span-9 space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
@@ -408,7 +408,7 @@ export default function PaidInvoice() {
                 and financial reporting.
               </p>
             </div>
-            <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
+            <div className="relative w-full sm:w-75 shrink-0 rounded-2xl p-5 overflow-hidden bg-linear-to-br from-emerald-500 to-emerald-700 text-white shadow-lg">
               <div className="relative z-10 space-y-1">
                 <p className="text-white/80 text-xs font-semibold">
                   Financial Overview
@@ -473,7 +473,7 @@ export default function PaidInvoice() {
           </div>
 
           <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[220px]">
+            <div className="relative flex-1 min-w-55">
               <FiSearch
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                 size={16}
@@ -641,18 +641,34 @@ export default function PaidInvoice() {
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 pt-3 mb-3">
-                      <span className="text-xs text-slate-400 font-semibold">{inv.totalReturnedAmount > 0 ? "Original Total" : "Grand Total"}</span>
-                      <span className={`font-bold text-lg ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-900"}`}>{fmt(inv.grandTotal)}</span>
+                      <span className="text-xs text-slate-400 font-semibold">
+                        {inv.totalReturnedAmount > 0
+                          ? "Original Total"
+                          : "Grand Total"}
+                      </span>
+                      <span
+                        className={`font-bold text-lg ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-900"}`}
+                      >
+                        {fmt(inv.grandTotal)}
+                      </span>
                     </div>
                     {inv.totalReturnedAmount > 0 && (
                       <>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-rose-500 font-semibold">Returned</span>
-                          <span className="font-bold text-rose-600 text-sm">-{fmt(inv.totalReturnedAmount)}</span>
+                          <span className="text-xs text-rose-500 font-semibold">
+                            Returned
+                          </span>
+                          <span className="font-bold text-rose-600 text-sm">
+                            -{fmt(inv.totalReturnedAmount)}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs text-emerald-600 font-semibold">Net Amount</span>
-                          <span className="font-bold text-emerald-700 text-lg">{fmt(inv.netSaleAmount ?? inv.grandTotal)}</span>
+                          <span className="text-xs text-emerald-600 font-semibold">
+                            Net Amount
+                          </span>
+                          <span className="font-bold text-emerald-700 text-lg">
+                            {fmt(inv.netSaleAmount ?? inv.grandTotal)}
+                          </span>
                         </div>
                       </>
                     )}
@@ -753,7 +769,7 @@ export default function PaidInvoice() {
             <p className="text-xs text-slate-400 mb-3">
               Based on invoices currently loaded
             </p>
-            <div className="h-[180px] w-full">
+            <div className="h-45 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={revenueTrend}

@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle, FiCheckCircle } from "react-icons/fi";
+import {
+  FiUser,
+  FiMail,
+  FiLock,
+  FiEye,
+  FiEyeOff,
+  FiAlertCircle,
+  FiCheckCircle,
+} from "react-icons/fi";
 
 export default function AdminSetup({ onComplete }) {
   const [form, setForm] = useState({
@@ -8,7 +16,7 @@ export default function AdminSetup({ onComplete }) {
     username: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,7 +49,7 @@ export default function AdminSetup({ onComplete }) {
         name: form.name,
         username: form.username,
         email: form.email,
-        password: form.password
+        password: form.password,
       });
 
       setSuccess("Admin created successfully!");
@@ -59,14 +67,18 @@ export default function AdminSetup({ onComplete }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-900 via-blue-800 to-blue-900 flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-4">
             <FiUser size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Setup Admin Account</h2>
-          <p className="text-gray-500 mt-2">Create your administrator account</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Setup Admin Account
+          </h2>
+          <p className="text-gray-500 mt-2">
+            Create your administrator account
+          </p>
         </div>
 
         {error && (
@@ -83,7 +95,9 @@ export default function AdminSetup({ onComplete }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Full Name
+            </label>
             <input
               type="text"
               value={form.name}
@@ -94,7 +108,9 @@ export default function AdminSetup({ onComplete }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Username
+            </label>
             <input
               type="text"
               value={form.username}
@@ -105,7 +121,9 @@ export default function AdminSetup({ onComplete }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Email
+            </label>
             <input
               type="email"
               value={form.email}
@@ -116,7 +134,9 @@ export default function AdminSetup({ onComplete }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Password
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -136,11 +156,15 @@ export default function AdminSetup({ onComplete }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Confirm Password
+            </label>
             <input
               type="password"
               value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, confirmPassword: e.target.value })
+              }
               placeholder="••••••••"
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
             />

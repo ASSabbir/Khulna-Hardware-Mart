@@ -640,7 +640,7 @@ const DraftInvoice = () => {
                   </p>
                 </div>
               ) : (
-                <table className="w-full min-w-[600px] border-collapse text-sm">
+                <table className="w-full min-w-150 border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b-2 border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-bold">
                       <th className="px-4 py-2.5 text-left w-6">#</th>
@@ -760,7 +760,7 @@ const DraftInvoice = () => {
                     </div>
                   </div>
                   {/* Summary */}
-                  <div className="flex flex-col items-end gap-1 min-w-[200px]">
+                  <div className="flex flex-col items-end gap-1 min-w-50">
                     <div className="flex justify-between w-full text-xs text-slate-500 font-medium">
                       <span>Subtotal</span>
                       <span className="tabular-nums font-semibold text-slate-700">

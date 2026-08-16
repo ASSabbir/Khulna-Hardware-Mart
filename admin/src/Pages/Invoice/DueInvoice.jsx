@@ -120,7 +120,9 @@ function PayNowModal({ invoice, onClose, onDone }) {
   const remaining = Math.max(0, (invoice.dueAmount || 0) - total);
 
   const usedKeys = (excludeId) =>
-    rows.filter((r) => r.id !== excludeId).map((r) => (r.method === "mobile" ? `mobile:${r.provider}` : r.method));
+    rows
+      .filter((r) => r.id !== excludeId)
+      .map((r) => (r.method === "mobile" ? `mobile:${r.provider}` : r.method));
 
   const addRow = (method = "cash", provider = "bKash") => {
     const key = method === "mobile" ? `mobile:${provider}` : method;
@@ -131,16 +133,20 @@ function PayNowModal({ invoice, onClose, onDone }) {
     setRows((p) => (p.length > 1 ? p.filter((r) => r.id !== id) : p));
   const updateRow = (id, field, value) => {
     if (field === "method" || field === "provider") {
-      const nextMethod = field === "method" ? value : rows.find((r) => r.id === id)?.method;
-      const nextProvider = field === "provider" ? value : rows.find((r) => r.id === id)?.provider;
-      const key = nextMethod === "mobile" ? `mobile:${nextProvider}` : nextMethod;
+      const nextMethod =
+        field === "method" ? value : rows.find((r) => r.id === id)?.method;
+      const nextProvider =
+        field === "provider" ? value : rows.find((r) => r.id === id)?.provider;
+      const key =
+        nextMethod === "mobile" ? `mobile:${nextProvider}` : nextMethod;
       if (usedKeys(id).includes(key)) return; // block switching to an already-used method
     }
     // No live per-row clamp — only cap against the invoice's full due as a hard
     // ceiling so typing isn't fought mid-keystroke. Exact split validated on submit.
     if (field === "amount") {
       const n = Number(value);
-      if (Number.isFinite(n) && n > (invoice.dueAmount || 0)) value = String(invoice.dueAmount || 0);
+      if (Number.isFinite(n) && n > (invoice.dueAmount || 0))
+        value = String(invoice.dueAmount || 0);
     }
     setRows((p) => p.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
@@ -238,7 +244,8 @@ function PayNowModal({ invoice, onClose, onDone }) {
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {PAYMENT_CHIPS.map((c) => {
-                    const key = c.method === "mobile" ? `mobile:${c.provider}` : c.method;
+                    const key =
+                      c.method === "mobile" ? `mobile:${c.provider}` : c.method;
                     const disabled = usedKeys(null).includes(key);
                     return (
                       <button
@@ -286,9 +293,33 @@ function PayNowModal({ invoice, onClose, onDone }) {
                       }
                       className="text-xs font-semibold border border-gray-200 rounded-lg px-2 py-1.5 outline-none bg-white"
                     >
-                      <option value="cash" disabled={r.method !== "cash" && usedKeys(r.id).includes("cash")}>Cash</option>
-                      <option value="mobile" disabled={r.method !== "mobile" && MOBILE_PROVIDERS.every((p) => usedKeys(r.id).includes(`mobile:${p}`))}>Mobile Banking</option>
-                      <option value="bank" disabled={r.method !== "bank" && usedKeys(r.id).includes("bank")}>Bank</option>
+                      <option
+                        value="cash"
+                        disabled={
+                          r.method !== "cash" && usedKeys(r.id).includes("cash")
+                        }
+                      >
+                        Cash
+                      </option>
+                      <option
+                        value="mobile"
+                        disabled={
+                          r.method !== "mobile" &&
+                          MOBILE_PROVIDERS.every((p) =>
+                            usedKeys(r.id).includes(`mobile:${p}`),
+                          )
+                        }
+                      >
+                        Mobile Banking
+                      </option>
+                      <option
+                        value="bank"
+                        disabled={
+                          r.method !== "bank" && usedKeys(r.id).includes("bank")
+                        }
+                      >
+                        Bank
+                      </option>
                     </select>
                     {r.method === "mobile" && (
                       <select
@@ -687,7 +718,7 @@ export default function DueInvoice() {
         </div>
       )}
 
-      <div className="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-375 mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 xl:col-span-9 space-y-6 min-w-0">
           <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
@@ -699,7 +730,7 @@ export default function DueInvoice() {
                 payment collections.
               </p>
             </div>
-            <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
+            <div className="relative w-full sm:w-[300px] shrink-0 rounded-2xl p-5 overflow-hidden bg-linear-to-br from-red-500 to-rose-600 text-white shadow-lg">
               <div className="relative z-10 space-y-1">
                 <p className="text-white/80 text-xs font-semibold">
                   Financial Summary
@@ -928,26 +959,44 @@ export default function DueInvoice() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                       <div>
-                        <p className="text-xs text-slate-400">{inv.totalReturnedAmount > 0 ? "Original Total" : "Grand Total"}</p>
-                        <p className={`font-semibold text-sm ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-800"}`}>{fmt(inv.grandTotal)}</p>
+                        <p className="text-xs text-slate-400">
+                          {inv.totalReturnedAmount > 0
+                            ? "Original Total"
+                            : "Grand Total"}
+                        </p>
+                        <p
+                          className={`font-semibold text-sm ${inv.totalReturnedAmount > 0 ? "text-slate-400 line-through" : "text-slate-800"}`}
+                        >
+                          {fmt(inv.grandTotal)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">Paid Amount</p>
-                        <p className="font-semibold text-emerald-600 text-sm">{fmt(inv.paidAmount)}</p>
+                        <p className="font-semibold text-emerald-600 text-sm">
+                          {fmt(inv.paidAmount)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">Remaining Due</p>
-                        <p className="font-bold text-red-600 text-sm">{fmt(inv.dueAmount)}</p>
+                        <p className="font-bold text-red-600 text-sm">
+                          {fmt(inv.dueAmount)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400">Items</p>
-                        <p className="font-semibold text-slate-800 text-sm">{inv.items?.length || 0}</p>
+                        <p className="font-semibold text-slate-800 text-sm">
+                          {inv.items?.length || 0}
+                        </p>
                       </div>
                     </div>
                     {inv.totalReturnedAmount > 0 && (
                       <div className="flex items-center justify-between mb-3 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
-                        <span className="text-xs text-rose-500 font-semibold">Returned {fmt(inv.totalReturnedAmount)}</span>
-                        <span className="text-sm font-bold text-emerald-700">Net {fmt(inv.netSaleAmount ?? inv.grandTotal)}</span>
+                        <span className="text-xs text-rose-500 font-semibold">
+                          Returned {fmt(inv.totalReturnedAmount)}
+                        </span>
+                        <span className="text-sm font-bold text-emerald-700">
+                          Net {fmt(inv.netSaleAmount ?? inv.grandTotal)}
+                        </span>
                       </div>
                     )}
 
@@ -1054,7 +1103,7 @@ export default function DueInvoice() {
             <p className="text-xs text-slate-400 mb-3">
               Based on invoices currently loaded
             </p>
-            <div className="h-[180px] w-full">
+            <div className="h-45 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={trendData}

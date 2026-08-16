@@ -54,7 +54,7 @@ const Why = () => {
               key={title}
               className="flex gap-4 bg-white p-6 rounded-2xl border border-gray-100 hover:shadow-sm transition"
             >
-              <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center text-xl flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center text-xl shrink-0">
                 {icon}
               </div>
               <div>

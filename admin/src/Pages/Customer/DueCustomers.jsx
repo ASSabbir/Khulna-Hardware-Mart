@@ -530,7 +530,7 @@ export default function DueCustomers() {
       <div className="flex-1 min-w-0">
         {toast && (
           <div className="fixed top-5 right-5 z-50 bg-white border border-emerald-200 text-[#0F172A] px-5 py-3.5 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2.5 max-w-sm">
-            <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <span className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
               <FiCheckCircle size={15} className="text-[#16A34A]" />
             </span>
             {toast}
@@ -589,7 +589,7 @@ export default function DueCustomers() {
             <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
               <div className="flex items-center gap-3 px-6 py-5 bg-[#0F172A]">
                 <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-extrabold flex-shrink-0 ${avatarBg(payModal.customerId || payModal.name)}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-extrabold shrink-0 ${avatarBg(payModal.customerId || payModal.name)}`}
                 >
                   {initials(payModal.name)}
                 </div>
@@ -762,7 +762,7 @@ export default function DueCustomers() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-3 bg-white border border-[#F1F5F9] rounded-2xl px-4 py-3 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.06)]">
-                <span className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <span className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
                   <FiUsers size={15} className="text-blue-600" />
                 </span>
                 <div>
@@ -775,7 +775,7 @@ export default function DueCustomers() {
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white border border-[#F1F5F9] rounded-2xl px-4 py-3 shadow-[0_2px_10px_-2px_rgba(15,23,42,0.06)]">
-                <span className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <span className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center shrink-0">
                   <FiDollarSign size={15} className="text-red-500" />
                 </span>
                 <div>
@@ -902,7 +902,7 @@ export default function DueCustomers() {
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${avatarBg(id)}`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${avatarBg(id)}`}
                               >
                                 {initials(c.name)}
                               </div>
