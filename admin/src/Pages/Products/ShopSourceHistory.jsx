@@ -84,6 +84,43 @@ export default function ShopSourceHistory() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const abortRef = useRef(null);
 
+  const [balanceModal, setBalanceModal] = useState(null);
+  const [balanceData, setBalanceData] = useState(null);
+  const [dueAmt, setDueAmt] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueNote, setDueNote] = useState("");
+  const [payAmt, setPayAmt] = useState("");
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  const openBalanceModal = (name) => {
+    setBalanceModal(name);
+    setBalanceLoading(true);
+    axios.get(`http://localhost:5000/api/shop-accounts/detail?shopName=${encodeURIComponent(name)}`)
+      .then((res) => setBalanceData(res.data))
+      .catch(() => setBalanceData(null))
+      .finally(() => setBalanceLoading(false));
+  };
+
+  const submitDue = async () => {
+    const amt = Number(dueAmt);
+    if (!Number.isFinite(amt) || amt <= 0) return;
+    try {
+      await axios.post("http://localhost:5000/api/shop-accounts/due", { shopName: balanceModal, amount: amt, date: dueDate, note: dueNote });
+      setDueAmt(""); setDueDate(""); setDueNote("");
+      openBalanceModal(balanceModal);
+    } catch {}
+  };
+
+  const submitPay = async () => {
+    const amt = Number(payAmt);
+    if (!Number.isFinite(amt) || amt <= 0) return;
+    try {
+      await axios.post("http://localhost:5000/api/shop-accounts/payment", { shopName: balanceModal, amount: amt, method: "cash" });
+      setPayAmt("");
+      openBalanceModal(balanceModal);
+    } catch {}
+  };
+
   useEffect(() => {
     if (!selectedRecord) return;
     const onKeyDown = (e) => {
@@ -171,6 +208,22 @@ export default function ShopSourceHistory() {
       return true;
     });
   }, [records, shopFilter, dateFrom, dateTo]);
+
+  const groupedByShop = useMemo(() => {
+    const map = new Map();
+    filtered.forEach((r) => {
+      if (!r.shopName) return;
+      const prev = map.get(r.shopName) || { shopName: r.shopName, totalAmount: 0, count: 0, lastDate: r.date, productNames: new Set() };
+      prev.totalAmount += Number(r.totalAmount || 0);
+      prev.count += 1;
+      if (new Date(r.date) > new Date(prev.lastDate)) prev.lastDate = r.date;
+      prev.productNames.add(r.productName);
+      map.set(r.shopName, prev);
+    });
+    return [...map.values()]
+      .map((g) => ({ ...g, productNames: [...g.productNames] }))
+      .sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
+  }, [filtered]);
 
   const stats = useMemo(() => {
     const shops = new Set();
@@ -424,95 +477,62 @@ export default function ShopSourceHistory() {
             </div>
           )}
 
-          {/* Cards grid */}
+          {/* Cards grid — one row per shop */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {loading ? (
               <div className="col-span-full flex items-center justify-center py-20 text-gray-400 gap-2">
                 <FiLoader className="animate-spin" /> Loading...
               </div>
-            ) : filtered.length === 0 ? (
+            ) : groupedByShop.length === 0 ? (
               <div className="col-span-full text-center py-20 text-gray-400">
                 No records found.
               </div>
             ) : (
-              filtered.map((r) => {
-                const status = deriveStatus(r);
-                return (
-                  <div
-                    key={r._id}
-                    className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
-                  >
-                    <div className="flex items-center justify-between mb-3 gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 shrink-0 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
-                          {initials(r.shopName)}
-                        </div>
-                        <span className="font-semibold text-gray-900 truncate">
-                          {r.shopName}
-                        </span>
+              groupedByShop.map((g) => (
+                <div
+                  key={g.shopName}
+                  className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 shrink-0 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
+                        {initials(g.shopName)}
                       </div>
-                      <span
-                        className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${status.cls}`}
-                      >
-                        {status.label}
+                      <span className="font-semibold text-gray-900 truncate">
+                        {g.shopName}
                       </span>
                     </div>
+                    <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
+                      {g.count} purchase{g.count !== 1 ? "s" : ""}
+                    </span>
+                  </div>
 
-                    <div className="flex items-center justify-between mb-4 gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
-                          <FiPackage size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm truncate">
-                            {r.productName} (Custom)
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            SKU:{" "}
-                            {String(r._id || "")
-                              .slice(-4)
-                              .padStart(3, "0") || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="shrink-0 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
-                        Qty {r.quantity} units
-                      </span>
+                  <p className="text-xs text-gray-400 mb-3 truncate">
+                    Products: {g.productNames.slice(0, 3).join(", ")}{g.productNames.length > 3 ? "…" : ""}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+                    <div>
+                      <p className="text-gray-400 text-xs">Total Purchased</p>
+                      <p className="font-bold text-amber-600">{fmt(g.totalAmount)}</p>
                     </div>
-
-                    <div className="grid grid-cols-3 gap-2 mb-4 text-sm">
-                      <div>
-                        <p className="text-gray-400 text-xs">Unit Price</p>
-                        <p className="font-semibold text-gray-800">
-                          {fmt(r.unitPrice)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400 text-xs">Total Amount</p>
-                        <p className="font-bold text-amber-600">
-                          {fmt(r.totalAmount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400 text-xs">Purchase Date</p>
-                        <p className="font-semibold text-gray-800">
-                          {fmtDate(r.date)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRecord(r)}
-                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-                      >
-                        View Details
-                      </button>
+                    <div>
+                      <p className="text-gray-400 text-xs">Last Purchase</p>
+                      <p className="font-semibold text-gray-800">{fmtDate(g.lastDate)}</p>
                     </div>
                   </div>
-                );
-              })
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => openBalanceModal(g.shopName)}
+                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                    >
+                      View Details &amp; Due/Payment
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
@@ -678,6 +698,77 @@ export default function ShopSourceHistory() {
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
         />
+      )}
+
+      {balanceModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setBalanceModal(null); }}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">{balanceModal} — Due &amp; Payment</h3>
+              <button onClick={() => setBalanceModal(null)}><FiX size={18} /></button>
+            </div>
+            {balanceLoading ? (
+              <p className="text-center text-gray-400 py-10">Loading...</p>
+            ) : balanceData ? (
+              <>
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div className="bg-slate-50 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Purchases</p>
+                    <p className="text-sm font-bold text-slate-800">{fmt(balanceData.balance.totalPurchase)}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-emerald-500 font-bold uppercase">Paid</p>
+                    <p className="text-sm font-bold text-emerald-700">{fmt(balanceData.balance.totalPaid)}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-red-500 font-bold uppercase">Due</p>
+                    <p className="text-sm font-bold text-red-600">{fmt(balanceData.balance.due)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                  <div className="border border-red-200 rounded-xl p-3">
+                    <p className="text-xs font-bold text-red-600 mb-2">Add Manual Due</p>
+                    <input type="number" min="0" step="0.01" value={dueAmt} onChange={(e) => setDueAmt(e.target.value)} placeholder="Amount"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2" />
+                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2" />
+                    <input value={dueNote} onChange={(e) => setDueNote(e.target.value)} placeholder="Description (optional)" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2" />
+                    <button onClick={submitDue} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg text-sm">Add Due</button>
+                  </div>
+                  <div className="border border-emerald-200 rounded-xl p-3">
+                    <p className="text-xs font-bold text-emerald-600 mb-2">Make Payment</p>
+                    <input type="number" min="0" step="0.01" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} placeholder="Amount"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2" />
+                    <button onClick={submitPay} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm">Pay</button>
+                  </div>
+                </div>
+
+                <p className="text-xs font-bold text-slate-500 uppercase mb-2">Day-wise Purchase History</p>
+                <div className="space-y-2">
+                  {balanceData.dailyPurchases.length === 0 ? (
+                    <p className="text-sm text-slate-400">No purchases.</p>
+                  ) : (
+                    balanceData.dailyPurchases.map((d) => (
+                      <div key={d.date} className="bg-slate-50 rounded-lg p-3">
+                        <div className="flex justify-between text-sm font-bold text-slate-800">
+                          <span>{fmtDate(d.date)}</span>
+                          <span>{fmt(d.totalAmount)}</span>
+                        </div>
+                        <div className="mt-1 space-y-0.5">
+                          {d.items.map((it, i) => (
+                            <p key={i} className="text-xs text-slate-500">{it.productName} × {it.quantity} @ {fmt(it.unitPrice)}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-center text-gray-400 py-10">Failed to load.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

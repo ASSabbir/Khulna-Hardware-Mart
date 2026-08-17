@@ -35,6 +35,7 @@ import {
   FiLink,
 } from "react-icons/fi";
 import PaymentSplitEditor from "../../Components/PaymentSplitEditor";
+import { capitalizeWords } from "../../utils/textFormat";
 
 const NAVY = "#1E3A8A";
 const ORANGE = "#F97316";
@@ -231,10 +232,11 @@ const AddProduct = () => {
   const [images, setImages] = useState([]);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [useSupplierPayment, setUseSupplierPayment] = useState(true);
+  const [openingStock, setOpeningStock] = useState("");
 
   const [supplierOptions, setSupplierOptions] = useState([]);
   const [supplierRows, setSupplierRows] = useState([emptySupplierRow()]);
-
   const fetchSupplierOptions = () => {
     axios
       .get("http://localhost:5000/api/suppliers?limit=200")
@@ -328,17 +330,26 @@ const AddProduct = () => {
 
   const totalOpeningStock = useMemo(
     () =>
-      supplierRows.reduce(
-        (sum, r) => sum + (parseInt(r.purchaseQuantity) || 0),
-        0,
-      ),
-    [supplierRows],
+      useSupplierPayment
+        ? supplierRows.reduce(
+            (sum, r) => sum + (parseInt(r.purchaseQuantity) || 0),
+            0,
+          )
+        : parseInt(openingStock) || 0,
+    [supplierRows, useSupplierPayment, openingStock],
   );
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setCap = (key) => (e) => setForm((f) => ({ ...f, [key]: capitalizeWords(e.target.value) }));
 
   const handleImages = (e) => {
-    const files = Array.from(e.target.files).slice(0, 4 - images.length);
+    const selected = Array.from(e.target.files);
+    const availableSlots = 4 - images.length;
+    if (selected.length > availableSlots) {
+      setToast({ type: "error", msg: "You can upload a maximum of 4 images per product." });
+      setTimeout(() => setToast(null), 4000);
+    }
+    const files = selected.slice(0, Math.max(0, availableSlots));
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) =>
@@ -433,11 +444,20 @@ const AddProduct = () => {
     row.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
   const grandTotalCost = useMemo(
-    () => supplierRows.reduce((sum, r, idx) => sum + rowTotalCost(r, idx), 0),
-    [supplierRows, buying],
+    () =>
+      useSupplierPayment
+        ? supplierRows.reduce((sum, r, idx) => sum + rowTotalCost(r, idx), 0)
+        : buying * (parseInt(openingStock) || 0),
+    [supplierRows, buying, useSupplierPayment, openingStock],
   );
 
-  const validateSupplierRows = () => {
+   const validateSupplierRows = () => {
+    if (!useSupplierPayment) {
+      if (!buying || buying < 0) return "Enter a valid Buying Price.";
+      const qty = Number(openingStock);
+      if (!Number.isFinite(qty) || qty < 0) return "Enter a valid opening stock quantity.";
+      return null;
+    }
     if (supplierRows.length === 0)
       return "Add at least one supplier with a purchase quantity to set opening stock.";
     let anyValid = false;
@@ -485,24 +505,7 @@ const AddProduct = () => {
         }),
       );
 
-      const suppliersPayload = supplierRows.map((r, idx) => ({
-        supplierId: r.isOther ? undefined : r.supplierId || undefined,
-        supplierName: r.isOther ? r.otherName.trim() : undefined,
-        buyingPrice: idx === 0 ? buying : parseFloat(r.buyingPrice),
-        purchaseDate: r.purchaseDate,
-        purchaseQuantity: parseInt(r.purchaseQuantity),
-        payments: r.payments
-          .filter((p) => (Number(p.amount) || 0) > 0)
-          .map((p) => ({
-            method: p.method,
-            amount: Number(p.amount),
-            provider: p.method === "mobile" ? p.provider : undefined,
-          })),
-        creditApplied:
-          rowAppliedCredit(r, idx) > 0 ? rowAppliedCredit(r, idx) : undefined,
-      }));
-
-      const payload = {
+       const basePayload = {
         name: form.name,
         category: form.category,
         brand: form.company,
@@ -520,8 +523,30 @@ const AddProduct = () => {
         location: form.location,
         status: form.status,
         images: uploadedUrls,
-        suppliers: suppliersPayload,
       };
+
+      let payload;
+      if (!useSupplierPayment) {
+        payload = { ...basePayload, skipSupplierTracking: true, openingStock: parseInt(openingStock) || 0, suppliers: [] };
+      } else {
+        const suppliersPayload = supplierRows.map((r, idx) => ({
+          supplierId: r.isOther ? undefined : r.supplierId || undefined,
+          supplierName: r.isOther ? r.otherName.trim() : undefined,
+          buyingPrice: idx === 0 ? buying : parseFloat(r.buyingPrice),
+          purchaseDate: r.purchaseDate,
+          purchaseQuantity: parseInt(r.purchaseQuantity),
+          payments: r.payments
+            .filter((p) => (Number(p.amount) || 0) > 0)
+            .map((p) => ({
+              method: p.method,
+              amount: Number(p.amount),
+              provider: p.method === "mobile" ? p.provider : undefined,
+            })),
+          creditApplied:
+            rowAppliedCredit(r, idx) > 0 ? rowAppliedCredit(r, idx) : undefined,
+        }));
+        payload = { ...basePayload, suppliers: suppliersPayload };
+      }
 
       await axios.post("http://localhost:5000/api/products", payload);
       setToast({ type: "success", msg: "Product saved successfully!" });
@@ -567,6 +592,8 @@ const AddProduct = () => {
     setCustomCategory("");
     setIsUnitOther(false);
     setCustomUnit("");
+    setOpeningStock("");
+    setUseSupplierPayment(true);
   };
 
   const stockThreshold = 10;
@@ -671,7 +698,7 @@ const AddProduct = () => {
                     icon={<FiTag />}
                     placeholder="e.g. Heavy Duty Hammer 16oz"
                     value={form.name}
-                    onChange={set("name")}
+                    onChange={setCap("name")}
                   />
                 </Field>
                 <Field
@@ -705,7 +732,7 @@ const AddProduct = () => {
                       type="text"
                       autoFocus
                       value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
+                      onChange={(e) => setCustomCategory(capitalizeWords(e.target.value))}
                       onBlur={saveCustomCategory}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -718,12 +745,12 @@ const AddProduct = () => {
                     />
                   )}
                 </Field>
-                <Field label="Brand / Company" required>
+                 <Field label="Brand / Company" required>
                   <Input
                     icon={<FiHome />}
                     placeholder="e.g. Stanley, Bosch, BSRM"
                     value={form.company}
-                    onChange={set("company")}
+                    onChange={setCap("company")}
                   />
                 </Field>
                 <Field label="Country of Origin">
@@ -739,7 +766,7 @@ const AddProduct = () => {
                     icon={<FiAward />}
                     placeholder="e.g. Premium, Standard, Economy"
                     value={form.quality}
-                    onChange={set("quality")}
+                    onChange={setCap("quality")}
                   />
                 </Field>
                 <Field label="Material">
@@ -747,7 +774,7 @@ const AddProduct = () => {
                     icon={<FiLayers />}
                     placeholder="e.g. Steel, Wood, Plastic"
                     value={form.material}
-                    onChange={set("material")}
+                    onChange={setCap("material")}
                   />
                 </Field>
                 <div className="sm:col-span-2">
@@ -890,7 +917,7 @@ const AddProduct = () => {
                     icon={<FiMapPin />}
                     placeholder="e.g. Rack B-3, Shelf 2"
                     value={form.location}
-                    onChange={set("location")}
+                    onChange={setCap("location")}
                   />
                 </Field>
               </div>
@@ -1046,7 +1073,42 @@ const AddProduct = () => {
               )}
             </Card>
 
-            <Card icon={<FiTruck />} title="Supplier Management Card">
+            <Card
+              icon={<FiTruck />}
+              title="Supplier Management Card"
+              right={
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useSupplierPayment}
+                    onChange={(e) => setUseSupplierPayment(e.target.checked)}
+                    className="w-4 h-4 accent-[#1E3A8A]"
+                  />
+                  Track Suppliers &amp; Payment
+                </label>
+              }
+            >
+              {!useSupplierPayment ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-[11px] text-slate-400">
+                    Supplier &amp; payment tracking is off — this stock won't be linked to any supplier due/payment. Just enter opening quantity below.
+                  </p>
+                  <Field label="Opening Stock Quantity" required>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 50"
+                      value={openingStock}
+                      onChange={(e) => setOpeningStock(e.target.value)}
+                      suffix={form.unit}
+                    />
+                  </Field>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-semibold text-slate-600 flex justify-between">
+                    <span>Stock Value</span>
+                    <span>৳{(buying * (parseInt(openingStock) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              ) : (
               <div className="flex flex-col gap-3">
                 <p className="text-[11px] text-slate-400">
                   Each row's quantity adds to opening stock. Add one or more
@@ -1103,7 +1165,7 @@ const AddProduct = () => {
                             updateSupplierRow(
                               row.id,
                               "otherName",
-                              e.target.value,
+                              capitalizeWords(e.target.value),
                             )
                           }
                           placeholder="New supplier name"
@@ -1231,6 +1293,7 @@ const AddProduct = () => {
                           }
                           maxTotal={costAfterCredit}
                           label="Payment Method(s)"
+                          allowOverpay
                         />
                         <div className="grid grid-cols-2 gap-2 mt-2.5">
                           <div
@@ -1276,6 +1339,7 @@ const AddProduct = () => {
                   <FiPlus size={14} /> Add Supplier
                 </button>
               </div>
+              )}
             </Card>
           </div>
         </div>

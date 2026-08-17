@@ -44,7 +44,7 @@ const productSchema = new mongoose.Schema(
     holcellMargin: { type: Number, min: 0 },
     retailMargin: { type: Number, min: 0 },
 
-     stock: { type: Number, default: 0, index: true, min: 0 },
+    stock: { type: Number, default: 0, index: true },
     location: { type: String, trim: true },
     status: { type: String, default: "active", index: true, enum: ["active", "inactive", "discontinued"] },
     images: [{ type: String }],

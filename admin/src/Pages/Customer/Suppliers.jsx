@@ -497,8 +497,13 @@ export default function Suppliers() {
   const [historyFor, setHistoryFor] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 12;
+  const [dueModalFor, setDueModalFor] = useState(null);
+  const [dueAmount, setDueAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueDesc, setDueDesc] = useState("");
+  const [dueSaving, setDueSaving] = useState(false);
 
-  useEffect(() => {
+  const loadBalances = () => {
     axios.get("http://localhost:5000/api/supplier-payments/summary")
       .then((res) => {
         const map = {};
@@ -506,7 +511,27 @@ export default function Suppliers() {
         setBalances(map);
       })
       .catch(() => setBalances({}));
-  }, []);
+  };
+
+  useEffect(() => { loadBalances(); }, []);
+
+  const submitManualDue = async () => {
+    const amt = Number(dueAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { showToast("Enter a valid due amount", "error"); return; }
+    setDueSaving(true);
+    try {
+      await axios.post("http://localhost:5000/api/supplier-payments/manual-due", {
+        supplierId: dueModalFor._id, amount: amt, date: dueDate || undefined, description: dueDesc,
+      });
+      showToast("Due added successfully.");
+      setDueModalFor(null); setDueAmount(""); setDueDate(""); setDueDesc("");
+      loadBalances();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to add due", "error");
+    } finally {
+      setDueSaving(false);
+    }
+  };
 
   const fetchSuppliers = useCallback(async () => {
     setFetching(true);
@@ -727,6 +752,9 @@ export default function Suppliers() {
                   <button onClick={() => setHistoryFor(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-[#F97316]/10 hover:bg-[#F97316]/20 text-[#F97316] font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEye size={15}/> Payments
                   </button>
+                  <button onClick={() => setDueModalFor(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-[#EF4444] font-semibold py-2.5 rounded-xl text-base transition">
+                    <FiPlus size={15}/> Due
+                  </button>
                   <button onClick={() => setModal(p)} className="flex-1 flex items-center justify-center gap-1.5 bg-[#1E3A8A]/10 hover:bg-[#1E3A8A]/20 text-[#1E3A8A] font-semibold py-2.5 rounded-xl text-base transition">
                     <FiEdit2 size={15}/> Edit
                   </button>
@@ -744,6 +772,36 @@ export default function Suppliers() {
         <p className="text-center text-gray-400 text-base pb-4">Khulna Hardware Mart — Suppliers</p>
       </div>
       {historyFor && <SupplierPaymentHistoryModal supplierId={historyFor._id} companyName={historyFor.companyName} onClose={() => setHistoryFor(null)} />}
+      {dueModalFor && (
+        <div className="fixed inset-0 z-50 bg-[#1E3A8A]/30 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Add Due — {dueModalFor.companyName}</h3>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Amount *</label>
+                <input type="number" min="0" step="0.01" value={dueAmount} onChange={(e) => setDueAmount(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Date (optional)</label>
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description (optional)</label>
+                <textarea value={dueDesc} onChange={(e) => setDueDesc(e.target.value)} rows={2}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setDueModalFor(null)} className="flex-1 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50">Cancel</button>
+              <button onClick={submitManualDue} disabled={dueSaving} className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold py-2.5 rounded-xl disabled:opacity-50">
+                {dueSaving ? "Saving..." : "Add Due"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

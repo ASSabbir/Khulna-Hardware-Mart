@@ -165,7 +165,7 @@ function Drawer({ c, onClose, onPreview }) {
     setLoading(true);
     axios
       .get("http://localhost:5000/api/invoices", {
-        params: { customerName: c.name, paymentStatus: "due", limit: 100 },
+        params: { customerName: c.name, limit: 100 },
       })
       .then((res) => {
         if (active) setInvoices(res.data.invoices || []);
@@ -375,6 +375,17 @@ export default function DueCustomers() {
   const [payProvider, setPayProvider] = useState("bKash");
   const [payBankName, setPayBankName] = useState(BANK_OPTIONS[0]);
   const [payLoading, setPayLoading] = useState(false);
+  const [dynMobileProviders, setDynMobileProviders] = useState(MOBILE_PROVIDERS);
+  const [dynBankOptions, setDynBankOptions] = useState(BANK_OPTIONS);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/payment-methods?type=mobile")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) { setDynMobileProviders(n); setPayProvider(n[0]); } })
+      .catch(() => {});
+    axios.get("http://localhost:5000/api/payment-methods?type=bank")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) { setDynBankOptions(n); setPayBankName(n[0]); } })
+      .catch(() => {});
+  }, []);
   const [payModalInvoices, setPayModalInvoices] = useState([]);
   const [payModalInvoicesLoading, setPayModalInvoicesLoading] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState([]);
@@ -682,9 +693,9 @@ export default function DueCustomers() {
                   ))}
                 </div>
 
-                {payMethod === "mobile" && (
+                 {payMethod === "mobile" && (
                   <div className="grid grid-cols-4 gap-2 mb-4">
-                    {MOBILE_PROVIDERS.map((p) => (
+                    {dynMobileProviders.map((p) => (
                       <button
                         key={p}
                         onClick={() => setPayProvider(p)}
@@ -699,7 +710,7 @@ export default function DueCustomers() {
                         >
                           <FiSmartphone size={14} />
                         </span>
-                        <span className="text-[10px] font-bold text-[#334155]">
+                        <span className="text-[10px] font-bold text-[#334155] text-center">
                           {p}
                         </span>
                       </button>
@@ -719,7 +730,7 @@ export default function DueCustomers() {
                         onChange={(e) => setPayBankName(e.target.value)}
                         className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-3 py-2.5 text-sm bg-[#F8FAFC]"
                       >
-                        {BANK_OPTIONS.map((b) => (
+                        {dynBankOptions.map((b) => (
                           <option key={b} value={b}>
                             {b}
                           </option>

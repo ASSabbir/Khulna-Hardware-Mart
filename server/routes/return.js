@@ -88,16 +88,11 @@ router.post("/", async (req, res) => {
 
       // Determine the scaling factor so the customer's refund correctly reflects discount/VAT already
       // baked into the invoice, without ever exceeding what's actually left of the grand total.
+      const netOfDiscountVat = invoice.subtotal - (invoice.discount || 0) + (invoice.vat || 0);
       let scaledTotal;
       if (allItemsFullyReturned) {
-        // Full-invoice return (this call finishes it off): refund exactly whatever of the
-        // grand total hasn't already been refunded, regardless of rounding on individual lines.
-        scaledTotal = +(invoice.grandTotal - (invoice.totalReturnedAmount || 0)).toFixed(2);
+        scaledTotal = +(netOfDiscountVat - (invoice.totalReturnedAmount || 0)).toFixed(2);
       } else {
-        // Partial return: scale by (subtotal - discount + vat) / subtotal so returns carry their
-        // fair share of any invoice-level discount/VAT. Transport cost is a flat delivery fee and
-        // is intentionally NOT refunded on a partial return.
-        const netOfDiscountVat = invoice.subtotal - (invoice.discount || 0) + (invoice.vat || 0);
         const ratio = invoice.subtotal > 0 ? netOfDiscountVat / invoice.subtotal : 1;
         scaledTotal = +(rawTotal * ratio).toFixed(2);
       }

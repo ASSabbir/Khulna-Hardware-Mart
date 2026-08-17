@@ -4,7 +4,7 @@ import PaymentMethodSelect from "./PaymentMethodSelect";
 
 const fmt = (n) => "৳" + Number(n || 0).toLocaleString("en-BD", { minimumFractionDigits: 2 });
 
-export default function PaymentSplitEditor({ rows, onChange, maxTotal, label = "Payment Method(s)", balances = null }) {
+export default function PaymentSplitEditor({ rows, onChange, maxTotal, label = "Payment Method(s)", balances = null, allowOverpay = false }) {
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const remaining = Math.max(0, (Number(maxTotal) || 0) - total);
 
@@ -36,10 +36,10 @@ export default function PaymentSplitEditor({ rows, onChange, maxTotal, label = "
   };
   const updateAmount = (id, value) => {
     // No live clamp against maxTotal — only cap against a hard ceiling (maxTotal itself)
-    // so the field doesn't fight the user mid-keystroke.
+    // so the field doesn't fight the user mid-keystroke. Skipped entirely when allowOverpay.
     const n = Number(value);
     let safeVal = value;
-    if (Number.isFinite(n) && maxTotal != null && n > Number(maxTotal)) safeVal = String(maxTotal);
+    if (!allowOverpay && Number.isFinite(n) && maxTotal != null && n > Number(maxTotal)) safeVal = String(maxTotal);
     updateRow(id, { amount: safeVal });
   };
 

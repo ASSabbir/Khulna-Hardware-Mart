@@ -13,6 +13,7 @@ import { useState } from "react";
 
 const NAV_ITEMS = [
   { to: "invoice", label: "Invoice", icon: <FiFileText size={16} /> },
+  { to: "all", label: "All Invoices", icon: <FiFileText size={16} /> },
   { to: "draft", label: "Draft Invoice", icon: <FiClock size={16} /> },
   { to: "due", label: "Due All Invoice", icon: <FiAlertCircle size={16} /> },
   { to: "paid", label: "Paid All Invoice", icon: <FiCheckCircle size={16} /> },

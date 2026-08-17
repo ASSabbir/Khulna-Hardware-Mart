@@ -80,14 +80,12 @@ const METHOD_ICON = {
   mobile: FiSmartphone,
   bank: FiCreditCard,
 };
-const MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
-const PAYMENT_CHIPS = [
+const DEFAULT_MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
+const DEFAULT_BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
+const buildPaymentChips = (mobileProviders) => [
   { method: "cash", label: "Cash", icon: FiDollarSign },
   { method: "bank", label: "Bank Transfer", icon: FiCreditCard },
-  { method: "mobile", provider: "bKash", label: "bKash", icon: FiSmartphone },
-  { method: "mobile", provider: "Nagad", label: "Nagad", icon: FiSmartphone },
-  { method: "mobile", provider: "Rocket", label: "Rocket", icon: FiSmartphone },
-  { method: "mobile", provider: "Upay", label: "Upay", icon: FiSmartphone },
+  ...mobileProviders.map((p) => ({ method: "mobile", provider: p, label: p, icon: FiSmartphone })),
 ];
 const QUICK_FILTERS = [
   { key: "today", label: "Today" },
@@ -115,6 +113,18 @@ function PayNowModal({ invoice, onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [mobileProviders, setMobileProviders] = useState(DEFAULT_MOBILE_PROVIDERS);
+  const [bankOptions, setBankOptions] = useState(DEFAULT_BANK_OPTIONS);
+  const PAYMENT_CHIPS = buildPaymentChips(mobileProviders);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/payment-methods?type=mobile")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) setMobileProviders(n); })
+      .catch(() => {});
+    axios.get("http://localhost:5000/api/payment-methods?type=bank")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) setBankOptions(n); })
+      .catch(() => {});
+  }, []);
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const remaining = Math.max(0, (invoice.dueAmount || 0) - total);
@@ -301,11 +311,11 @@ function PayNowModal({ invoice, onClose, onDone }) {
                       >
                         Cash
                       </option>
-                      <option
+                       <option
                         value="mobile"
                         disabled={
                           r.method !== "mobile" &&
-                          MOBILE_PROVIDERS.every((p) =>
+                          mobileProviders.every((p) =>
                             usedKeys(r.id).includes(`mobile:${p}`),
                           )
                         }
@@ -329,7 +339,7 @@ function PayNowModal({ invoice, onClose, onDone }) {
                         }
                         className="text-xs font-semibold border border-gray-200 rounded-lg px-2 py-1.5 outline-none bg-white"
                       >
-                        {MOBILE_PROVIDERS.map((p) => (
+                        {mobileProviders.map((p) => (
                           <option key={p} value={p}>
                             {p}
                           </option>

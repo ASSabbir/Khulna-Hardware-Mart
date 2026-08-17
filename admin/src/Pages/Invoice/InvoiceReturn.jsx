@@ -130,10 +130,10 @@ export default function InvoiceReturn() {
       const returningNow = returnQtys[idx] || 0;
       return (already + returningNow) >= it.qty;
     });
-    if (allFullyReturned) {
-      return Math.max(0, +(invoice.grandTotal - (invoice.totalReturnedAmount || 0)).toFixed(2));
-    }
     const netOfDiscountVat = invoice.subtotal - (invoice.discount || 0) + (invoice.vat || 0);
+    if (allFullyReturned) {
+      return Math.max(0, +(netOfDiscountVat - (invoice.totalReturnedAmount || 0)).toFixed(2));
+    }
     const ratio = invoice.subtotal > 0 ? netOfDiscountVat / invoice.subtotal : 1;
     return +(rawTotal * ratio).toFixed(2);
   }, [invoice, returnQtys]);

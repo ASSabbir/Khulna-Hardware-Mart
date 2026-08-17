@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const supplierPaymentSchema = new mongoose.Schema(
   {
     supplierId: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier", required: true, index: true },
-    type: { type: String, enum: ["payable", "receivable"], required: true }, // payable = we owe supplier, receivable = supplier owes us
+   type: { type: String, enum: ["payable", "receivable", "manual_due"], required: true }, // payable = we owe supplier, receivable = supplier owes us, manual_due = manually recorded due
     amount: {
       type: Number,
       required: true,
@@ -16,7 +16,7 @@ const supplierPaymentSchema = new mongoose.Schema(
       max: [100000000, "Amount out of range."],
     },
     method: { type: String, enum: ["cash", "mobile", "bank"], default: "cash" },
-    provider: { type: String, enum: ["bKash", "Nagad", "Rocket", "Upay", null], default: null },
+    provider: { type: String, default: null },
     note: { type: String, trim: true, maxlength: 300, default: "" },
     date: { type: String, required: true }, // YYYY-MM-DD
   },

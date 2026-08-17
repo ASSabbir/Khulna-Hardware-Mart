@@ -60,6 +60,17 @@ export default function Accounts() {
           </div>
         )}
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <p className="text-gray-500 font-semibold text-sm">Total Product Sales Value</p>
+            <p className="text-gray-900 text-2xl font-bold mt-1">{fmt(s.totalProductSalesValue)}</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <p className="text-gray-500 font-semibold text-sm">Total Transportation Cost</p>
+            <p className="text-gray-900 text-2xl font-bold mt-1">{fmt(s.totalTransportCost)}</p>
+          </div>
+        </div>
+
         {/* Sales / Returns / Net / Profit — auto-updates with returns (accounts integration) */}
         <div className="bg-gray-900 rounded-2xl p-7">
           <p className="text-gray-400 text-base font-medium mb-4">Sales Summary</p>
@@ -119,7 +130,7 @@ export default function Accounts() {
           </div>
           <p className="text-gray-500 text-sm font-semibold mb-3">Mobile Banking Breakdown</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            {["bKash", "Nagad", "Rocket", "Upay"].map((p) => (
+            {Object.keys(mobile || {}).map((p) => (
               <div key={p} className="bg-gray-50 rounded-xl p-3 text-center">
                 <p className="text-gray-500 text-xs">{p}</p>
                 <p className="font-bold text-gray-800">{fmt(mobile[p])}</p>

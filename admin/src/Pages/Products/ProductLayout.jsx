@@ -27,6 +27,16 @@ const NAV_ITEMS = [
     label: "Supplier Purchase Order",
     icon: <FiTruck size={16} />,
   },
+  {
+    to: "restock-list",
+    label: "Restock List",
+    icon: <FiPlusCircle size={16} />,
+  },
+  {
+    to: "shop-sale",
+    label: "Sell to Shop",
+    icon: <FiTruck size={16} />,
+  },
 ];
 
 const ProductLayout = () => {

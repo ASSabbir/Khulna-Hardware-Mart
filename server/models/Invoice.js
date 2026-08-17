@@ -9,8 +9,8 @@ const paymentSchema = new mongoose.Schema(
   {
     method: { type: String, enum: PAYMENT_METHODS, required: true },
     amount: { type: Number, required: true, min: [0.01, "Payment amount must be greater than 0"] },
-    provider: { type: String, enum: [...MOBILE_PROVIDERS, null], default: null },
-    bankName: { type: String, enum: [...BANK_OPTIONS, ""], default: "" },
+    provider: { type: String, default: null },
+    bankName: { type: String, default: "" },
     accountNumber: { type: String, trim: true, maxlength: 50, default: "" },
     mobileNumber: { type: String, trim: true, maxlength: 20, default: "" },
     date: { type: Date, default: () => new Date() },
@@ -22,8 +22,8 @@ const collectionSchema = new mongoose.Schema(
   {
     amount: { type: Number, required: true, min: 0.01 },
     method: { type: String, enum: PAYMENT_METHODS, required: true },
-    provider: { type: String, enum: [...MOBILE_PROVIDERS, null], default: null },
-    bankName: { type: String, enum: [...BANK_OPTIONS, ""], default: "" },
+    provider: { type: String, default: null },
+    bankName: { type: String, default: "" },
     accountNumber: { type: String, trim: true, maxlength: 50, default: "" },
     mobileNumber: { type: String, trim: true, maxlength: 20, default: "" },
     note: { type: String, trim: true, maxlength: 300, default: "" },

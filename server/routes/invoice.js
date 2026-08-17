@@ -26,8 +26,7 @@ function validatePayments(payments, expectedTotal) {
     if (!PAYMENT_METHODS.includes(p.method)) return `Invalid payment method: ${p.method}`;
     const amt = Number(p.amount);
     if (!Number.isFinite(amt) || amt <= 0) return "Each payment amount must be a positive number.";
-    if (p.method === "mobile" && !MOBILE_PROVIDERS.includes(p.provider)) return "Invalid mobile banking provider.";
-    if (p.method === "bank" && p.bankName && !BANK_OPTIONS.includes(p.bankName)) return "Invalid bank name.";
+    if (p.method === "mobile" && !String(p.provider || "").trim()) return "Select a mobile banking provider.";
     sum += amt;
   }
   if (Math.abs(sum - expectedTotal) > EPS) return `Payment total (${sum.toFixed(2)}) does not match expected amount (${expectedTotal.toFixed(2)}).`;
@@ -72,34 +71,42 @@ router.get("/stats", async (req, res) => {
 
     let totalCollected = 0, totalDueAmount = 0;
     let cashTotal = 0, bankTotal = 0, mobileTotal = 0;
-    let bkashTotal = 0, nagadTotal = 0, rocketTotal = 0, upayTotal = 0;
-    const bankByName = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+    const mobileByProvider = {};
+    const bankByName = {};
+    let totalProductSalesValue = 0;
+    let totalTransportCost = 0;
+
+    const PaymentMethodOption = require("../models/PaymentMethodOption");
+    const configuredMobile = await PaymentMethodOption.find({ type: "mobile" }).lean();
+    const configuredBank = await PaymentMethodOption.find({ type: "bank" }).lean();
+    configuredMobile.forEach((o) => (mobileByProvider[o.name] = 0));
+    configuredBank.forEach((o) => (bankByName[o.name] = 0));
 
     allInvoices.forEach((inv) => {
       totalCollected += inv.paidAmount || 0;
       totalDueAmount += inv.dueAmount || 0;
+      totalTransportCost += inv.transportCost || 0;
+      (inv.items || []).forEach((it) => { totalProductSalesValue += it.total || 0; });
       (inv.payments || []).forEach((p) => {
         const amt = p.amount || 0;
         if (p.method === "cash") cashTotal += amt;
         else if (p.method === "bank") {
           bankTotal += amt;
-          if (p.bankName && bankByName[p.bankName] !== undefined) bankByName[p.bankName] += amt;
+          if (p.bankName) bankByName[p.bankName] = (bankByName[p.bankName] || 0) + amt;
         }
         else if (p.method === "mobile") {
           mobileTotal += amt;
-          if (p.provider === "bKash") bkashTotal += amt;
-          else if (p.provider === "Nagad") nagadTotal += amt;
-          else if (p.provider === "Rocket") rocketTotal += amt;
-          else if (p.provider === "Upay") upayTotal += amt;
+          if (p.provider) mobileByProvider[p.provider] = (mobileByProvider[p.provider] || 0) + amt;
         }
       });
     });
 
     res.json({
       stats: { todayRevenue, todayOrders, weekRevenue, monthRevenue, totalRevenue, totalProducts, lowStockProducts, outOfStockProducts,
-        totalCollected, totalDueAmount, outstandingDue: totalDueAmount, grossSales, totalReturnsAmount, netSales: totalRevenue, totalCOGS, totalProfit, grossProfit },
+        totalCollected, totalDueAmount, outstandingDue: totalDueAmount, grossSales, totalReturnsAmount, netSales: totalRevenue, totalCOGS, totalProfit, grossProfit,
+        totalProductSalesValue: +totalProductSalesValue.toFixed(2), totalTransportCost: +totalTransportCost.toFixed(2) },
       paymentMethodSummary: { cash: cashTotal, bank: bankTotal, mobileBanking: mobileTotal },
-      mobileBankingBreakdown: { bKash: bkashTotal, Nagad: nagadTotal, Rocket: rocketTotal, Upay: upayTotal },
+      mobileBankingBreakdown: mobileByProvider,
       bankBreakdown: bankByName,
       recentInvoices, monthlyRevenue, topCategories,
     });
@@ -215,7 +222,7 @@ router.post("/:id/collect-due", async (req, res) => {
       const amt = Number(p.amount);
       if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: "Enter a valid collection amount." });
       if (!PAYMENT_METHODS.includes(p.method)) return res.status(400).json({ message: "Invalid payment method." });
-      if (p.method === "mobile" && !MOBILE_PROVIDERS.includes(p.provider)) return res.status(400).json({ message: "Invalid mobile provider." });
+      if (p.method === "mobile" && !String(p.provider || "").trim()) return res.status(400).json({ message: "Select a mobile provider." });
     }
     const totalCollecting = +splits.reduce((s, p) => s + Number(p.amount), 0).toFixed(2);
 

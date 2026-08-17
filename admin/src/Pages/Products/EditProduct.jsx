@@ -18,6 +18,7 @@ import {
   FiArrowLeft,
   FiRefreshCw,
 } from "react-icons/fi";
+import { capitalizeWords } from "../../utils/textFormat";
 
 const Section = ({ icon, title, accent = false, children }) => (
   <div
@@ -149,12 +150,16 @@ const EditProduct = () => {
   }, [id]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setCap = (key) => (e) => setForm((f) => ({ ...f, [key]: capitalizeWords(e.target.value) }));
 
   const handleImages = (e) => {
-    const files = Array.from(e.target.files).slice(
-      0,
-      4 - existingImages.length - images.length,
-    );
+    const selected = Array.from(e.target.files);
+    const availableSlots = 4 - existingImages.length - images.length;
+    if (selected.length > availableSlots) {
+      setToast({ type: "error", msg: "You can upload a maximum of 4 images per product." });
+      setTimeout(() => setToast(null), 4000);
+    }
+    const files = selected.slice(0, Math.max(0, availableSlots));
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) =>
@@ -348,7 +353,7 @@ const EditProduct = () => {
                   <Field label="Product Name" required>
                     <Input
                       value={form.name}
-                      onChange={set("name")}
+                      onChange={setCap("name")}
                       placeholder="e.g. Heavy Duty Hammer 16oz"
                     />
                   </Field>
@@ -364,7 +369,7 @@ const EditProduct = () => {
                 <Field label="Brand / Company" required>
                   <Input
                     value={form.company}
-                    onChange={set("company")}
+                    onChange={setCap("company")}
                     placeholder="e.g. Stanley, Bosch, BSRM"
                   />
                 </Field>
@@ -378,14 +383,14 @@ const EditProduct = () => {
                 <Field label="Quality">
                   <Input
                     value={form.quality}
-                    onChange={set("quality")}
+                    onChange={setCap("quality")}
                     placeholder="e.g. Premium, Standard"
                   />
                 </Field>
                 <Field label="Material">
                   <Input
                     value={form.material}
-                    onChange={set("material")}
+                    onChange={setCap("material")}
                     placeholder="e.g. Steel, Wood"
                   />
                 </Field>
@@ -493,7 +498,7 @@ const EditProduct = () => {
                 <Field label="Storage Location">
                   <Input
                     value={form.location}
-                    onChange={set("location")}
+                    onChange={setCap("location")}
                     placeholder="e.g. Rack B-3"
                   />
                 </Field>
@@ -535,7 +540,7 @@ const EditProduct = () => {
                   <div className="mt-3">
                     <Input
                       value={assignOtherName}
-                      onChange={(e) => setAssignOtherName(e.target.value)}
+                      onChange={(e) => setAssignOtherName(capitalizeWords(e.target.value))}
                       placeholder="New supplier name"
                     />
                   </div>
