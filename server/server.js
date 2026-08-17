@@ -58,6 +58,11 @@ app.use("/api/supplier-payments", require("./routes/supplierPayment"));
 app.use("/api/custom-product-sources", require("./routes/customProductSource"));
 app.use("/api/supplier-purchase-orders", require("./routes/supplierPurchaseOrder"));
 app.use("/api/backup", require("./routes/backup"));
+app.use("/api/payment-methods", require("./routes/paymentMethod"));
+app.use("/api/restock-list", require("./routes/restockList"));
+app.use("/api/shop-sales", require("./routes/shopSale"));
+app.use("/api/shop-accounts", require("./routes/shopAccount"));
+app.use("/api/shop-names", require("./routes/shopNames"));
 
 // Test Route
 app.get("/", (req, res) => {

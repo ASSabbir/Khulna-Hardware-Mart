@@ -168,6 +168,22 @@ router.post("/", async (req, res) => {
     if (!body.name || !body.category || !Number.isFinite(Number(body.buyingPrice))) {
       return res.status(400).json({ message: "Name, category, and buying price are required." });
     }
+
+    if (body.skipSupplierTracking) {
+      const qty = Math.max(0, Number(body.openingStock) || 0);
+      const product = await createProductWithUniqueSKU(
+        {
+          ...body,
+          quality: body.quality ? String(body.quality).trim().slice(0, 100) : "",
+          material: body.material ? String(body.material).trim().slice(0, 100) : "",
+          unitValue: body.unitValue !== undefined && body.unitValue !== null && body.unitValue !== "" ? Number(body.unitValue) : null,
+          suppliers: [], batches: [], stock: qty, isCustom: false,
+        },
+        body.category
+      );
+      return res.status(201).json(product);
+    }
+
     const supplierEntries = Array.isArray(body.suppliers) ? body.suppliers : [];
     if (supplierEntries.length === 0) return res.status(400).json({ message: "Add at least one supplier with a purchase quantity to set opening stock." });
     if (supplierEntries.length > 20) return res.status(400).json({ message: "Too many supplier entries (max 20)." });
@@ -269,6 +285,41 @@ async function createCustomProduct({ name, unitPrice, qty, shopName }) {
 }
 
 // #15 (custom product now created immediately when added to an invoice, not deferred to sale) — fixes stock accuracy + left-list visibility
+router.get("/shop-names", async (req, res) => {
+  try {
+    const { search = "" } = req.query;
+    const filter = {};
+    if (search.trim()) filter.shopName = { $regex: search.trim(), $options: "i" };
+    const names = await CustomProductSource.distinct("shopName", filter);
+    res.json({ shopNames: names.filter(Boolean).sort() });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+async function addOrRestockViaShop({ name, unitPrice, qty, shopName }) {
+  const trimmedName = String(name || "").trim();
+  const qtyNum = Number(qty) || 0;
+  const priceNum = Number(unitPrice) || 0;
+  const sourceLabel = shopName && String(shopName).trim() ? String(shopName).trim().slice(0, 200) : "N/A (Custom Product)";
+
+  const existing = trimmedName
+    ? await Product.findOne({ name: { $regex: `^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } })
+    : null;
+
+  if (existing) {
+    existing.batches.push({ supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, originalQuantity: qtyNum, purchaseDate: new Date() });
+    existing.stock = (existing.stock || 0) + qtyNum;
+    await existing.save();
+    await PurchaseHistory.create({ productId: existing._id, productName: existing.name, supplierId: null, supplierName: sourceLabel, buyingPrice: priceNum, quantity: qtyNum, totalCost: priceNum * qtyNum, purchaseDate: new Date() });
+    if (shopName && String(shopName).trim()) {
+      await CustomProductSource.create({ productId: existing._id, productName: existing.name, shopName: String(shopName).trim(), quantity: qtyNum, unitPrice: priceNum, totalAmount: priceNum * qtyNum });
+    }
+    return existing;
+  }
+  return createCustomProduct({ name, unitPrice, qty, shopName });
+}
+
 router.post("/custom-quick", async (req, res) => {
   try {
     const { name, unitPrice, qty, shopName } = req.body;
@@ -277,7 +328,7 @@ router.post("/custom-quick", async (req, res) => {
     const quantity = Number(qty);
     if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: "Enter a valid unit price." });
     if (!Number.isFinite(quantity) || quantity <= 0) return res.status(400).json({ message: "Enter a valid quantity." });
-    const product = await createCustomProduct({ name, unitPrice: price, qty: quantity, shopName });
+    const product = await addOrRestockViaShop({ name, unitPrice: price, qty: quantity, shopName });
     res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -416,9 +467,16 @@ async function deductStockFIFO(productId, qtyToDeduct, session, preferredSupplie
       remaining -= takeFromLegacy;
     }
   }
-  if (remaining > 0) throw new Error(`Insufficient stock for ${product.name}. Short by ${remaining}.`);
+  if (remaining > 0) {
+    // Overselling allowed — stock can go negative. Cost the shortfall units at the product's
+    // known buying price (or the highest supplier price on record) since no real batch exists.
+    const fallbackPrice = product.buyingPrice || (product.suppliers || []).reduce((m, s) => Math.max(m, s.buyingPrice || 0), 0);
+    costOfGoodsSold += remaining * fallbackPrice;
+    batchesUsed.push({ batchId: null, supplierId: null, supplierName: "Oversold (no stock)", buyingPrice: fallbackPrice, quantity: remaining });
+    remaining = 0;
+  }
 
-  product.stock = Math.max(0, (product.stock || 0) - qty);
+  product.stock = (product.stock || 0) - qty;
   syncSupplierAvailableQuantities(product);
   const opts = session ? { session } : {};
   await product.save(opts);
@@ -474,5 +532,6 @@ module.exports = router;
 module.exports.generateSKU = generateSKU;
 module.exports.resolveSupplier = resolveSupplier;
 module.exports.createCustomProduct = createCustomProduct;
+module.exports.addOrRestockViaShop = addOrRestockViaShop;
 module.exports.deductStockFIFO = deductStockFIFO;
 module.exports.restoreStockFIFO = restoreStockFIFO;

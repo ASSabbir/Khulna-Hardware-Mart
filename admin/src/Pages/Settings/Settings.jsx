@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../Components/Nav";
 import axios from "axios";
 import {
   FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle,
-  FiCheckCircle, FiSave, FiShield
+  FiCheckCircle, FiSave, FiShield, FiCreditCard, FiSmartphone, FiPlus, FiTrash2
 } from "react-icons/fi";
 
 export default function Settings() {
@@ -32,6 +32,46 @@ export default function Settings() {
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState({ type: "", msg: "" });
+
+  const [mobileOpts, setMobileOpts] = useState([]);
+  const [bankOpts, setBankOpts] = useState([]);
+  const [pmForm, setPmForm] = useState({ type: "mobile", name: "", accountNumber: "" });
+  const [pmMsg, setPmMsg] = useState({ type: "", msg: "" });
+
+  const loadPaymentOptions = async () => {
+    try {
+      const [m, b] = await Promise.all([
+        axios.get("http://localhost:5000/api/payment-methods?type=mobile"),
+        axios.get("http://localhost:5000/api/payment-methods?type=bank"),
+      ]);
+      setMobileOpts(m.data.options || []);
+      setBankOpts(b.data.options || []);
+    } catch (err) {}
+  };
+
+  useEffect(() => {
+    if (activeTab === "payments") loadPaymentOptions();
+  }, [activeTab]);
+
+  const addPaymentOption = async (e) => {
+    e.preventDefault();
+    if (!pmForm.name.trim()) return;
+    try {
+      await axios.post("http://localhost:5000/api/payment-methods", pmForm);
+      setPmForm({ ...pmForm, name: "", accountNumber: "" });
+      setPmMsg({ type: "success", msg: "Option added." });
+      loadPaymentOptions();
+    } catch (err) {
+      setPmMsg({ type: "error", msg: err.response?.data?.message || "Failed to add option." });
+    }
+  };
+
+  const deletePaymentOption = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/payment-methods/${id}`);
+      loadPaymentOptions();
+    } catch (err) {}
+  };
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -131,6 +171,16 @@ export default function Settings() {
             }`}
           >
             <FiLock className="inline mr-2" /> Change Password
+          </button>
+          <button
+            onClick={() => setActiveTab("payments")}
+            className={`px-6 py-3 rounded-xl font-semibold transition ${
+              activeTab === "payments"
+                ? "bg-orange-500 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:border-orange-400"
+            }`}
+          >
+            <FiCreditCard className="inline mr-2" /> Payment Methods
           </button>
         </div>
 
@@ -287,6 +337,81 @@ export default function Settings() {
                 {passwordLoading ? "Changing..." : <><FiLock size={18} /> Change Password</>}
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === "payments" && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Method Options</h2>
+            {pmMsg.msg && (
+              <div className={`mb-4 px-4 py-3 rounded-xl text-sm flex items-center gap-2 ${
+                pmMsg.type === "success" ? "bg-green-50 text-green-600 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"
+              }`}>
+                {pmMsg.type === "success" ? <FiCheckCircle size={16} /> : <FiAlertCircle size={16} />}
+                {pmMsg.msg}
+              </div>
+            )}
+            <form onSubmit={addPaymentOption} className="flex flex-wrap gap-3 mb-6 items-end">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                <select
+                  value={pmForm.type}
+                  onChange={(e) => setPmForm({ ...pmForm, type: e.target.value })}
+                  className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="mobile">Mobile Banking</option>
+                  <option value="bank">Bank</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                <input
+                  value={pmForm.name}
+                  onChange={(e) => setPmForm({ ...pmForm, name: e.target.value })}
+                  placeholder={pmForm.type === "mobile" ? "e.g. bKash 1" : "e.g. City Bank 1"}
+                  className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                <input
+                  value={pmForm.accountNumber}
+                  onChange={(e) => setPmForm({ ...pmForm, accountNumber: e.target.value })}
+                  placeholder="Optional"
+                  className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <button type="submit" className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition">
+                <FiPlus size={18} /> Add
+              </button>
+            </form>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <p className="font-bold text-gray-800 mb-3 flex items-center gap-2"><FiSmartphone /> Mobile Banking</p>
+                <div className="space-y-2">
+                  {mobileOpts.map((o) => (
+                    <div key={o._id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+                      <span className="text-sm font-semibold text-gray-800">{o.name}{o.accountNumber ? ` — ${o.accountNumber}` : ""}</span>
+                      <button onClick={() => deletePaymentOption(o._id)} className="text-red-400 hover:text-red-600"><FiTrash2 size={15} /></button>
+                    </div>
+                  ))}
+                  {mobileOpts.length === 0 && <p className="text-sm text-gray-400">No mobile banking options yet.</p>}
+                </div>
+              </div>
+              <div>
+                <p className="font-bold text-gray-800 mb-3 flex items-center gap-2"><FiCreditCard /> Bank</p>
+                <div className="space-y-2">
+                  {bankOpts.map((o) => (
+                    <div key={o._id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+                      <span className="text-sm font-semibold text-gray-800">{o.name}{o.accountNumber ? ` — ${o.accountNumber}` : ""}</span>
+                      <button onClick={() => deletePaymentOption(o._id)} className="text-red-400 hover:text-red-600"><FiTrash2 size={15} /></button>
+                    </div>
+                  ))}
+                  {bankOpts.length === 0 && <p className="text-sm text-gray-400">No bank options yet.</p>}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

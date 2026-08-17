@@ -38,6 +38,7 @@ import { buildChallanHTML } from "../../Print/challanTemplate";
 import { buildInvoiceReceiptHTML } from "../../Print/invoiceReceiptTemplate";
 import { openPrintWindow } from "../../Print/printUtils";
 import { clampToMax } from "../../utils/paymentConstants";
+import { capitalizeWords } from "../../utils/textFormat";
 
 const fmt = (n) =>
   "৳" +
@@ -190,6 +191,41 @@ const Invoice = () => {
     shopName: "",
   });
   const [addingCustom, setAddingCustom] = useState(false);
+  const [shopSuggestions, setShopSuggestions] = useState([]);
+  const [customNameSuggestions, setCustomNameSuggestions] = useState([]);
+
+  useEffect(() => {
+    const q = customProduct.shopName.trim();
+    if (q.length < 1) { setShopSuggestions([]); return; }
+    const t = setTimeout(() => {
+      axios.get(`http://localhost:5000/api/shop-names?search=${encodeURIComponent(q)}`)
+        .then((res) => setShopSuggestions(res.data.shopNames || []))
+        .catch(() => setShopSuggestions([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [customProduct.shopName]);
+
+  useEffect(() => {
+    const q = customProduct.name.trim();
+    if (q.length < 2) { setCustomNameSuggestions([]); return; }
+    const t = setTimeout(() => {
+      axios.get(`http://localhost:5000/api/products?search=${encodeURIComponent(q)}&limit=8`)
+        .then((res) => setCustomNameSuggestions(res.data.products || []))
+        .catch(() => setCustomNameSuggestions([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [customProduct.name]);
+
+  const [dynMobileOptions, setDynMobileOptions] = useState(MOBILE_BANKING_PROVIDERS);
+  const [dynBankOptions, setDynBankOptions] = useState(BANK_OPTIONS);
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/payment-methods?type=mobile")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) setDynMobileOptions(n); })
+      .catch(() => {});
+    axios.get("http://localhost:5000/api/payment-methods?type=bank")
+      .then((res) => { const n = (res.data.options || []).map((o) => o.name); if (n.length) setDynBankOptions(n); })
+      .catch(() => {});
+  }, []);
 
   const [customerLookupStatus, setCustomerLookupStatus] = useState("");
   const [phoneSuggestions, setPhoneSuggestions] = useState([]);
@@ -265,7 +301,13 @@ const Invoice = () => {
       .then((res) => {
         if (cancelled) return;
         const list = res.data.customers || [];
-        setPhoneSuggestions(list.slice(0, 6));
+        const seen = new Set();
+        const unique = [];
+        list.forEach((c) => {
+          const key = (c.phone && c.phone.trim()) || c.name?.toLowerCase() || "";
+          if (key && !seen.has(key)) { seen.add(key); unique.push(c); }
+        });
+        setPhoneSuggestions(unique.slice(0, 6));
         const exact = list.find((c) => c.phone === phone);
         setCustomerLookupStatus(exact ? "found" : "notfound");
       })
@@ -318,30 +360,29 @@ const Invoice = () => {
     fetchProducts();
   }, [fetchProducts]);
 
+  const getMaxBuyingPrice = (p) => {
+    const prices = [p.buyingPrice, ...(Array.isArray(p.suppliers) ? p.suppliers.map((s) => s.buyingPrice) : [])]
+      .map(Number)
+      .filter((n) => Number.isFinite(n) && n > 0);
+    return prices.length ? Math.max(...prices) : Number(p.buyingPrice) || 0;
+  };
   const getPriceForType = (p, type) => {
-    const b = parseFloat(p.buyingPrice) || 0;
-    if (type === "holcell") return p.holcellPrice || +(b * 1.03).toFixed(2);
-    if (type === "retail") return p.retailPrice || +(b * 1.05).toFixed(2);
+    const b = getMaxBuyingPrice(p);
+    const holcellMargin = Number.isFinite(Number(p.holcellMargin)) ? Number(p.holcellMargin) : 3;
+    const retailMargin = Number.isFinite(Number(p.retailMargin)) ? Number(p.retailMargin) : 5;
+    if (type === "holcell") return +(b * (1 + holcellMargin / 100)).toFixed(2);
+    if (type === "retail") return +(b * (1 + retailMargin / 100)).toFixed(2);
     return b;
   };
   const getPrice = (p) => getPriceForType(p, priceType);
 
   const addToMemo = (p) => {
-    if (p.stock <= 0) {
-      showToast("error", `${p.name} is out of stock!`);
-      return;
-    }
     setMemoItems((prev) => {
       const exists = prev.find((i) => i.productId === p._id);
       if (exists) {
         showToast("info", `${p.name} already in memo — adjust qty below.`);
         return prev;
       }
-      const baseBuying = parseFloat(p.buyingPrice) || 0;
-      const holcellRatio =
-        baseBuying > 0 ? getPriceForType(p, "holcell") / baseBuying : 1.03;
-      const retailRatio =
-        baseBuying > 0 ? getPriceForType(p, "retail") / baseBuying : 1.05;
       return [
         ...prev,
         {
@@ -356,17 +397,17 @@ const Invoice = () => {
               : getPriceForType(p, "retail"),
           retailPriceValue: getPriceForType(p, "retail"),
           holcellPriceValue: getPriceForType(p, "holcell"),
-          holcellRatio,
-          retailRatio,
           qty: 1,
           stock: p.stock,
-          suppliers: p.suppliers || [],
-          preferredSupplierId: "",
           custom: false,
         },
       ];
     });
-    showToast("success", `${p.name} added to memo.`);
+    if ((p.stock || 0) <= 0) {
+      showToast("info", `${p.name} added — note: current stock is ${p.stock || 0}.`);
+    } else {
+      showToast("success", `${p.name} added to memo.`);
+    }
   };
 
   // #15/#22/write-conflict fix — custom product now created in DB immediately (real productId),
@@ -450,31 +491,9 @@ const Invoice = () => {
     setMemoItems((prev) =>
       prev.map((i) => {
         if (i.id !== id) return i;
-        if (field === "preferredSupplierId") {
-          let updated = { ...i, preferredSupplierId: value };
-          if (value && !i.custom) {
-            const sup = (i.suppliers || []).find((s) => s.supplierId === value);
-            if (sup && Number.isFinite(Number(sup.buyingPrice))) {
-              const ratio =
-                customerType === "wholesale"
-                  ? i.holcellRatio || 1.03
-                  : i.retailRatio || 1.05;
-              updated.price = +(Number(sup.buyingPrice) * ratio).toFixed(2);
-            }
-          } else if (!i.custom) {
-            updated.price =
-              customerType === "wholesale"
-                ? (i.holcellPriceValue ?? i.price)
-                : (i.retailPriceValue ?? i.price);
-          }
-          const max = getMaxQtyForItem(updated, prev);
-          return { ...updated, qty: max > 0 ? Math.min(i.qty, max) : 0 };
-        }
-        if (field === "qty" && !i.custom) {
-          const max = getMaxQtyForItem(i, prev);
+        if (field === "qty") {
           const parsed = parseInt(value) || 0;
-          const newQty = max > 0 ? Math.max(1, Math.min(parsed, max)) : 0;
-          return { ...i, qty: newQty };
+          return { ...i, qty: Math.max(1, parsed) };
         }
         return { ...i, [field]: value };
       }),
@@ -482,50 +501,6 @@ const Invoice = () => {
   };
   const removeItem = (id) =>
     setMemoItems((prev) => prev.filter((i) => i.id !== id));
-
-  const getMaxQtyForItem = (item, itemsList) => {
-    if (item.custom) return 9999;
-    const others = itemsList.filter(
-      (i) => i.id !== item.id && i.productId === item.productId,
-    );
-    if (item.preferredSupplierId) {
-      const sup = (item.suppliers || []).find(
-        (s) => s.supplierId === item.preferredSupplierId,
-      );
-      const supStock = sup ? sup.availableQuantity : 0;
-      const usedBySameSupplier = others
-        .filter(
-          (i) => (i.preferredSupplierId || "") === item.preferredSupplierId,
-        )
-        .reduce((s, i) => s + i.qty, 0);
-      return Math.max(0, supStock - usedBySameSupplier);
-    }
-    const usedTotal = others.reduce((s, i) => s + i.qty, 0);
-    return Math.max(0, (item.stock || 0) - usedTotal);
-  };
-  const getSupplierRemaining = (item, supplierId) => {
-    const sup = (item.suppliers || []).find((s) => s.supplierId === supplierId);
-    if (!sup) return 0;
-    const usedElsewhere = memoItems
-      .filter(
-        (i) =>
-          i.id !== item.id &&
-          i.productId === item.productId &&
-          (i.preferredSupplierId || "") === supplierId,
-      )
-      .reduce((s, i) => s + i.qty, 0);
-    return Math.max(0, sup.availableQuantity - usedElsewhere);
-  };
-  const addSupplierLine = (item) =>
-    setMemoItems((prev) => [
-      ...prev,
-      {
-        ...item,
-        id: item.productId + "-" + Date.now(),
-        preferredSupplierId: "",
-        qty: 1,
-      },
-    ]);
 
   const subtotal = memoItems.reduce((s, i) => s + i.price * i.qty, 0);
   const discAmt = Math.min(parseFloat(discount) || 0, subtotal);
@@ -552,6 +527,12 @@ const Invoice = () => {
   const dueBalance = Math.max(0, +(grandTotal - expectedPaidAmount).toFixed(2));
   const splitMismatch =
     splitPayment && Math.abs(splitTotal - expectedPaidAmount) > 0.01;
+
+  useEffect(() => {
+    if (splitPayment && paymentStatus === "due") {
+      setPaidNowAmount(splitTotal > 0 ? String(splitTotal) : "");
+    }
+  }, [splitPayment, splitTotal, paymentStatus]);
 
   const addSplitRow = () => setSplitRows((prev) => [...prev, emptySplitRow()]);
   const removeSplitRow = (id) =>
@@ -606,17 +587,6 @@ const Invoice = () => {
       showToast("error", "Add at least one product to complete sale.");
       return;
     }
-    for (const item of memoItems) {
-      if (item.custom) continue;
-      const max = getMaxQtyForItem(item, memoItems);
-      if (item.qty > max) {
-        showToast(
-          "error",
-          `${item.name}: quantity exceeds available stock (max ${max}).`,
-        );
-        return;
-      }
-    }
     if (!customer.name.trim()) {
       showToast("error", "Please enter customer name.");
       return;
@@ -659,7 +629,7 @@ const Invoice = () => {
         price: item.price,
         qty: item.qty,
         total: item.price * item.qty,
-        preferredSupplierId: item.preferredSupplierId || null,
+        preferredSupplierId: null,
       }));
       const payments = buildPayments();
 
@@ -1051,22 +1021,34 @@ const Invoice = () => {
             </div>
             <input
               type="text"
-              placeholder="Product name"
+              list="custom-product-name-list"
+              placeholder="Product name (existing or new)"
               value={customProduct.name}
               onChange={(e) =>
-                setCustomProduct((c) => ({ ...c, name: e.target.value }))
+                setCustomProduct((c) => ({ ...c, name: capitalizeWords(e.target.value) }))
               }
               className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
             />
+            <datalist id="custom-product-name-list">
+              {customNameSuggestions.map((p) => (
+                <option key={p._id} value={p.name} />
+              ))}
+            </datalist>
             <input
               type="text"
+              list="custom-shop-name-list"
               placeholder="Shop Name (source of this product)"
               value={customProduct.shopName}
               onChange={(e) =>
-                setCustomProduct((c) => ({ ...c, shopName: e.target.value }))
+                setCustomProduct((c) => ({ ...c, shopName: capitalizeWords(e.target.value) }))
               }
               className="w-full text-sm border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
             />
+            <datalist id="custom-shop-name-list">
+              {shopSuggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="number"
@@ -1222,7 +1204,8 @@ const Invoice = () => {
                       placeholder={f.placeholder}
                       value={customer[f.key]}
                       onChange={(e) => {
-                        setCustomer((c) => ({ ...c, [f.key]: e.target.value }));
+                        const val = (f.key === "name" || f.key === "address") ? capitalizeWords(e.target.value) : e.target.value;
+                        setCustomer((c) => ({ ...c, [f.key]: val }));
                         if (f.key === "phone") {
                           setCustomerLookupStatus("");
                           setShowPhoneSuggestions(true);
@@ -1379,71 +1362,20 @@ const Invoice = () => {
                               Stock: {item.stock}
                             </p>
                           )}
-                          {Array.isArray(item.suppliers) &&
-                            item.suppliers.length > 0 && (
-                              <div className="flex items-center gap-1 mt-1.5">
-                                <select
-                                  value={item.preferredSupplierId || ""}
-                                  onChange={(e) =>
-                                    updateItem(
-                                      item.id,
-                                      "preferredSupplierId",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="text-[10px] font-semibold border border-slate-200 rounded px-1.5 py-1 outline-none bg-slate-50 focus:border-[#1D4ED8] max-w-45 font-['Barlow',sans-serif]"
-                                >
-                                  <option value="">Auto (FIFO)</option>
-                                  {item.suppliers.map((s) => {
-                                    const remaining = getSupplierRemaining(
-                                      item,
-                                      s.supplierId,
-                                    );
-                                    if (
-                                      remaining <= 0 &&
-                                      s.supplierId !== item.preferredSupplierId
-                                    )
-                                      return null;
-                                    return (
-                                      <option
-                                        key={s.supplierId}
-                                        value={s.supplierId}
-                                        disabled={remaining <= 0}
-                                      >
-                                        {s.supplierName} — ৳{s.buyingPrice} (
-                                        {remaining} left)
-                                      </option>
-                                    );
-                                  })}
-                                </select>
-                                {item.suppliers.some(
-                                  (s) =>
-                                    s.supplierId !== item.preferredSupplierId &&
-                                    getSupplierRemaining(item, s.supplierId) >
-                                      0,
-                                ) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => addSupplierLine(item)}
-                                    className="w-5 h-5 flex items-center justify-center rounded border border-slate-200 text-slate-400 hover:border-[#1D4ED8] hover:text-[#1D4ED8] shrink-0"
-                                  >
-                                    <FiPlus size={10} />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                        </td>
+                           </td>
                         <td className="px-4 py-2.5 text-center">
                           <input
                             type="number"
                             min="1"
-                            max={getMaxQtyForItem(item, memoItems)}
                             value={item.qty}
                             onChange={(e) =>
                               updateItem(item.id, "qty", e.target.value)
                             }
                             className="w-16 text-center border-2 border-slate-200 rounded-lg py-1 text-sm font-semibold text-[#1E293B] outline-none focus:border-[#1D4ED8] transition-colors font-['Barlow',sans-serif]"
                           />
+                          {item.stock != null && item.qty > item.stock && (
+                            <p className="text-[8px] text-amber-600 font-bold mt-0.5">Exceeds stock — will go negative</p>
+                          )}
                           <p className="text-[9px] text-slate-400 font-medium mt-0.5">
                             {item.unit || "pcs"}
                           </p>
@@ -1619,13 +1551,14 @@ const Invoice = () => {
                         max={grandTotal}
                         step="0.01"
                         value={paidNowAmount}
+                        disabled={splitPayment}
                         onChange={(e) =>
                           setPaidNowAmount(
                             clampToMax(e.target.value, grandTotal),
                           )
                         }
                         placeholder="0.00"
-                        className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif]"
+                        className="flex-1 border-2 border-red-200 rounded-lg px-2 py-1.5 text-sm font-semibold outline-none focus:border-red-500 bg-white font-['Barlow',sans-serif] disabled:bg-red-100 disabled:text-red-500"
                       />
                       <span className="text-xs font-bold text-red-600 whitespace-nowrap">
                         Due: ৳{dueBalance.toFixed(2)}
@@ -1634,8 +1567,7 @@ const Invoice = () => {
                   )}
                   {splitPayment && paymentStatus === "due" && (
                     <p className="text-[10px] text-slate-400 mt-1">
-                      Enter how much is being paid now above, then split it
-                      across methods below.
+                      Split payment total auto-fills Paying Now — enter amounts in the payment rows below.
                     </p>
                   )}
                 </div>
@@ -1687,7 +1619,7 @@ const Invoice = () => {
                             onChange={(e) => setMobileProvider(e.target.value)}
                             className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#1D4ED8] bg-white font-['Barlow',sans-serif]"
                           >
-                            {MOBILE_BANKING_PROVIDERS.map((p) => (
+                            {dynMobileOptions.map((p) => (
                               <option key={p} value={p}>
                                 {p}
                               </option>
@@ -1709,7 +1641,7 @@ const Invoice = () => {
                             onChange={(e) => setBankName(e.target.value)}
                             className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-purple-600 bg-white font-['Barlow',sans-serif]"
                           >
-                            {BANK_OPTIONS.map((b) => (
+                            {dynBankOptions.map((b) => (
                               <option key={b} value={b}>
                                 {b}
                               </option>
@@ -1774,7 +1706,7 @@ const Invoice = () => {
                                 }
                                 className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
                               >
-                                {MOBILE_BANKING_PROVIDERS.map((p) => (
+                                {dynMobileOptions.map((p) => (
                                   <option key={p} value={p}>
                                     {p}
                                   </option>
@@ -1808,7 +1740,7 @@ const Invoice = () => {
                                 }
                                 className="text-xs font-semibold border-2 border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white font-['Barlow',sans-serif]"
                               >
-                                {BANK_OPTIONS.map((b) => (
+                                {dynBankOptions.map((b) => (
                                   <option key={b} value={b}>
                                     {b}
                                   </option>

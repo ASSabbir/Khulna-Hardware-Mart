@@ -360,6 +360,8 @@ export default function AccountsStatus() {
   const [refreshing, setRefreshing] = useState(false);
   const [mobileBreakdown, setMobileBreakdown] = useState(null);
   const [bankBreakdown, setBankBreakdown] = useState(null);
+  const [totalProductSalesValue, setTotalProductSalesValue] = useState(0);
+  const [totalTransportCost, setTotalTransportCost] = useState(0);
   const [period, setPeriod] = useState("daily");
   const [rangeOpen, setRangeOpen] = useState(false);
   const [rangeLabel, setRangeLabel] = useState("This Month");
@@ -403,6 +405,15 @@ export default function AccountsStatus() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/invoices/stats")
+      .then((res) => {
+        setTotalProductSalesValue(res.data?.stats?.totalProductSalesValue || 0);
+        setTotalTransportCost(res.data?.stats?.totalTransportCost || 0);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -864,6 +875,19 @@ export default function AccountsStatus() {
             })}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
+              <p className="text-[#64748B] text-sm font-medium">Total Product Sales Value</p>
+              <p className="text-2xl font-bold text-[#0F172A] mt-1.5">{fmt(totalProductSalesValue)}</p>
+              <p className="text-[#94A3B8] text-[11px] mt-1">Sum of item price × qty across all invoices</p>
+            </div>
+            <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
+              <p className="text-[#64748B] text-sm font-medium">Total Transportation Cost</p>
+              <p className="text-2xl font-bold text-[#0F172A] mt-1.5">{fmt(totalTransportCost)}</p>
+              <p className="text-[#94A3B8] text-[11px] mt-1">Sum of transport cost across all invoices</p>
+            </div>
+          </div>
+
           {(mobileBreakdown || bankBreakdown) && (
             <div className="mt-4 bg-white border border-[#E2E8F0] rounded-[16px] p-5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)]">
               <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -922,7 +946,7 @@ export default function AccountsStatus() {
                 )
               ) : mobileBreakdown ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {["bKash", "Nagad", "Rocket", "Upay"].map((p) => {
+                  {Object.keys(mobileBreakdown).map((p) => {
                     const val = mobileBreakdown[p] || 0;
                     const total = Object.values(mobileBreakdown).reduce(
                       (s, v) => s + Number(v || 0),

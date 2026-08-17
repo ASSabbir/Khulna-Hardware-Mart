@@ -55,6 +55,9 @@ const DueInvoicePaymentHistory = lazy(
 );
 const BackupCenter = lazy(() => import("./Pages/Dashboard/BackupCenter"));
 const RestoreCenter = lazy(() => import("./Pages/Dashboard/RestoreCenter"));
+const AllInvoice = lazy(() => import("./Pages/Invoice/AllInvoice"));
+const RestockList = lazy(() => import("./Pages/Products/RestockList"));
+const ShopSale = lazy(() => import("./Pages/Products/ShopSale"));
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -139,6 +142,7 @@ const Route = createBrowserRouter([
           { index: true, element: <Navigate to="invoice" replace /> },
 
           { path: "invoice", element: withSuspense(<Invoice />) },
+          { path: "all", element: withSuspense(<AllInvoice />) },
           { path: "draft", element: withSuspense(<DraftInvoice />) },
           { path: "due", element: withSuspense(<DueInvoice />) },
           { path: "paid", element: withSuspense(<PaidInvoice />) },
@@ -169,6 +173,8 @@ const Route = createBrowserRouter([
             element: withSuspense(<ShopSourceHistory />),
           },
           { path: "supplier-purchase", element: withSuspense(<SupplierPurchaseOrder />) },
+          { path: "restock-list", element: withSuspense(<RestockList />) },
+          { path: "shop-sale", element: withSuspense(<ShopSale />) },
         ],
       },
       {

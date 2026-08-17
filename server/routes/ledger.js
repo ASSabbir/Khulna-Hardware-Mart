@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const Ledger = require("../models/Ledger");
 const Invoice = require("../models/Invoice");
 const Return = require("../models/Return");
+const PaymentMethodOption = require("../models/PaymentMethodOption");
 
 const MOBILE_PROVIDERS = ["bKash", "Nagad", "Rocket", "Upay"];
 const BANK_OPTIONS = ["Dutch-Bangla Bank", "Islami Bank Bangladesh", "City Bank Limited"];
@@ -31,22 +32,27 @@ function toClientShape(doc) {
   };
 }
 
-function computeMobileBreakdown(transactions) {
-  const out = { bKash: 0, Nagad: 0, Rocket: 0, Upay: 0 };
+
+async function computeMobileBreakdown(transactions) {
+  const out = {};
+  const configured = await PaymentMethodOption.find({ type: "mobile" }).lean();
+  configured.forEach((o) => (out[o.name] = 0));
   transactions.forEach((t) => {
-    if (t.method === "mobile" && out[t.provider] !== undefined) {
-      out[t.provider] += t.type === "income" ? t.amount : -t.amount;
+    if (t.method === "mobile" && t.provider) {
+      out[t.provider] = (out[t.provider] || 0) + (t.type === "income" ? t.amount : -t.amount);
     }
   });
   Object.keys(out).forEach((k) => (out[k] = +out[k].toFixed(2)));
   return out;
 }
 
-function computeBankBreakdown(transactions) {
-  const out = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+async function computeBankBreakdown(transactions) {
+  const out = {};
+  const configured = await PaymentMethodOption.find({ type: "bank" }).lean();
+  configured.forEach((o) => (out[o.name] = 0));
   transactions.forEach((t) => {
-    if (t.method === "bank" && t.bankName && out[t.bankName] !== undefined) {
-      out[t.bankName] += t.type === "income" ? t.amount : -t.amount;
+    if (t.method === "bank" && t.bankName) {
+      out[t.bankName] = (out[t.bankName] || 0) + (t.type === "income" ? t.amount : -t.amount);
     }
   });
   Object.keys(out).forEach((k) => (out[k] = +out[k].toFixed(2)));
@@ -144,8 +150,8 @@ router.get("/", async (req, res) => {
       balance: +(totalIncome - totalExpense).toFixed(2),
       totalIncome: +totalIncome.toFixed(2),
       totalExpense: +totalExpense.toFixed(2),
-      mobileBankingBreakdown: computeMobileBreakdown(transactions),
-      bankBreakdown: computeBankBreakdown(transactions),
+      mobileBankingBreakdown: await computeMobileBreakdown(transactions),
+      bankBreakdown: await computeBankBreakdown(transactions),
       transactions,
     });
   } catch (error) {
@@ -178,11 +184,8 @@ router.post("/", async (req, res) => {
     if (method && !["cash", "mobile", "bank"].includes(method)) {
       return res.status(400).json({ message: "Invalid payment method." });
     }
-    if (method === "mobile" && !MOBILE_PROVIDERS.includes(provider)) {
-      return res.status(400).json({ message: "Select a valid mobile banking provider." });
-    }
-    if (method === "bank" && bankName && !BANK_OPTIONS.includes(bankName)) {
-      return res.status(400).json({ message: "Select a valid bank name." });
+    if (method === "mobile" && !String(provider || "").trim()) {
+      return res.status(400).json({ message: "Select a mobile banking provider." });
     }
 
     // #22 — overdraw is intentionally allowed for every payment method. The resulting
@@ -227,14 +230,18 @@ router.get("/balances", async (req, res) => {
     const allTxns = [...entries.map(toClientShape), ...derivedTxns];
 
     let cash = 0;
-    const mobile = { bKash: 0, Nagad: 0, Rocket: 0, Upay: 0 };
-    const bank = { "Dutch-Bangla Bank": 0, "Islami Bank Bangladesh": 0, "City Bank Limited": 0 };
+    const mobile = {};
+    const bank = {};
+    const configuredMobile = await PaymentMethodOption.find({ type: "mobile" }).lean();
+    const configuredBank = await PaymentMethodOption.find({ type: "bank" }).lean();
+    configuredMobile.forEach((o) => (mobile[o.name] = 0));
+    configuredBank.forEach((o) => (bank[o.name] = 0));
 
     allTxns.forEach((t) => {
       const sign = t.type === "income" ? 1 : -1;
       if (t.method === "cash") cash += sign * t.amount;
-      else if (t.method === "mobile" && mobile[t.provider] !== undefined) mobile[t.provider] += sign * t.amount;
-      else if (t.method === "bank" && bank[t.bankName] !== undefined) bank[t.bankName] += sign * t.amount;
+      else if (t.method === "mobile" && t.provider) mobile[t.provider] = (mobile[t.provider] || 0) + sign * t.amount;
+      else if (t.method === "bank" && t.bankName) bank[t.bankName] = (bank[t.bankName] || 0) + sign * t.amount;
     });
 
     res.json({

@@ -34,7 +34,7 @@ const stockBadge = (qty) => {
     };
   if (qty <= 10)
     return {
-      label: `Low — ${qty}`,
+      label: `Low  (${qty})`,
       cls: "bg-yellow-100 text-yellow-700 border border-yellow-300",
     };
   return {
